@@ -2,9 +2,12 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Browser.Events
+import Element
 import Html exposing (Html, div, h1, img, text)
 import Html.Attributes exposing (src)
 import Keyboard exposing (Key)
+import WebGL
+import WebGLView
 
 
 
@@ -14,13 +17,21 @@ import Keyboard exposing (Key)
 type alias Model =
     { keys : List Key
     , previousKeys : List Key
+    , windowSize : ( Int, Int )
     }
 
 
-init : ( Model, Cmd Msg )
-init =
+type alias Flags =
+    { windowWidth : Int
+    , windowHeight : Int
+    }
+
+
+init : Flags -> ( Model, Cmd Msg )
+init flags =
     ( { keys = []
       , previousKeys = []
+      , windowSize = ( flags.windowWidth, flags.windowHeight )
       }
     , Cmd.none
     )
@@ -33,6 +44,7 @@ init =
 type Msg
     = NoOp
     | KeyMsg Keyboard.Msg
+    | WindowResize Int Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -48,6 +60,9 @@ update msg model =
             in
             { model | keys = newKeys, previousKeys = model.keys }
                 |> addCmdNone
+
+        WindowResize width height ->
+            { model | windowSize = ( width, height ) } |> addCmdNone
 
 
 addCmdNone : a -> ( a, Cmd msg )
@@ -66,13 +81,16 @@ addCmd cmd a =
 
 view : Model -> Html Msg
 view model =
-    div [] []
+    Element.layout [] <|
+        Element.html <|
+            WebGLView.view model.windowSize
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
         [ Sub.map KeyMsg Keyboard.subscriptions
+        , Browser.Events.onResize WindowResize
         ]
 
 
@@ -80,11 +98,11 @@ subscriptions model =
 ---- PROGRAM ----
 
 
-main : Program () Model Msg
+main : Program Flags Model Msg
 main =
     Browser.element
         { view = view
-        , init = \_ -> init
+        , init = init
         , update = update
         , subscriptions = subscriptions
         }
