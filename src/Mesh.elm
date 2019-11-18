@@ -9,14 +9,14 @@ import Triangle3d exposing (Triangle3d)
 import Vector2d exposing (Vector2d)
 
 
-type Mesh
-    = Mesh Mesh_
+type Mesh units coordinates
+    = Mesh (Mesh_ units coordinates)
 
 
-type alias Mesh_ =
+type alias Mesh_ units coordinates =
     { triangles : Dict TriangleId (Triangle VertexId)
-    , vertices : Dict VertexId Point3d
-    , surfaceMarkers : Dict SurfaceMarkerId SurfaceMarker
+    , vertices : Dict VertexId (Point3d units coordinates)
+    , surfaceMarkers : Dict SurfaceMarkerId (SurfaceMarker units coordinates)
     , idCounter : Int
     }
 
@@ -46,7 +46,7 @@ type TriangleEdge
     | SideThree
 
 
-getTriangleEdge : TriangleEdge -> Triangle3d -> LineSegment3d
+getTriangleEdge : TriangleEdge -> Triangle3d units coordinates -> LineSegment3d units coordinates
 getTriangleEdge triangleEdge triangle =
     let
         ( first, second, third ) =
@@ -63,7 +63,7 @@ getTriangleEdge triangleEdge triangle =
             third
 
 
-getTriangle : Mesh -> TriangleId -> Maybe Triangle3d
+getTriangle : Mesh units coordinates -> TriangleId -> Maybe (Triangle3d units coordinates)
 getTriangle (Mesh mesh) triangleId =
     Dict.get triangleId mesh.triangles
         |> Maybe.andThen
@@ -80,18 +80,18 @@ type alias AdjacentTriangle =
     { triangleId : TriangleId, flipped : Bool }
 
 
-adjacentTriangle : Mesh -> TriangleId -> TriangleEdge -> Maybe AdjacentTriangle
+adjacentTriangle : Mesh units coordinates -> TriangleId -> TriangleEdge -> Maybe AdjacentTriangle
 adjacentTriangle mesh triangleId =
     Debug.todo ""
 
 
-type SurfaceMarker
-    = SurfaceMarker SurfaceMarker_
+type SurfaceMarker units coordinates
+    = SurfaceMarker (SurfaceMarker_ units coordinates)
 
 
-type alias SurfaceMarker_ =
+type alias SurfaceMarker_ units coordinates =
     { triangleId : TriangleId
-    , position : Point2d
+    , position : Point2d units coordinates
     , side : SurfaceSide
     }
 
@@ -101,7 +101,10 @@ type SurfaceSide
     | Back
 
 
-addSurfaceMarker : SurfaceMarker -> Mesh -> ( SurfaceMarkerId, Mesh )
+addSurfaceMarker :
+    SurfaceMarker units coordinates
+    -> Mesh units coordinates
+    -> ( SurfaceMarkerId, Mesh units coordinates )
 addSurfaceMarker marker (Mesh mesh) =
     { mesh
         | surfaceMarkers = Dict.insert mesh.idCounter marker mesh.surfaceMarkers
@@ -111,7 +114,7 @@ addSurfaceMarker marker (Mesh mesh) =
         |> Tuple.pair mesh.idCounter
 
 
-removeSurfaceMarker : SurfaceMarkerId -> Mesh -> Mesh
+removeSurfaceMarker : SurfaceMarkerId -> Mesh units coordinates -> Mesh units coordinates
 removeSurfaceMarker markerId (Mesh mesh) =
     { mesh
         | surfaceMarkers = Dict.remove markerId mesh.surfaceMarkers
@@ -119,7 +122,14 @@ removeSurfaceMarker markerId (Mesh mesh) =
         |> Mesh
 
 
-getSketchPlane : Mesh -> SurfaceMarker -> Maybe SketchPlane3d
+type MeshSurfaceCoordinates
+    = MeshSurfaceCoordinates Never
+
+
+getSketchPlane :
+    Mesh units coordinates
+    -> SurfaceMarker units coordinates
+    -> Maybe (SketchPlane3d units coordinates { defines : MeshSurfaceCoordinates })
 getSketchPlane mesh (SurfaceMarker marker) =
     getTriangle mesh marker.triangleId
         |> Maybe.andThen
@@ -132,7 +142,11 @@ getSketchPlane mesh (SurfaceMarker marker) =
             )
 
 
-move : Mesh -> Vector2d -> SurfaceMarker -> SurfaceMarker
+move :
+    Mesh units coordinates
+    -> Vector2d units coordinates
+    -> SurfaceMarker units coordinates
+    -> SurfaceMarker units coordinates
 move mesh movement position =
     case getSketchPlane mesh position of
         Just triangle ->

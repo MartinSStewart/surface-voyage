@@ -1,4 +1,4 @@
-module WebGLMesh exposing (MeshPart(..), Vertex, circle, colorToVec4, cube, glow, line, map, square, toMesh)
+module WebGLMesh exposing (MeshPart(..), Vertex, circle, colorToVec4, cube, line, map, square, toMesh)
 
 import Array exposing (Array)
 import Basics.Extra exposing (flip)
@@ -10,6 +10,7 @@ import Math.Vector4 as Vec4 exposing (Vec4)
 import Mesh
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
+import Quantity
 import Vector2d exposing (Vector2d)
 import Vector3d exposing (Vector3d)
 import WebGL exposing (Mesh)
@@ -27,7 +28,7 @@ triangleStrip first second third rest =
     TriangleStrip False first second third rest
 
 
-fromMesh : Mesh.Mesh -> MeshPart a
+fromMesh : Mesh.Mesh unit coordinates -> MeshPart a
 fromMesh mesh =
     Debug.todo ""
 
@@ -219,52 +220,28 @@ toMesh meshPart =
     toMesh_ Array.empty [] [ meshPart ]
 
 
-circle : Int -> MeshPart Point2d
+circle : Int -> MeshPart (Point2d u c)
 circle detail =
     let
         tau =
             pi * 2
 
         getPoint index =
-            Point2d.fromCoordinates
-                ( sin (tau * index / toFloat detail)
-                , cos (tau * index / toFloat detail)
-                )
+            Point2d.xy
+                (Quantity.Quantity (sin (tau * index / toFloat detail)))
+                (Quantity.Quantity (cos (tau * index / toFloat detail)))
     in
     TriangleFan 0 1 2 (List.range 3 (detail - 1))
         |> map (toFloat >> getPoint)
 
 
-glow : Int -> MeshPart ( Point2d, Float )
-glow detail =
-    let
-        tau =
-            pi * 2
-
-        getPoint maybeIndex =
-            case maybeIndex of
-                Just index ->
-                    ( Point2d.fromCoordinates
-                        ( sin (tau * toFloat index / toFloat detail)
-                        , cos (tau * toFloat index / toFloat detail)
-                        )
-                    , 0
-                    )
-
-                Nothing ->
-                    ( Point2d.origin, 1 )
-    in
-    TriangleFan Nothing (Just 0) (Just 1) (List.range 2 detail |> List.map Just)
-        |> map getPoint
-
-
-square : MeshPart Point2d
+square : MeshPart (Point2d u c)
 square =
     TriangleFan ( 0, 0 ) ( 0, 1 ) ( 1, 1 ) [ ( 1, 0 ) ]
-        |> map Point2d.fromCoordinates
+        |> map (\( x, y ) -> Point2d.xy (Quantity.Quantity x) (Quantity.Quantity y))
 
 
-line : Float -> LineSegment2d -> MeshPart Point2d
+line : Float -> LineSegment2d u c -> MeshPart (Point2d u c)
 line thickness lineSegment =
     let
         start =
@@ -277,6 +254,8 @@ line thickness lineSegment =
             Vector2d.from start end
                 |> Vector2d.perpendicularTo
                 |> Vector2d.normalize
+                |> Vector2d.unwrap
+                |> (\{ x, y } -> Vector2d.xy (Quantity.Quantity x) (Quantity.Quantity y))
                 |> Vector2d.scaleBy thickness
 
         v1 =
@@ -289,10 +268,9 @@ line thickness lineSegment =
         [ Point2d.translateBy v1 end ]
 
 
-lineStrip : Float -> Int -> List Point2d -> MeshPart Point2d
+lineStrip : Float -> Int -> List (Point2d u c) -> MeshPart (Point2d u c)
 lineStrip thickness detail points =
     let
-        bends : List (MeshPart Point2d)
         bends =
             points
                 |> List.drop 1
@@ -317,7 +295,7 @@ type alias ChipVertex =
     }
 
 
-cube : MeshPart Point3d
+cube : MeshPart (Point3d u c)
 cube =
     [ TriangleFan ( 0, 0, 0 ) ( 1, 0, 0 ) ( 1, 1, 0 ) [ ( 0, 1, 0 ) ] -- Bottom
     , TriangleFan ( 0, 0, 1 ) ( 0, 1, 1 ) ( 1, 1, 1 ) [ ( 1, 0, 1 ) ] -- Top
@@ -327,19 +305,7 @@ cube =
     , TriangleFan ( 1, 0, 0 ) ( 1, 0, 1 ) ( 1, 1, 1 ) [ ( 1, 1, 0 ) ] -- Right
     ]
         |> Compound
-        |> map Point3d.fromCoordinates
-
-
-scaleBy : Vector3d -> Point3d -> Point3d
-scaleBy scale point =
-    let
-        ( x, y, z ) =
-            Point3d.coordinates point
-
-        ( sx, sy, sz ) =
-            Vector3d.components scale
-    in
-    Point3d.fromCoordinates ( x * sx, y * sy, z * sz )
+        |> map (\( x, y, z ) -> Point3d.xyz (Quantity.Quantity x) (Quantity.Quantity y) (Quantity.Quantity z))
 
 
 colorToVec4 color =

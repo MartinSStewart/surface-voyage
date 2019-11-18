@@ -6,6 +6,7 @@ import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector3 as Vec3 exposing (Vec3)
 import Math.Vector4 as Vec4 exposing (Vec4)
 import Point3d exposing (Point3d)
+import Quantity
 import Vector3d
 import WebGL exposing (Shader)
 import WebGLMesh
@@ -26,7 +27,21 @@ view (( windowWidth, windowHeight ) as windowSize) =
 
 cube =
     WebGLMesh.cube
-        |> WebGLMesh.map (\a -> { color = Vec4.vec4 0.5 0.5 0.5 1, position = a |> Point3d.translateBy (Vector3d.fromComponents ( -0.5, -0.5, -0.5 )) |> Point3d.toVec3, normal = Vec3.vec3 0 0 1 })
+        |> WebGLMesh.map
+            (\a ->
+                { color = Vec4.vec4 0.5 0.5 0.5 1
+                , position =
+                    a
+                        |> Point3d.translateBy
+                            (Vector3d.xyz
+                                (Quantity.Quantity -0.5)
+                                (Quantity.Quantity -0.5)
+                                (Quantity.Quantity -0.5)
+                            )
+                        |> Point3d.toVec3
+                , normal = Vec3.vec3 0 0 1
+                }
+            )
         |> WebGLMesh.toMesh
 
 
