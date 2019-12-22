@@ -1,10 +1,13 @@
-module Mesh exposing (Mesh, Triangle, TriangleEdge(..), TriangleId, VertexId, getTriangle, getTriangleEdge)
+module Mesh exposing (fromVertsAndIndices, getAdjacentTriangles, getTriangles, getVertices)
 
+import Array exposing (Array)
 import Dict exposing (Dict)
 import LineSegment3d exposing (LineSegment3d)
+import List.Extra as List
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import SketchPlane3d exposing (SketchPlane3d)
+import Triangle exposing (Triangle)
 import Triangle3d exposing (Triangle3d)
 import Vector2d exposing (Vector2d)
 
@@ -14,11 +17,78 @@ type Mesh units coordinates
 
 
 type alias Mesh_ units coordinates =
-    { triangles : Dict TriangleId (Triangle VertexId)
-    , vertices : Dict VertexId (Point3d units coordinates)
-    , surfaceMarkers : Dict SurfaceMarkerId (SurfaceMarker units coordinates)
-    , idCounter : Int
+    { triangles : Array (Triangle VertexId)
+    , vertices : Array (Point3d units coordinates)
+    , adjacentTriangles : Dict ( TriangleId, Int ) TriangleId
     }
+
+
+getTriangles : Mesh units coordinates -> Array (Triangle VertexId)
+getTriangles (Mesh mesh) =
+    mesh.triangles
+
+
+getVertices : Mesh units coordinates -> Array (Point3d units coordinates)
+getVertices (Mesh mesh) =
+    mesh.vertices
+
+
+getAdjacentTriangles : Mesh units coordinates -> Dict ( TriangleId, Int ) TriangleId
+getAdjacentTriangles (Mesh mesh) =
+    mesh.adjacentTriangles
+
+
+fromVertsAndIndices : Array (Point3d units coordinates) -> Array (Triangle VertexId) -> Mesh units coordinates
+fromVertsAndIndices vertices triangleIndices =
+    let
+        orderTuple ( a, b ) =
+            if a < b then
+                ( a, b )
+
+            else
+                ( b, a )
+
+        validTriangles =
+            triangleIndices
+                |> Array.filter
+                    (\tri -> Triangle.andThen (\index -> Array.get index vertices) tri /= Nothing)
+
+        adjacentTrianglePairs =
+            Array.toList validTriangles
+                |> List.indexedMap Tuple.pair
+                |> List.concatMap
+                    (\( triIndex, tri ) ->
+                        Triangle.edges tri
+                            |> List.indexedMap
+                                (\edgeIndex edge ->
+                                    { edge = orderTuple edge, edgeIndex = edgeIndex, triIndex = triIndex }
+                                )
+                    )
+                |> List.gatherEqualsBy .edge
+
+        adjacentTriangles =
+            adjacentTrianglePairs
+                |> List.concatMap
+                    (\( { edgeIndex, triIndex }, rest ) ->
+                        case rest of
+                            [] ->
+                                []
+
+                            other :: [] ->
+                                [ ( ( triIndex, edgeIndex ), other.triIndex )
+                                , ( ( other.triIndex, other.edgeIndex ), triIndex )
+                                ]
+
+                            _ ->
+                                Debug.todo "Handle nonmanifold case."
+                    )
+                |> Dict.fromList
+    in
+    { triangles = validTriangles
+    , vertices = vertices
+    , adjacentTriangles = adjacentTriangles
+    }
+        |> Mesh
 
 
 type alias VertexId =
@@ -31,13 +101,6 @@ type alias TriangleId =
 
 type alias SurfaceMarkerId =
     Int
-
-
-type alias Triangle a =
-    { v0 : a
-    , v1 : a
-    , v2 : a
-    }
 
 
 type TriangleEdge
@@ -65,14 +128,14 @@ getTriangleEdge triangleEdge triangle =
 
 getTriangle : Mesh units coordinates -> TriangleId -> Maybe (Triangle3d units coordinates)
 getTriangle (Mesh mesh) triangleId =
-    Dict.get triangleId mesh.triangles
+    Array.get triangleId mesh.triangles
         |> Maybe.andThen
             (\{ v0, v1, v2 } ->
                 Maybe.map3
                     (\v0_ v1_ v2_ -> Triangle3d.fromVertices ( v0_, v1_, v2_ ))
-                    (Dict.get v0 mesh.vertices)
-                    (Dict.get v1 mesh.vertices)
-                    (Dict.get v2 mesh.vertices)
+                    (Array.get v0 mesh.vertices)
+                    (Array.get v1 mesh.vertices)
+                    (Array.get v2 mesh.vertices)
             )
 
 
@@ -99,27 +162,6 @@ type alias SurfaceMarker_ units coordinates =
 type SurfaceSide
     = Front
     | Back
-
-
-addSurfaceMarker :
-    SurfaceMarker units coordinates
-    -> Mesh units coordinates
-    -> ( SurfaceMarkerId, Mesh units coordinates )
-addSurfaceMarker marker (Mesh mesh) =
-    { mesh
-        | surfaceMarkers = Dict.insert mesh.idCounter marker mesh.surfaceMarkers
-        , idCounter = mesh.idCounter + 1
-    }
-        |> Mesh
-        |> Tuple.pair mesh.idCounter
-
-
-removeSurfaceMarker : SurfaceMarkerId -> Mesh units coordinates -> Mesh units coordinates
-removeSurfaceMarker markerId (Mesh mesh) =
-    { mesh
-        | surfaceMarkers = Dict.remove markerId mesh.surfaceMarkers
-    }
-        |> Mesh
 
 
 type MeshSurfaceCoordinates
