@@ -1,4 +1,4 @@
-module Mesh exposing (fromVertsAndIndices, getAdjacentTriangles, getTriangles, getVertices)
+module Mesh exposing (fromVertsAndIndices, getAdjacentTriangles, getTriangle, getTriangles, getVertices)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -17,13 +17,13 @@ type Mesh units coordinates
 
 
 type alias Mesh_ units coordinates =
-    { triangles : Array (Triangle VertexId)
+    { triangles : Array (Triangle VertexId_)
     , vertices : Array (Point3d units coordinates)
-    , adjacentTriangles : Dict ( TriangleId, Int ) TriangleId
+    , adjacentTriangles : Dict ( TriangleId_, EdgeIndex_ ) TriangleId_
     }
 
 
-getTriangles : Mesh units coordinates -> Array (Triangle VertexId)
+getTriangles : Mesh units coordinates -> Array (Triangle VertexId_)
 getTriangles (Mesh mesh) =
     mesh.triangles
 
@@ -33,12 +33,12 @@ getVertices (Mesh mesh) =
     mesh.vertices
 
 
-getAdjacentTriangles : Mesh units coordinates -> Dict ( TriangleId, Int ) TriangleId
+getAdjacentTriangles : Mesh units coordinates -> Dict ( TriangleId_, Int ) TriangleId_
 getAdjacentTriangles (Mesh mesh) =
     mesh.adjacentTriangles
 
 
-fromVertsAndIndices : Array (Point3d units coordinates) -> Array (Triangle VertexId) -> Mesh units coordinates
+fromVertsAndIndices : Array (Point3d units coordinates) -> Array (Triangle VertexId_) -> Mesh units coordinates
 fromVertsAndIndices vertices triangleIndices =
     let
         orderTuple ( a, b ) =
@@ -91,15 +91,27 @@ fromVertsAndIndices vertices triangleIndices =
         |> Mesh
 
 
-type alias VertexId =
+type alias VertexId_ =
     Int
 
 
-type alias TriangleId =
+type TriangleId
+    = TriangleId Int
+
+
+type VertexId
+    = VertexId Int
+
+
+type alias EdgeIndex_ =
     Int
 
 
-type alias SurfaceMarkerId =
+type alias TriangleId_ =
+    Int
+
+
+type alias SurfaceMarkerId_ =
     Int
 
 
@@ -127,7 +139,7 @@ getTriangleEdge triangleEdge triangle =
 
 
 getTriangle : Mesh units coordinates -> TriangleId -> Maybe (Triangle3d units coordinates)
-getTriangle (Mesh mesh) triangleId =
+getTriangle (Mesh mesh) (TriangleId triangleId) =
     Array.get triangleId mesh.triangles
         |> Maybe.andThen
             (\{ v0, v1, v2 } ->
@@ -140,10 +152,10 @@ getTriangle (Mesh mesh) triangleId =
 
 
 type alias AdjacentTriangle =
-    { triangleId : TriangleId, flipped : Bool }
+    { triangleId : TriangleId_, flipped : Bool }
 
 
-adjacentTriangle : Mesh units coordinates -> TriangleId -> TriangleEdge -> Maybe AdjacentTriangle
+adjacentTriangle : Mesh units coordinates -> TriangleId_ -> TriangleEdge -> Maybe AdjacentTriangle
 adjacentTriangle mesh triangleId =
     Debug.todo ""
 
@@ -153,7 +165,7 @@ type SurfaceMarker units coordinates
 
 
 type alias SurfaceMarker_ units coordinates =
-    { triangleId : TriangleId
+    { triangleId : TriangleId_
     , position : Point2d units coordinates
     , side : SurfaceSide
     }
