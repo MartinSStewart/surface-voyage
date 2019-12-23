@@ -1,4 +1,4 @@
-module Mesh exposing (adjacentTriangle, fromVertsAndIndices, getAdjacentTriangles, getTriangle, getTriangles, getVertices)
+module Mesh exposing (adjacentTriangle, fromVertsAndIndices, getAdjacentTriangles, getTriangle, getTriangles, getVertices, nearestSurfacePoint)
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -6,11 +6,11 @@ import LineSegment3d exposing (LineSegment3d)
 import List.Extra as List
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
+import Point3dEx
+import Quantity
 import SketchPlane3d exposing (SketchPlane3d)
 import Triangle exposing (Triangle)
 import Triangle3d exposing (Triangle3d)
-import Vector2d exposing (Vector2d)
-import Vector3d
 
 
 type Mesh units coordinates
@@ -18,13 +18,13 @@ type Mesh units coordinates
 
 
 type alias Mesh_ units coordinates =
-    { triangles : Array (Triangle VertexId_)
+    { triangles : Array (Triangle VertexId)
     , vertices : Array (Point3d units coordinates)
     , adjacentTriangles : Dict ( TriangleId_, EdgeIndex_ ) ( TriangleId, TriangleEdge )
     }
 
 
-getTriangles : Mesh units coordinates -> Array (Triangle VertexId_)
+getTriangles : Mesh units coordinates -> Array (Triangle VertexId)
 getTriangles (Mesh mesh) =
     mesh.triangles
 
@@ -97,7 +97,7 @@ fromVertsAndIndices vertices triangleIndices =
             in
             case adjacentTriangles of
                 Just list ->
-                    { triangles = validTriangles
+                    { triangles = validTriangles |> Array.map (Triangle.map VertexId)
                     , vertices = vertices
                     , adjacentTriangles = Dict.fromList list
                     }
@@ -141,10 +141,44 @@ type TriangleEdge
     | SideThree
 
 
+allTriangleIds (Mesh mesh) =
+    Array.length mesh.triangles - 1
 
---nearestSurfacePoint : Point3d unit coordinates -> Mesh unit coordinates -> TriangleId
---nearestSurfacePoint point mesh =
---    getTriangles mesh
+
+nearestSurfacePoint : Point3d unit coordinates -> Mesh unit coordinates -> SurfacePoint unit
+nearestSurfacePoint point mesh =
+    allTriangleIds mesh
+        |> List.range 0
+        |> List.filterMap
+            (\triangleId ->
+                TriangleId triangleId
+                    |> getTriangle mesh
+                    |> Maybe.map
+                        (\triangle ->
+                            { triangleId = TriangleId triangleId
+                            , nearestPoint = Point3dEx.nearestPointOnTriangle triangle point
+                            }
+                        )
+            )
+        |> List.minimumBy (.nearestPoint >> Point3d.distanceFrom point >> rawQuantity)
+        |> Maybe.map
+            (\{ triangleId, nearestPoint } ->
+                SurfacePoint
+                    { triangleId = triangleId
+                    , position =
+                        case getSketchPlane mesh triangleId of
+                            Just sketchPlane ->
+                                Point3d.projectInto sketchPlane nearestPoint
+
+                            Nothing ->
+                                Point2d.origin
+                    }
+            )
+        |> Maybe.withDefault (SurfacePoint { triangleId = TriangleId 0, position = Point2d.origin })
+
+
+rawQuantity (Quantity.Quantity value) =
+    value
 
 
 getTriangleEdge : TriangleEdge -> Triangle3d units coordinates -> LineSegment3d units coordinates
@@ -168,7 +202,7 @@ getTriangle : Mesh units coordinates -> TriangleId -> Maybe (Triangle3d units co
 getTriangle (Mesh mesh) (TriangleId triangleId) =
     Array.get triangleId mesh.triangles
         |> Maybe.andThen
-            (\{ v0, v1, v2 } ->
+            (\( VertexId v0, VertexId v1, VertexId v2 ) ->
                 Maybe.map3
                     (\v0_ v1_ v2_ -> Triangle3d.fromVertices ( v0_, v1_, v2_ ))
                     (Array.get v0 mesh.vertices)
@@ -210,14 +244,13 @@ adjacentTriangle (TriangleId triangleId) edge (Mesh mesh) =
     Dict.get ( triangleId, edgeToInt edge ) mesh.adjacentTriangles
 
 
-type SurfaceMarker units coordinates
-    = SurfaceMarker (SurfaceMarker_ units coordinates)
+type SurfacePoint units
+    = SurfacePoint (SurfacePoint_ units)
 
 
-type alias SurfaceMarker_ units coordinates =
+type alias SurfacePoint_ units =
     { triangleId : TriangleId
-    , position : Point2d units coordinates
-    , side : SurfaceSide
+    , position : Point2d units MeshSurfaceCoordinates
     }
 
 
@@ -232,10 +265,10 @@ type MeshSurfaceCoordinates
 
 getSketchPlane :
     Mesh units coordinates
-    -> SurfaceMarker units coordinates
+    -> TriangleId
     -> Maybe (SketchPlane3d units coordinates { defines : MeshSurfaceCoordinates })
-getSketchPlane mesh (SurfaceMarker marker) =
-    getTriangle mesh marker.triangleId
+getSketchPlane mesh triangleId =
+    getTriangle mesh triangleId
         |> Maybe.andThen
             (\triangle ->
                 let
@@ -246,19 +279,20 @@ getSketchPlane mesh (SurfaceMarker marker) =
             )
 
 
-move :
-    Mesh units coordinates
-    -> Vector2d units coordinates
-    -> SurfaceMarker units coordinates
-    -> SurfaceMarker units coordinates
-move mesh movement position =
-    case getSketchPlane mesh position of
-        Just triangle ->
-            let
-                a =
-                    5
-            in
-            Debug.todo ""
 
-        Nothing ->
-            position
+--move :
+--    Mesh units coordinates
+--    -> Vector2d units coordinates
+--    -> SurfacePoint units coordinates
+--    -> SurfacePoint units coordinates
+--move mesh movement position =
+--    case getSketchPlane mesh position of
+--        Just triangle ->
+--            let
+--                a =
+--                    5
+--            in
+--            Debug.todo ""
+--
+--        Nothing ->
+--            position
