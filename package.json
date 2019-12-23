@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "start": "elm-app start",
-    "test": "elm-test --watch"
+    "test": "elm-test --watch -fuzz 1000"
   },
   "dependencies": {
     "create-elm-app": "^4.1.1",

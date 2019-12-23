@@ -49,7 +49,6 @@ nearestPointOnTriangle triangle point =
         ( t0, t1, t2 ) =
             Triangle3d.vertices triangle
 
-        --|> Debug.log "tri"
         edge0 =
             Vector3d.from t0 t1
 
@@ -83,94 +82,91 @@ nearestPointOnTriangle triangle point =
         t =
             b * d - a * e
 
-        ( s_, t_ ) =
-            if s + t < det then
-                if s < 0 then
-                    if t < 0 then
-                        if d < 0 then
-                            ( clamp 0 1 (-d / a), 0 )
-                            --|> Debug.log "a"
-
-                        else
-                            ( 0, clamp 0 1 (-e / c) )
-                        --|> Debug.log "b"
-
-                    else
-                        ( 0, clamp 0 1 (-e / c) )
-                    --|> Debug.log "c"
-
-                else if t < 0 then
-                    ( clamp 0 1 (-d / a), 0 )
-                    --|> Debug.log "d"
+        offset ( s_, t_ ) =
+            let
+                offset_ =
+                    Vector3d.scaleBy s_ edge0 |> Vector3d.plus (Vector3d.scaleBy t_ edge1)
+            in
+            Point3d.translateBy offset_ t0
+    in
+    if s + t < det then
+        if s < 0 then
+            if t < 0 then
+                if d < 0 then
+                    offset ( clamp 0 1 (-d / a), 0 )
 
                 else
-                    let
-                        invDet =
-                            1 / det
-                    in
-                    ( s * invDet, t * invDet )
-                --|> Debug.log "e"
-
-            else if s < 0 then
-                let
-                    tmp0 =
-                        b + d
-
-                    tmp1 =
-                        c + e
-                in
-                if tmp1 > tmp0 then
-                    let
-                        numer =
-                            tmp1 - tmp0
-
-                        denom =
-                            a - 2 * b + c
-
-                        temp =
-                            clamp 0 1 (numer / denom)
-                    in
-                    ( temp, 1 - temp )
-                    --|> Debug.log "f"
-
-                else
-                    ( 0, clamp 0 1 (-e / c) )
-                --|> Debug.log "g"
-
-            else if t < 0 then
-                if a + d > b + e then
-                    let
-                        numer =
-                            c + e - b - d
-
-                        denom =
-                            a - 2 * b + c
-
-                        temp =
-                            clamp 0 1 (numer / denom)
-                    in
-                    ( temp, 1 - temp )
-                    --|> Debug.log "h"
-
-                else
-                    ( clamp 0 1 (-e / c), 0 )
-                --|> Debug.log "i"
+                    offset ( 0, clamp 0 1 (-e / c) )
 
             else
-                let
-                    division =
-                        (c + e - b - d) / (a - 2 * b + c)
+                offset ( 0, clamp 0 1 (-e / c) )
 
-                    temp =
-                        clamp 0 1 division
-                in
-                if isInfinite division || isNaN division then
-                    ( 0, 0 ) |> Debug.log "k"
+        else if t < 0 then
+            offset ( clamp 0 1 (-d / a), 0 )
 
-                else
-                    ( temp, 1 - temp ) |> Debug.log "j"
+        else
+            let
+                invDet =
+                    1 / det
+            in
+            offset ( s * invDet, t * invDet )
 
-        offset =
-            Vector3d.scaleBy s_ edge0 |> Vector3d.plus (Vector3d.scaleBy t_ edge1)
-    in
-    Point3d.translateBy offset t0
+    else if s < 0 then
+        let
+            tmp0 =
+                b + d
+
+            tmp1 =
+                c + e
+        in
+        if tmp1 > tmp0 then
+            let
+                numer =
+                    tmp1 - tmp0
+
+                denom =
+                    a - 2 * b + c
+
+                temp =
+                    clamp 0 1 (numer / denom)
+            in
+            offset ( temp, 1 - temp )
+
+        else
+            offset ( 0, clamp 0 1 (-e / c) )
+
+    else if t < 0 then
+        if a + d > b + e then
+            let
+                numer =
+                    c + e - b - d
+
+                denom =
+                    a - 2 * b + c
+
+                temp =
+                    clamp 0 1 (numer / denom)
+            in
+            offset ( temp, 1 - temp )
+
+        else
+            offset ( clamp 0 1 (-e / c), 0 )
+
+    else
+        let
+            division =
+                (c + e - b - d) / (a - 2 * b + c)
+
+            temp =
+                clamp 0 1 division
+        in
+        if isInfinite division || isNaN division then
+            -- Handle degenerate case with a hack
+            if Point3d.distanceFrom t0 t1 |> Quantity.greaterThan (Point3d.distanceFrom t0 t2) then
+                nearestPointOnLineSegment (LineSegment3d.from t0 t1) point
+
+            else
+                nearestPointOnLineSegment (LineSegment3d.from t0 t2) point
+
+        else
+            offset ( temp, 1 - temp )

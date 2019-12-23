@@ -1,13 +1,17 @@
 module Point3dExTests exposing (..)
 
+import Basics.Extra exposing (flip)
+import Direction3d
 import Expect
 import Fuzz
+import Length
 import LineSegment3d
+import Plane3d exposing (Plane3d)
 import Point3d
 import Point3dEx
 import Quantity
 import Set
-import Test exposing (Test, describe, fuzz2, fuzz3, only, test)
+import Test exposing (Test, describe, fuzz, fuzz2, fuzz3, only, test)
 import Triangle3d
 
 
@@ -17,18 +21,17 @@ all =
         [ describe "nearestPointOnTriangle"
             [ fuzz2 fuzzPoint3d fuzzPoint3d "Handle point-like triangle" <|
                 \point trianglePos ->
-                    Point3dEx.nearestPointOnTriangle (pointLikeTriangle trianglePos) point |> equalWithin trianglePos
-            , only <|
-                fuzz3 fuzzPoint3d fuzzPoint3d fuzzPoint3d "Handle line-like triangle 0" <|
-                    \point triangleStart triangleEnd ->
-                        let
-                            expected =
-                                Point3dEx.nearestPointOnLineSegment (LineSegment3d.from triangleStart triangleEnd) point
+                    Point3dEx.nearestPointOnTriangle (pointLikeTriangle trianglePos) point |> pointEqualWithin trianglePos
+            , fuzz3 fuzzPoint3d fuzzPoint3d fuzzPoint3d "Handle line-like triangle 0" <|
+                \point triangleStart triangleEnd ->
+                    let
+                        expected =
+                            Point3dEx.nearestPointOnLineSegment (LineSegment3d.from triangleStart triangleEnd) point
 
-                            actual =
-                                Point3dEx.nearestPointOnTriangle (lineLikeTriangle0 triangleStart triangleEnd) point
-                        in
-                        equalWithin expected actual
+                        actual =
+                            Point3dEx.nearestPointOnTriangle (lineLikeTriangle0 triangleStart triangleEnd) point
+                    in
+                    pointEqualWithin expected actual
             , fuzz3 fuzzPoint3d fuzzPoint3d fuzzPoint3d "Handle line-like triangle 1" <|
                 \point triangleStart triangleEnd ->
                     let
@@ -38,7 +41,7 @@ all =
                         actual =
                             Point3dEx.nearestPointOnTriangle (lineLikeTriangle1 triangleStart triangleEnd) point
                     in
-                    equalWithin expected actual
+                    pointEqualWithin expected actual
             , fuzz3 fuzzPoint3d fuzzPoint3d fuzzPoint3d "Handle line-like triangle 2" <|
                 \point triangleStart triangleEnd ->
                     let
@@ -48,7 +51,7 @@ all =
                         actual =
                             Point3dEx.nearestPointOnTriangle (lineLikeTriangle2 triangleStart triangleEnd) point
                     in
-                    equalWithin expected actual
+                    pointEqualWithin expected actual
             , test "Handle line-like triangle" <|
                 \_ ->
                     let
@@ -74,17 +77,25 @@ all =
                                 (Point3d.meters 0 1 0)
                                 (Point3d.meters 1 1 0)
                     in
-                    Point3dEx.nearestPointOnTriangle triangle (Point3d.meters 1.1 -0.1 1) |> equalWithin (Point3d.meters 1 0 0)
-            , test "Handle point over triangle" <|
-                \_ ->
+                    Point3dEx.nearestPointOnTriangle triangle (Point3d.meters 1.1 -0.1 1) |> pointEqualWithin (Point3d.meters 1 0 0)
+            , fuzz2 fuzzTriangle fuzzSt "Handle point over triangle" <|
+                \triangle ( s, t ) ->
                     let
-                        triangle =
-                            Triangle3d.from
-                                (Point3d.meters 1 0 0)
-                                (Point3d.meters 0 1 0)
-                                (Point3d.meters 1 1 0)
+                        ( t0, t1, t2 ) =
+                            Triangle3d.vertices triangle
+
+                        expected =
+                            LineSegment3d.from t0 t1
+                                |> flip LineSegment3d.interpolate s
+                                |> LineSegment3d.from t2
+                                |> flip LineSegment3d.interpolate t
+
+                        point =
+                            Point3d.translateIn (Triangle3d.normalDirection triangle |> Maybe.withDefault Direction3d.x)
+                                (Length.meters 2.34)
+                                expected
                     in
-                    Point3dEx.nearestPointOnTriangle triangle (Point3d.meters 0.5 0.6 1) |> equalWithin (Point3d.meters 0.5 0.6 0)
+                    Point3dEx.nearestPointOnTriangle triangle point |> pointEqualWithin expected
             ]
         , describe "nearestPointOnLineSegment"
             [ test "Test 0" <|
@@ -92,42 +103,70 @@ all =
                     Point3dEx.nearestPointOnLineSegment
                         (LineSegment3d.from (Point3d.meters 0 0 0) (Point3d.meters 1 0 0))
                         (Point3d.meters 0.5 1 0)
-                        |> equalWithin (Point3d.meters 0.5 0 0)
+                        |> pointEqualWithin (Point3d.meters 0.5 0 0)
             , test "Test 1" <|
                 \_ ->
                     Point3dEx.nearestPointOnLineSegment
                         (LineSegment3d.from (Point3d.meters 1 0 1) (Point3d.meters 5 0 5))
                         (Point3d.meters 1.5 1 1.5)
-                        |> equalWithin (Point3d.meters 1.5 0 1.5)
+                        |> pointEqualWithin (Point3d.meters 1.5 0 1.5)
             , test "Clamps to start point" <|
                 \_ ->
                     Point3dEx.nearestPointOnLineSegment
                         (LineSegment3d.from (Point3d.meters 1 0 1) (Point3d.meters 5 0 5))
                         (Point3d.meters 0.5 1 0.5)
-                        |> equalWithin (Point3d.meters 1 0 1)
+                        |> pointEqualWithin (Point3d.meters 1 0 1)
             , test "Clamps to end point" <|
                 \_ ->
                     Point3dEx.nearestPointOnLineSegment
                         (LineSegment3d.from (Point3d.meters 1 0 1) (Point3d.meters 5 0 5))
                         (Point3d.meters 5.5 1 5.5)
-                        |> equalWithin (Point3d.meters 5 0 5)
+                        |> pointEqualWithin (Point3d.meters 5 0 5)
+            , fuzz2 fuzzPoint3d fuzzPoint3d "Handle point-like line" <|
+                \point linePoint ->
+                    Point3dEx.nearestPointOnLineSegment (LineSegment3d.from linePoint linePoint) point
+                        |> pointEqualWithin linePoint
             ]
         ]
 
 
+fuzzSt =
+    Fuzz.map2 Tuple.pair
+        (Fuzz.floatRange 0 1)
+        (Fuzz.floatRange 0 1)
+
+
 fuzzPoint3d =
     Fuzz.map3 Point3d.meters
-        Fuzz.float
-        Fuzz.float
-        Fuzz.float
+        (Fuzz.floatRange -100000 100000)
+        (Fuzz.floatRange -100000 100000)
+        (Fuzz.floatRange -100000 100000)
+
+
+fuzzTriangle =
+    Fuzz.map2 (Triangle3d.from (Point3d.meters 0 0 0))
+        fuzzPoint3d
+        fuzzPoint3d
 
 
 equalWithin expected actual =
-    if Point3d.distanceFrom expected actual |> rawQuantity |> (<) 0.001 then
-        Expect.fail ("Expected: " ++ pointToString expected ++ "    Actual: " ++ pointToString actual)
+    (abs (expected - actual) < 0.0001)
+        || (abs (expected - actual) < (abs expected * 0.0001))
+
+
+pointEqualWithin expected actual =
+    let
+        ( ex, ey, ez ) =
+            Point3d.toTuple rawQuantity expected
+
+        ( ax, ay, az ) =
+            Point3d.toTuple rawQuantity actual
+    in
+    if equalWithin ex ax && equalWithin ey ay && equalWithin ez az then
+        Expect.pass
 
     else
-        Expect.pass
+        Expect.fail ("Expected: " ++ pointToString expected ++ "    Actual: " ++ pointToString actual)
 
 
 pointToString point =
@@ -136,15 +175,6 @@ pointToString point =
             Point3d.toTuple rawQuantity point
     in
     "(" ++ String.fromFloat x ++ ", " ++ String.fromFloat y ++ ", " ++ String.fromFloat z ++ ")"
-
-
-
---Expect.all
---        [ \( ( x0, _, _ ), ( x1, _, _ ) ) -> abs (x0 - x1) |> Expect.within (Expect.Absolute 0.001) 0
---        , \( ( _, y0, _ ), ( _, y1, _ ) ) -> abs (y0 - y1) |> Expect.within (Expect.Absolute 0.001) 0
---        , \( ( _, _, z0 ), ( _, _, z1 ) ) -> abs (z0 - z1) |> Expect.within (Expect.Absolute 0.001) 0
---        ]
---        ( Point3d.toTuple rawQuantity point0, Point3d.toTuple rawQuantity point1 )
 
 
 rawQuantity (Quantity.Quantity quantity) =
