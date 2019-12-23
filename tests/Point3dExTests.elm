@@ -1,18 +1,20 @@
 module Point3dExTests exposing (..)
 
+import Angle
+import Axis3d
 import Basics.Extra exposing (flip)
+import Direction2d
 import Direction3d
 import Expect
 import Fuzz
-import Length
+import Length exposing (Meters)
 import LineSegment3d
-import Plane3d exposing (Plane3d)
+import Point2d
 import Point3d
 import Point3dEx
 import Quantity
-import Set
 import Test exposing (Test, describe, fuzz, fuzz2, fuzz3, only, test)
-import Triangle3d
+import Triangle3d exposing (Triangle3d)
 
 
 all : Test
@@ -68,7 +70,7 @@ all =
                             Point3dEx.nearestPointOnTriangle (lineLikeTriangle0 start end) point
                     in
                     Expect.equal (Point3d.meters 0 0 0) actual
-            , test "Handle point outside of triangle" <|
+            , test "Handle point outside of triangle 0" <|
                 \_ ->
                     let
                         triangle =
@@ -78,7 +80,27 @@ all =
                                 (Point3d.meters 1 1 0)
                     in
                     Point3dEx.nearestPointOnTriangle triangle (Point3d.meters 1.1 -0.1 1) |> pointEqualWithin (Point3d.meters 1 0 0)
-            , fuzz2 fuzzTriangle fuzzSt "Handle point over triangle" <|
+            , test "Handle point outside of triangle 1" <|
+                \_ ->
+                    let
+                        triangle =
+                            Triangle3d.from
+                                (Point3d.meters 1 0 0)
+                                (Point3d.meters 0 1 0)
+                                (Point3d.meters 1 1 0)
+                    in
+                    Point3dEx.nearestPointOnTriangle triangle (Point3d.meters 1.1 1.1 1) |> pointEqualWithin (Point3d.meters 1 1 0)
+            , test "Handle point outside of triangle 2" <|
+                \_ ->
+                    let
+                        triangle =
+                            Triangle3d.from
+                                (Point3d.meters 1 0 0)
+                                (Point3d.meters 0 1 0)
+                                (Point3d.meters 1 1 0)
+                    in
+                    Point3dEx.nearestPointOnTriangle triangle (Point3d.meters -0.1 1.1 1) |> pointEqualWithin (Point3d.meters 0 1 0)
+            , fuzz2 fuzzNonDegenerateTriangle fuzzSt "Handle point over triangle" <|
                 \triangle ( s, t ) ->
                     let
                         ( t0, t1, t2 ) =
@@ -143,15 +165,38 @@ fuzzPoint3d =
         (Fuzz.floatRange -100000 100000)
 
 
-fuzzTriangle =
-    Fuzz.map2 (Triangle3d.from (Point3d.meters 0 0 0))
+fuzzNonDegenerateTriangle : Fuzz.Fuzzer (Triangle3d Meters coordinates)
+fuzzNonDegenerateTriangle =
+    Fuzz.map5
+        (\t0 dir length dir2 ( length2Scale, triangleRotation ) ->
+            let
+                t1_ =
+                    Point2d.translateIn dir length Point2d.origin
+
+                t2_ =
+                    Point2d.translateIn dir2 (Quantity.multiplyBy length2Scale length) t1_
+
+                t1 =
+                    Point3d.xyz (Point2d.xCoordinate t1_) (Point2d.xCoordinate t1_) Quantity.zero
+
+                t2 =
+                    Point3d.xyz (Point2d.xCoordinate t2_) (Point2d.xCoordinate t2_) Quantity.zero
+            in
+            Triangle3d.from t0 t1 t2 |> Triangle3d.rotateAround Axis3d.x triangleRotation
+        )
         fuzzPoint3d
-        fuzzPoint3d
+        (Fuzz.floatRange 0 360 |> Fuzz.map (Angle.degrees >> Direction2d.fromAngle))
+        (Fuzz.floatRange 1 100 |> Fuzz.map Length.meters)
+        (Fuzz.floatRange 5 355 |> Fuzz.map (Angle.degrees >> Direction2d.fromAngle))
+        (Fuzz.map2 Tuple.pair
+            (Fuzz.floatRange 0.1 10)
+            (Fuzz.floatRange 0 360 |> Fuzz.map Angle.degrees)
+        )
 
 
 equalWithin expected actual =
-    (abs (expected - actual) < 0.0001)
-        || (abs (expected - actual) < (abs expected * 0.0001))
+    (abs (expected - actual) < 0.001)
+        || (abs (expected - actual) < (abs expected * 0.001))
 
 
 pointEqualWithin expected actual =
