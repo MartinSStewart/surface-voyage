@@ -14,17 +14,42 @@ all =
     describe "A Test Suite"
         [ test "fromVertsAndIndices getTriangles" <|
             \_ ->
-                mesh |> Mesh.getTriangles |> Expect.equal triangles
+                case mesh vertices triangles of
+                    Ok mesh_ ->
+                        mesh_ |> Mesh.getTriangles |> Expect.equal triangles
+
+                    Err _ ->
+                        Expect.fail "Failed to create mesh"
         , test "fromVertsAndIndices getIndices" <|
             \_ ->
-                mesh |> Mesh.getVertices |> Expect.equal vertices
-        , test "fromVertsAndIndices getAdjacentTriangles" <|
-            \_ ->
-                let
-                    expected =
-                        Dict.fromList [ ( ( 0, 1 ), 1 ), ( ( 1, 0 ), 0 ) ]
-                in
-                mesh |> Mesh.getAdjacentTriangles |> Expect.equal expected
+                case mesh vertices triangles of
+                    Ok mesh_ ->
+                        mesh_ |> Mesh.getVertices |> Expect.equal vertices
+
+                    Err _ ->
+                        Expect.fail "Failed to create mesh"
+
+        --, test "fromVertsAndIndices getAdjacentTriangles" <|
+        --    \_ ->
+        --        let
+        --            expected =
+        --                Dict.fromList [ ( ( 0, 1 ), 1 ), ( ( 1, 0 ), 0 ) ]
+        --        in
+        --        mesh vertices triangles |> Mesh.getAdjacentTriangles |> Expect.equal expected
+        --, test "degenerate fromVertsAndIndices getAdjacentTriangles" <|
+        --    \_ ->
+        --        let
+        --            expected =
+        --                Dict.fromList
+        --                    [ ( ( 0, 0 ), 1 )
+        --                    , ( ( 0, 1 ), 1 )
+        --                    , ( ( 0, 2 ), 1 )
+        --                    , ( ( 1, 0 ), 0 )
+        --                    , ( ( 1, 1 ), 0 )
+        --                    , ( ( 1, 2 ), 0 )
+        --                    ]
+        --        in
+        --        mesh degenerateVertices degenerateTriangles |> Mesh.getAdjacentTriangles |> Expect.equal expected
         ]
 
 
@@ -36,5 +61,13 @@ vertices =
     Array.fromList [ Point3d.meters 0 0 0, Point3d.meters 0 1 0, Point3d.meters 1 1 0, Point3d.meters 1 0 0 ]
 
 
-mesh =
-    Mesh.fromVertsAndIndices vertices triangles
+degenerateVertices =
+    Array.fromList [ Point3d.meters 0 0 0, Point3d.meters 0 1 0, Point3d.meters 1 1 0 ]
+
+
+degenerateTriangles =
+    Array.fromList [ Triangle.from 0 2 1, Triangle.from 0 1 2 ]
+
+
+mesh verts tris =
+    Mesh.fromVertsAndIndices verts tris
