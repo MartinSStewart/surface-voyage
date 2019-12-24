@@ -296,13 +296,6 @@ lineStrip thickness detail points =
         |> Compound
 
 
-type alias ChipVertex =
-    { color : Vec3
-    , position : Vec3
-    , transparencyIndex : Float
-    }
-
-
 splitFacesCube : MeshPart (Point3d u c)
 splitFacesCube =
     [ TriangleFan ( 0, 0, 0 ) ( 1, 0, 0 ) ( 1, 1, 0 ) [ ( 0, 1, 0 ) ] -- Bottom
@@ -322,22 +315,28 @@ cube =
         [ --Bottom
           ( 0, 0, 0 )
         , ( 1, 0, 0 )
-        , ( 1, 1, 0 )
         , ( 0, 1, 0 )
+        , ( 1, 1, 0 )
 
         -- Top
         , ( 0, 0, 1 )
+        , ( 1, 0, 1 )
         , ( 0, 1, 1 )
         , ( 1, 1, 1 )
-        , ( 1, 0, 1 )
         ]
         [ -- Bottom
           ( 0, 1, 2 )
-        , ( 1, 2, 3 )
+        , ( 3, 2, 1 )
 
         -- Top
-        , ( 4, 5, 6 )
-        , ( 5, 6, 7 )
+        --, ( 6, 5, 4 )
+        --, ( 5, 6, 7 )
+        --Front
+        , ( 7, 2, 3 )
+        , ( 7, 6, 2 )
+
+        --Back
+        --, ( 3, 2, 1 )
         ]
         |> map (Point3d.fromTuple Quantity.Quantity)
 

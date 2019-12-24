@@ -10,6 +10,8 @@ import Point3d exposing (Point3d)
 import Quantity
 import Vector3d
 import WebGL exposing (Shader)
+import WebGL.Settings
+import WebGL.Settings.Blend as Blend
 
 
 view (( windowWidth, windowHeight ) as windowSize) mesh =
@@ -17,7 +19,10 @@ view (( windowWidth, windowHeight ) as windowSize) mesh =
         [ Html.Attributes.width windowWidth
         , Html.Attributes.height windowHeight
         ]
-        [ WebGL.entity
+        [ WebGL.entityWith
+            [ WebGL.Settings.cullFace WebGL.Settings.front
+            , Blend.add Blend.one Blend.oneMinusSrcAlpha
+            ]
             vertexShader
             fragmentShader
             mesh
