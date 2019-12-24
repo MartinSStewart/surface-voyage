@@ -5,14 +5,14 @@ import Html.Attributes
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector3 as Vec3 exposing (Vec3)
 import Math.Vector4 as Vec4 exposing (Vec4)
+import MeshBuilder
 import Point3d exposing (Point3d)
 import Quantity
 import Vector3d
 import WebGL exposing (Shader)
-import WebGLMesh
 
 
-view (( windowWidth, windowHeight ) as windowSize) =
+view (( windowWidth, windowHeight ) as windowSize) mesh =
     WebGL.toHtml
         [ Html.Attributes.width windowWidth
         , Html.Attributes.height windowHeight
@@ -20,29 +20,9 @@ view (( windowWidth, windowHeight ) as windowSize) =
         [ WebGL.entity
             vertexShader
             fragmentShader
-            cube
+            mesh
             (uniforms windowSize)
         ]
-
-
-cube =
-    WebGLMesh.cube
-        |> WebGLMesh.map
-            (\a ->
-                { color = Vec4.vec4 0.5 0.5 0.5 1
-                , position =
-                    a
-                        |> Point3d.translateBy
-                            (Vector3d.xyz
-                                (Quantity.Quantity -0.5)
-                                (Quantity.Quantity -0.5)
-                                (Quantity.Quantity -0.5)
-                            )
-                        |> Point3d.toVec3
-                , normal = Vec3.vec3 0 0 1
-                }
-            )
-        |> WebGLMesh.toMesh
 
 
 uniforms : ( Int, Int ) -> Uniforms

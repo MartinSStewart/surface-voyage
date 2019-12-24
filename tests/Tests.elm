@@ -72,4 +72,4 @@ degenerateTriangles =
 
 
 mesh verts tris =
-    Mesh.fromVertsAndIndices verts tris
+    Mesh.fromVerticesAndIndices verts tris

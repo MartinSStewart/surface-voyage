@@ -1,4 +1,15 @@
-module Mesh exposing (adjacentTriangle, fromVertsAndIndices, getAdjacentTriangles, getTriangle, getTriangles, getVertices, nearestSurfacePoint)
+module Mesh exposing
+    ( Error(..)
+    , Mesh
+    , SurfacePoint
+    , adjacentTriangle
+    , fromVerticesAndIndices
+    , getAdjacentTriangles
+    , getTriangle
+    , getTriangles
+    , getVertices
+    , nearestSurfacePoint
+    )
 
 import Array exposing (Array)
 import Dict exposing (Dict)
@@ -41,18 +52,18 @@ getAdjacentTriangles (Mesh mesh) =
 
 type Error
     = NonManifold
-    | EmptyMesh
+    | NoValidTriangles
 
 
-fromVertsAndIndices : Array (Point3d units coordinates) -> Array (Triangle VertexId_) -> Result Error (Mesh units coordinates)
-fromVertsAndIndices vertices triangleIndices =
+fromVerticesAndIndices : Array (Point3d units coordinates) -> List (Triangle VertexId_) -> Result Error (Mesh units coordinates)
+fromVerticesAndIndices vertices triangleIndices =
     let
         validTriangles =
             triangleIndices
-                |> Array.filter
+                |> List.filter
                     (\tri -> Triangle.andThen (\index -> Array.get index vertices) tri /= Nothing)
     in
-    case Array.get 0 validTriangles of
+    case List.head validTriangles of
         Just _ ->
             let
                 orderTuple ( a, b ) =
@@ -63,7 +74,7 @@ fromVertsAndIndices vertices triangleIndices =
                         ( b, a )
 
                 adjacentTrianglePairs =
-                    Array.toList validTriangles
+                    validTriangles
                         |> List.indexedMap Tuple.pair
                         |> List.concatMap
                             (\( triIndex, tri ) ->
@@ -97,7 +108,7 @@ fromVertsAndIndices vertices triangleIndices =
             in
             case adjacentTriangles of
                 Just list ->
-                    { triangles = validTriangles |> Array.map (Triangle.map VertexId)
+                    { triangles = validTriangles |> List.map (Triangle.map VertexId) |> Array.fromList
                     , vertices = vertices
                     , adjacentTriangles = Dict.fromList list
                     }
@@ -108,7 +119,7 @@ fromVertsAndIndices vertices triangleIndices =
                     Err NonManifold
 
         Nothing ->
-            Err EmptyMesh
+            Err NoValidTriangles
 
 
 type alias VertexId_ =
