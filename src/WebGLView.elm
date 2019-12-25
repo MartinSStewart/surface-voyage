@@ -20,7 +20,7 @@ view (( windowWidth, windowHeight ) as windowSize) mesh =
         , Html.Attributes.height windowHeight
         ]
         [ WebGL.entityWith
-            [ WebGL.Settings.cullFace WebGL.Settings.front
+            [ WebGL.Settings.cullFace WebGL.Settings.back
             , Blend.add Blend.one Blend.oneMinusSrcAlpha
             ]
             vertexShader

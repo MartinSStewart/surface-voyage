@@ -101,8 +101,15 @@ fromVerticesAndIndices vertices triangleIndices =
                                             ++ list
                                             |> Just
 
-                                    _ ->
+                                    ( a, Just _ ) ->
+                                        let
+                                            _ =
+                                                Debug.log "a" a
+                                        in
                                         Nothing
+
+                                    ( _, Nothing ) ->
+                                        state
                             )
                             (Just [])
             in

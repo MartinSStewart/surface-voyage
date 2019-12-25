@@ -123,8 +123,8 @@ surfaceCube =
         Ok mesh ->
             mesh
 
-        Err _ ->
-            Debug.todo ""
+        Err error ->
+            error |> Debug.toString |> Debug.todo
 
 
 
