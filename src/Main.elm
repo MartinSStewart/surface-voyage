@@ -47,7 +47,7 @@ init flags =
       , previousKeys = []
       , windowSize = ( flags.windowWidth, flags.windowHeight )
       , surfacePoint =
-            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 1) surfaceCube
+            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.2 1) surfaceCube
       , time = Quantity.zero
       }
     , Cmd.none
