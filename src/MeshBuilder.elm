@@ -296,17 +296,21 @@ lineStrip thickness detail points =
         |> Compound
 
 
-splitFacesCube : MeshPart (Point3d u c)
+splitFacesCube : MeshPart { position : Point3d u c, cubeFaceIndex : Int }
 splitFacesCube =
-    [ TriangleFan ( 0, 0, 0 ) ( 1, 0, 0 ) ( 1, 1, 0 ) [ ( 0, 1, 0 ) ] -- Bottom
-    , TriangleFan ( 0, 0, 1 ) ( 0, 1, 1 ) ( 1, 1, 1 ) [ ( 1, 0, 1 ) ] -- Top
-    , TriangleFan ( 0, 0, 0 ) ( 0, 0, 1 ) ( 1, 0, 1 ) [ ( 1, 0, 0 ) ] -- Back
-    , TriangleFan ( 0, 1, 0 ) ( 1, 1, 0 ) ( 1, 1, 1 ) [ ( 0, 1, 1 ) ] -- Front
-    , TriangleFan ( 0, 0, 0 ) ( 0, 1, 0 ) ( 0, 1, 1 ) [ ( 0, 0, 1 ) ] -- Left
-    , TriangleFan ( 1, 0, 0 ) ( 1, 0, 1 ) ( 1, 1, 1 ) [ ( 1, 1, 0 ) ] -- Right
+    [ TriangleFan ( 0, 0, 0 ) ( 0, 1, 0 ) ( 1, 1, 0 ) [ ( 1, 0, 0 ) ] -- Bottom
+    , TriangleFan ( 0, 0, 1 ) ( 1, 0, 1 ) ( 1, 1, 1 ) [ ( 0, 1, 1 ) ] -- Top
+    , TriangleFan ( 0, 0, 0 ) ( 1, 0, 0 ) ( 1, 0, 1 ) [ ( 0, 0, 1 ) ] -- Back
+    , TriangleFan ( 0, 1, 0 ) ( 0, 1, 1 ) ( 1, 1, 1 ) [ ( 1, 1, 0 ) ] -- Front
+    , TriangleFan ( 0, 0, 0 ) ( 0, 0, 1 ) ( 0, 1, 1 ) [ ( 0, 1, 0 ) ] -- Left
+    , TriangleFan ( 1, 0, 0 ) ( 1, 1, 0 ) ( 1, 1, 1 ) [ ( 1, 0, 1 ) ] -- Right
     ]
+        |> List.indexedMap Tuple.pair
+        |> List.map
+            (\( index, triangleFan ) ->
+                map (\p -> { position = Point3d.fromTuple Quantity.Quantity p, cubeFaceIndex = index }) triangleFan
+            )
         |> Compound
-        |> map (Point3d.fromTuple Quantity.Quantity)
 
 
 cube : MeshPart (Point3d u c)

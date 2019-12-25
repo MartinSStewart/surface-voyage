@@ -2,20 +2,22 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Browser.Events
+import Color
 import Element
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Html exposing (Html, div, h1, img, text)
 import Html.Attributes exposing (src)
 import Keyboard exposing (Key)
 import Length exposing (Meters)
+import List.Nonempty
 import Math.Vector3 as Vec3
 import Math.Vector4 as Vec4
 import Mesh exposing (SurfacePoint)
 import MeshBuilder
 import Point3d
 import Vector3d
+import View
 import WebGL
-import WebGLView
 
 
 
@@ -42,7 +44,7 @@ init flags =
       , previousKeys = []
       , windowSize = ( flags.windowWidth, flags.windowHeight )
       , surfacePoint =
-            Mesh.nearestSurfacePoint (Point3d.meters 2 0 0) surfaceCube
+            Mesh.nearestSurfacePoint (Point3d.meters 2 2 2) surfaceCube
       }
     , Cmd.none
     )
@@ -102,12 +104,30 @@ baseCube =
             )
 
 
+colorToVec4 color =
+    let
+        { red, green, blue, alpha } =
+            Color.toRgba color
+    in
+    Vec4.vec4 (red * alpha) (green * alpha) (blue * alpha) alpha
+
+
+cubeColors =
+    List.Nonempty.Nonempty (Color.rgb 0.9 0.1 0.1)
+        [ Color.rgb 0.1 0.9 0.1
+        , Color.rgb 0.1 0.1 0.9
+        , Color.rgb 0.9 0.9 0.1
+        , Color.rgb 0.9 0.1 0.9
+        , Color.rgb 0.1 0.9 0.9
+        ]
+
+
 renderCube =
-    baseCube
+    MeshBuilder.splitFacesCube
         |> MeshBuilder.map
-            (\a ->
-                { color = Vec4.vec4 0.5 0.5 0.5 1
-                , position = Point3d.toVec3 a
+            (\{ position, cubeFaceIndex } ->
+                { color = cubeColors |> List.Nonempty.get cubeFaceIndex |> colorToVec4
+                , position = position |> Point3d.translateBy (Vector3d.meters -0.5 -0.5 -0.5) |> Point3d.toVec3
                 , normal = Vec3.vec3 0 0 1
                 }
             )
@@ -135,7 +155,7 @@ view : Model -> Html Msg
 view model =
     Element.layout [] <|
         Element.html <|
-            WebGLView.view model.windowSize renderCube
+            View.view model.windowSize renderCube (Mesh.surfacePointToWorld model.surfacePoint surfaceCube |> Debug.log "")
 
 
 subscriptions : Model -> Sub Msg

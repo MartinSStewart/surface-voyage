@@ -9,6 +9,7 @@ module Mesh exposing
     , getTriangles
     , getVertices
     , nearestSurfacePoint
+    , surfacePointToWorld
     )
 
 import Array exposing (Array)
@@ -101,15 +102,8 @@ fromVerticesAndIndices vertices triangleIndices =
                                             ++ list
                                             |> Just
 
-                                    ( a, Just _ ) ->
-                                        let
-                                            _ =
-                                                Debug.log "a" a
-                                        in
+                                    _ ->
                                         Nothing
-
-                                    ( _, Nothing ) ->
-                                        state
                             )
                             (Just [])
             in
@@ -193,6 +187,16 @@ nearestSurfacePoint point mesh =
                     }
             )
         |> Maybe.withDefault (SurfacePoint { triangleId = TriangleId 0, position = Point2d.origin })
+
+
+surfacePointToWorld : SurfacePoint unit -> Mesh unit coordinates -> Maybe (Point3d unit coordinates)
+surfacePointToWorld (SurfacePoint surfacePoint) mesh =
+    case getSketchPlane mesh surfacePoint.triangleId of
+        Just sketchPlane ->
+            surfacePoint.position |> Point3d.on sketchPlane |> Just
+
+        Nothing ->
+            Nothing
 
 
 rawQuantity (Quantity.Quantity value) =

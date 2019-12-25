@@ -1,4 +1,4 @@
-module WebGLView exposing (view)
+module View exposing (view)
 
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Html.Attributes
@@ -14,25 +14,56 @@ import WebGL.Settings
 import WebGL.Settings.Blend as Blend
 
 
-view (( windowWidth, windowHeight ) as windowSize) mesh =
+view (( windowWidth, windowHeight ) as windowSize) mesh playerPosition =
     WebGL.toHtml
         [ Html.Attributes.width windowWidth
         , Html.Attributes.height windowHeight
         ]
-        [ WebGL.entityWith
+        ([ WebGL.entityWith
             [ WebGL.Settings.cullFace WebGL.Settings.back
             , Blend.add Blend.one Blend.oneMinusSrcAlpha
             ]
             vertexShader
             fragmentShader
             mesh
-            (uniforms windowSize)
-        ]
+            (uniforms Mat4.identity windowSize)
+         ]
+            ++ (case playerPosition of
+                    Just playerPosition_ ->
+                        [ WebGL.entityWith
+                            [ WebGL.Settings.cullFace WebGL.Settings.back
+                            , Blend.add Blend.one Blend.oneMinusSrcAlpha
+                            ]
+                            vertexShader
+                            fragmentShader
+                            sphere
+                            (uniforms (playerPosition_ |> Point3d.toVec3 |> Mat4.makeTranslate) windowSize)
+                        ]
+
+                    Nothing ->
+                        []
+               )
+        )
 
 
-uniforms : ( Int, Int ) -> Uniforms
-uniforms windowSize =
-    { rotation = Mat4.identity -- Mat4.makeRotate 40 (Vec3.vec3 0 1 1)
+sphere =
+    MeshBuilder.cube
+        |> MeshBuilder.map
+            (\a ->
+                { color = Vec4.vec4 0 0 0 1
+                , position =
+                    Point3d.translateBy (Vector3d.meters 0.5 0.5 0.5) a
+                        |> Point3d.scaleAbout Point3d.origin 0.1
+                        |> Point3d.toVec3
+                , normal = Vec3.vec3 0 0 1
+                }
+            )
+        |> MeshBuilder.toWebGlMesh
+
+
+uniforms : Mat4 -> ( Int, Int ) -> Uniforms
+uniforms local windowSize =
+    { local = Mat4.identity -- Mat4.makeRotate 40 (Vec3.vec3 0 1 1)
     , perspective = perspective windowSize
     , camera = cameraMatrix
     }
@@ -49,13 +80,13 @@ perspective ( windowWidth, windowHeight ) =
 
 cameraMatrix =
     Mat4.makeLookAt
-        (Vec3.vec3 0 0 2)
+        (Vec3.vec3 0 2 2)
         (Vec3.vec3 0 0 0)
-        (Vec3.vec3 0 1 0)
+        (Vec3.vec3 0 0 1)
 
 
 type alias Uniforms =
-    { rotation : Mat4
+    { local : Mat4
     , perspective : Mat4
     , camera : Mat4
     }
@@ -76,10 +107,10 @@ vertexShader =
         attribute vec3 normal;
         uniform mat4 perspective;
         uniform mat4 camera;
-        uniform mat4 rotation;
+        uniform mat4 local;
         varying vec4 vcolor;
         void main () {
-            gl_Position = perspective * camera * rotation * vec4(position, 1.0);
+            gl_Position = perspective * camera * local * vec4(position, 1.0);
             vcolor = color;
         }
     |]

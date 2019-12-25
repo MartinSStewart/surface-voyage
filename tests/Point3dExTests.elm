@@ -159,10 +159,14 @@ fuzzSt =
 
 
 fuzzPoint3d =
+    fuzzPoint3dRange -100000 100000
+
+
+fuzzPoint3dRange low high =
     Fuzz.map3 Point3d.meters
-        (Fuzz.floatRange -100000 100000)
-        (Fuzz.floatRange -100000 100000)
-        (Fuzz.floatRange -100000 100000)
+        (Fuzz.floatRange low high)
+        (Fuzz.floatRange low high)
+        (Fuzz.floatRange low high)
 
 
 fuzzNonDegenerateTriangle : Fuzz.Fuzzer (Triangle3d Meters coordinates)
@@ -187,7 +191,7 @@ fuzzNonDegenerateTriangle =
         fuzzPoint3d
         (Fuzz.floatRange 0 360 |> Fuzz.map (Angle.degrees >> Direction2d.fromAngle))
         (Fuzz.floatRange 1 100 |> Fuzz.map Length.meters)
-        (Fuzz.floatRange 5 355 |> Fuzz.map (Angle.degrees >> Direction2d.fromAngle))
+        (Fuzz.floatRange 15 345 |> Fuzz.map (Angle.degrees >> Direction2d.fromAngle))
         (Fuzz.map2 Tuple.pair
             (Fuzz.floatRange 0.1 10)
             (Fuzz.floatRange 0 360 |> Fuzz.map Angle.degrees)
