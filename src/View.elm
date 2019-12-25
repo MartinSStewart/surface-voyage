@@ -1,43 +1,48 @@
 module View exposing (view)
 
+import Duration exposing (Duration)
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Html.Attributes
+import Length exposing (Meters)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector3 as Vec3 exposing (Vec3)
 import Math.Vector4 as Vec4 exposing (Vec4)
+import Mesh exposing (SurfacePoint)
 import MeshBuilder
 import Point3d exposing (Point3d)
-import Quantity
+import Quantity exposing (Quantity)
 import Vector3d
 import WebGL exposing (Shader)
 import WebGL.Settings
 import WebGL.Settings.Blend as Blend
+import WebGL.Settings.DepthTest
 
 
-view (( windowWidth, windowHeight ) as windowSize) mesh playerPosition =
+type alias Config a =
+    { a
+        | time : Duration
+        , surfacePoint : SurfacePoint Meters
+    }
+
+
+view config (( windowWidth, windowHeight ) as windowSize) mesh playerPosition =
     WebGL.toHtml
         [ Html.Attributes.width windowWidth
         , Html.Attributes.height windowHeight
         ]
-        ([ WebGL.entityWith
-            [ WebGL.Settings.cullFace WebGL.Settings.back
-            , Blend.add Blend.one Blend.oneMinusSrcAlpha
-            ]
+        ([ entity
             vertexShader
             fragmentShader
             mesh
-            (uniforms Mat4.identity windowSize)
+            (uniforms config.time Mat4.identity windowSize)
          ]
             ++ (case playerPosition of
                     Just playerPosition_ ->
-                        [ WebGL.entityWith
-                            [ WebGL.Settings.cullFace WebGL.Settings.back
-                            , Blend.add Blend.one Blend.oneMinusSrcAlpha
-                            ]
+                        [ entity
                             vertexShader
                             fragmentShader
-                            sphere
-                            (uniforms (playerPosition_ |> Point3d.toVec3 |> Mat4.makeTranslate) windowSize)
+                            playerMesh
+                            (uniforms config.time (playerPosition_ |> Point3d.toVec3 |> Mat4.makeTranslate) windowSize)
                         ]
 
                     Nothing ->
@@ -46,13 +51,21 @@ view (( windowWidth, windowHeight ) as windowSize) mesh playerPosition =
         )
 
 
-sphere =
+entity =
+    WebGL.entityWith
+        [ WebGL.Settings.cullFace WebGL.Settings.back
+        , Blend.add Blend.one Blend.oneMinusSrcAlpha
+        , WebGL.Settings.DepthTest.less { write = True, near = 0.001, far = 10000 }
+        ]
+
+
+playerMesh =
     MeshBuilder.cube
         |> MeshBuilder.map
             (\a ->
                 { color = Vec4.vec4 0 0 0 1
                 , position =
-                    Point3d.translateBy (Vector3d.meters 0.5 0.5 0.5) a
+                    Point3d.translateBy (Vector3d.meters -0.5 -0.5 -0.5) a
                         |> Point3d.scaleAbout Point3d.origin 0.1
                         |> Point3d.toVec3
                 , normal = Vec3.vec3 0 0 1
@@ -61,11 +74,11 @@ sphere =
         |> MeshBuilder.toWebGlMesh
 
 
-uniforms : Mat4 -> ( Int, Int ) -> Uniforms
-uniforms local windowSize =
-    { local = Mat4.identity -- Mat4.makeRotate 40 (Vec3.vec3 0 1 1)
+uniforms : Duration -> Mat4 -> ( Int, Int ) -> Uniforms
+uniforms time local windowSize =
+    { local = local
     , perspective = perspective windowSize
-    , camera = cameraMatrix
+    , camera = cameraMatrix time
     }
 
 
@@ -78,10 +91,17 @@ perspective ( windowWidth, windowHeight ) =
         100
 
 
-cameraMatrix =
+cameraMatrix time =
+    let
+        time_ =
+            Duration.inSeconds time
+
+        distance =
+            2
+    in
     Mat4.makeLookAt
-        (Vec3.vec3 0 2 2)
-        (Vec3.vec3 0 0 0)
+        (Vec3.vec3 (cos time_ * distance + 0.5) (sin time_ * distance + 0.5) 2)
+        (Vec3.vec3 0.5 0.5 0.5)
         (Vec3.vec3 0 0 1)
 
 

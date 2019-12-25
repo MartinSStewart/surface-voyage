@@ -3,6 +3,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 import Browser
 import Browser.Events
 import Color
+import Duration exposing (Duration)
 import Element
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Html exposing (Html, div, h1, img, text)
@@ -15,6 +16,7 @@ import Math.Vector4 as Vec4
 import Mesh exposing (SurfacePoint)
 import MeshBuilder
 import Point3d
+import Quantity
 import Vector3d
 import View
 import WebGL
@@ -29,6 +31,7 @@ type alias Model =
     , previousKeys : List Key
     , windowSize : ( Int, Int )
     , surfacePoint : SurfacePoint Meters
+    , time : Duration
     }
 
 
@@ -44,7 +47,8 @@ init flags =
       , previousKeys = []
       , windowSize = ( flags.windowWidth, flags.windowHeight )
       , surfacePoint =
-            Mesh.nearestSurfacePoint (Point3d.meters 2 2 2) surfaceCube
+            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 1) surfaceCube
+      , time = Quantity.zero
       }
     , Cmd.none
     )
@@ -58,6 +62,7 @@ type Msg
     = NoOp
     | KeyMsg Keyboard.Msg
     | WindowResize Int Int
+    | AnimationFrameDelta Duration
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -71,6 +76,9 @@ update msg model =
 
         WindowResize width height ->
             { model | windowSize = ( width, height ) } |> addCmdNone
+
+        AnimationFrameDelta delta ->
+            { model | time = Quantity.plus model.time delta } |> addCmdNone
 
 
 keyMsgUpdate keyMsg model =
@@ -94,14 +102,6 @@ addCmd cmd a =
 
 baseCube =
     MeshBuilder.cube
-        |> MeshBuilder.map
-            (Point3d.translateBy
-                (Vector3d.meters
-                    -0.5
-                    -0.5
-                    -0.5
-                )
-            )
 
 
 colorToVec4 color =
@@ -127,7 +127,7 @@ renderCube =
         |> MeshBuilder.map
             (\{ position, cubeFaceIndex } ->
                 { color = cubeColors |> List.Nonempty.get cubeFaceIndex |> colorToVec4
-                , position = position |> Point3d.translateBy (Vector3d.meters -0.5 -0.5 -0.5) |> Point3d.toVec3
+                , position = position |> Point3d.toVec3
                 , normal = Vec3.vec3 0 0 1
                 }
             )
@@ -155,7 +155,7 @@ view : Model -> Html Msg
 view model =
     Element.layout [] <|
         Element.html <|
-            View.view model.windowSize renderCube (Mesh.surfacePointToWorld model.surfacePoint surfaceCube |> Debug.log "")
+            View.view model model.windowSize renderCube (Mesh.surfacePointToWorld model.surfacePoint surfaceCube)
 
 
 subscriptions : Model -> Sub Msg
@@ -163,6 +163,7 @@ subscriptions model =
     Sub.batch
         [ Sub.map KeyMsg Keyboard.subscriptions
         , Browser.Events.onResize WindowResize
+        , Browser.Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameDelta)
         ]
 
 
