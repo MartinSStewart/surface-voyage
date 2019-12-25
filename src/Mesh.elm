@@ -13,16 +13,22 @@ module Mesh exposing
     )
 
 import Array exposing (Array)
+import Basics.Extra exposing (flip)
 import Dict exposing (Dict)
+import Interpolative exposing (Interpolative)
+import LineSegment2d
 import LineSegment3d exposing (LineSegment3d)
 import List.Extra as List
 import Point2d exposing (Point2d)
+import Point2dEx
 import Point3d exposing (Point3d)
 import Point3dEx
 import Quantity
 import SketchPlane3d exposing (SketchPlane3d)
 import Triangle exposing (Triangle)
+import Triangle2d exposing (Triangle2d)
 import Triangle3d exposing (Triangle3d)
+import Vector2d exposing (Vector2d)
 
 
 type Mesh units coordinates
@@ -178,9 +184,9 @@ nearestSurfacePoint point mesh =
                 SurfacePoint
                     { triangleId = triangleId
                     , position =
-                        case getSketchPlane mesh triangleId of
-                            Just sketchPlane ->
-                                Point3d.projectInto sketchPlane nearestPoint
+                        case getTriangle mesh triangleId of
+                            Just triangle ->
+                                Point3d.projectInto sketchPlane nearestPoint |> Interpolative.fromPoint2d
 
                             Nothing ->
                                 Point2d.origin
@@ -267,12 +273,12 @@ adjacentTriangle (TriangleId triangleId) edge (Mesh mesh) =
 
 
 type SurfacePoint units
-    = SurfacePoint (SurfacePoint_ units)
+    = SurfacePoint (SurfacePoint_ units MeshSurfaceCoordinates)
 
 
-type alias SurfacePoint_ units =
+type alias SurfacePoint_ units coordinates =
     { triangleId : TriangleId
-    , position : Point2d units MeshSurfaceCoordinates
+    , position : Interpolative units coordinates
     }
 
 
@@ -302,19 +308,30 @@ getSketchPlane mesh triangleId =
 
 
 
---move :
---    Mesh units coordinates
---    -> Vector2d units coordinates
---    -> SurfacePoint units coordinates
---    -> SurfacePoint units coordinates
---move mesh movement position =
---    case getSketchPlane mesh position of
+--
+--move : Mesh units coordinates -> Vector2d units MeshSurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
+--move mesh movement ((SurfacePoint { triangleId, position }) as surfacePoint) =
+--    case getSketchPlane mesh triangleId of
 --        Just triangle ->
 --            let
---                a =
---                    5
---            in
---            Debug.todo ""
+--                ( e0, e1, e2 ) =
+--                    Triangle2d.edges triangle
 --
+--                moveLine =
+--                    LineSegment2d.from position (Point2d.translateBy movement position)
+--            in
+--            0
+--
+--        --let
+--        --    newPosition = Point2d.translateBy movement position
+--        --in
+--        --if Point2dEx.insideTriangle triangle newPosition then
+--        --    SurfacePoint { triangleId = triangleId, position = newPosition }
+--        --else
+--        --    let
+--        --        (e0, e1, e2) = Triangle2d.edges triangle
+--        --
+--        --        moveLine = LineSegment2d.from position newPosition
+--        --    in
 --        Nothing ->
---            position
+--            surfacePoint

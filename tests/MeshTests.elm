@@ -2,6 +2,7 @@ module MeshTests exposing (..)
 
 import Basics.Extra exposing (flip)
 import Expect
+import Fuzz
 import Mesh
 import MeshBuilder
 import Point3d
