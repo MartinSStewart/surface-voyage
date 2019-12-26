@@ -1,15 +1,19 @@
 module Interpolative exposing (Interpolative, from, fromPoint2d, toPoint2d, toPoint3d)
 
+import Angle exposing (Angle)
 import Basics.Extra exposing (flip)
+import Direction2d
 import LineSegment2d
 import LineSegment3d
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
+import Quantity
 import Triangle2d exposing (Triangle2d)
 import Triangle3d exposing (Triangle3d)
+import Vector2d
 
 
-type Interpolative units coordinates
+type Interpolative
     = Interpolative
         { -- How far to interpolate along the first edge of a triangle
           t0 : Float
@@ -19,7 +23,7 @@ type Interpolative units coordinates
         }
 
 
-from : Float -> Float -> Interpolative units coordinates
+from : Float -> Float -> Interpolative
 from t0 t1 =
     Interpolative
         { t0 = clamp 0 1 t0
@@ -27,12 +31,86 @@ from t0 t1 =
         }
 
 
-fromPoint2d : Triangle2d units coordinates -> Point2d units coordinates -> Interpolative units coordinates
+fromPoint2d : Triangle2d units coordinates -> Point2d units coordinates -> Interpolative
 fromPoint2d triangle point =
-    Debug.todo ""
+    let
+        ( v0, v1, v2 ) =
+            Triangle2d.vertices triangle
+
+        --|> Debug.log "v0 v1 v2"
+        maybeV2ToV0 =
+            Direction2d.from v2 v0
+
+        --|> Debug.log "maybeV2ToV0"
+        maybeV2ToPoint =
+            Direction2d.from v2 point
+
+        --|> Debug.log "maybeV2ToPoint"
+        maybeV0ToV1 =
+            Direction2d.from v0 v1
+
+        --|> Debug.log "maybeV0ToV1"
+    in
+    case ( maybeV2ToV0, maybeV2ToPoint, maybeV0ToV1 ) of
+        ( Just v2ToV0, Just v2ToPoint, Just v0ToV1 ) ->
+            let
+                v0ToV2Length =
+                    Point2d.distanceFrom v0 v2
+
+                --|> Debug.log "v0ToV2Length"
+                v0ToV1Length =
+                    Point2d.distanceFrom v0 v1
+
+                --|> Debug.log "v0ToV1Length"
+                pointAngle : Angle
+                pointAngle =
+                    Direction2d.angleFrom v2ToV0 v2ToPoint |> Quantity.abs
+
+                --|> Debug.log "pointAngle"
+                v0Angle : Angle
+                v0Angle =
+                    Direction2d.angleFrom (Direction2d.reverse v2ToV0) v0ToV1 |> Quantity.abs
+
+                --|> Debug.log "v0Angle"
+                pointV1Angle : Angle
+                pointV1Angle =
+                    Quantity.sum [ pointAngle, v0Angle, Angle.radians -pi ] |> Quantity.negate
+
+                --|> Debug.log "pointV1Angle"
+                cDivByC =
+                    Quantity.divideBy (Angle.sin pointV1Angle) v0ToV2Length
+
+                --|> Debug.log "cDivByC"
+                b =
+                    Quantity.multiplyBy (Angle.sin pointAngle) cDivByC
+
+                --|> Debug.log "b"
+                t0 =
+                    Quantity.ratio b v0ToV1Length
+
+                --|> Debug.log "t0"
+                t0Point =
+                    LineSegment2d.interpolate (LineSegment2d.from v0 v1) t0
+
+                --|> Debug.log "t0Point"
+                t0PointToV2Line =
+                    LineSegment2d.from t0Point v2
+
+                --|> Debug.log "t0PointToV2Line"
+                t1 =
+                    Quantity.ratio
+                        (LineSegment2d.from v2 point |> LineSegment2d.length)
+                        (LineSegment2d.length t0PointToV2Line)
+
+                --|> Debug.log "t1"
+            in
+            from t0 t1
+
+        _ ->
+            from 0 0
 
 
-toPoint2d : Triangle2d units coordinates -> Interpolative units coordinates -> Point2d units coordinates
+toPoint2d : Triangle2d units coordinates -> Interpolative -> Point2d units coordinates
 toPoint2d triangle (Interpolative { t0, t1 }) =
     let
         ( v0, v1, v2 ) =
@@ -44,7 +122,7 @@ toPoint2d triangle (Interpolative { t0, t1 }) =
         |> flip LineSegment2d.interpolate t1
 
 
-toPoint3d : Triangle3d units coordinates -> Interpolative units coordinates -> Point3d units coordinates
+toPoint3d : Triangle3d units coordinates -> Interpolative -> Point3d units coordinates
 toPoint3d triangle (Interpolative { t0, t1 }) =
     let
         ( v0, v1, v2 ) =

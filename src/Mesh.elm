@@ -60,6 +60,7 @@ getAdjacentTriangles (Mesh mesh) =
 type Error
     = NonManifold
     | NoValidTriangles
+    | TriangleVertexNotFound
 
 
 fromVerticesAndIndices : Array (Point3d units coordinates) -> List (Triangle VertexId_) -> Result Error (Mesh units coordinates)
@@ -67,66 +68,70 @@ fromVerticesAndIndices vertices triangleIndices =
     let
         validTriangles =
             triangleIndices
-                |> List.filter
+                |> List.all
                     (\tri -> Triangle.andThen (\index -> Array.get index vertices) tri /= Nothing)
     in
-    case List.head validTriangles of
-        Just _ ->
-            let
-                orderTuple ( a, b ) =
-                    if a < b then
-                        ( a, b )
+    if validTriangles then
+        case List.head triangleIndices of
+            Just _ ->
+                let
+                    orderTuple ( a, b ) =
+                        if a < b then
+                            ( a, b )
 
-                    else
-                        ( b, a )
+                        else
+                            ( b, a )
 
-                adjacentTrianglePairs =
-                    validTriangles
-                        |> List.indexedMap Tuple.pair
-                        |> List.concatMap
-                            (\( triIndex, tri ) ->
-                                Triangle.edges tri
-                                    |> List.indexedMap
-                                        (\edgeIndex edge ->
-                                            { edge = orderTuple edge, edgeIndex = edgeIndex, triIndex = triIndex }
-                                        )
-                            )
-                        |> List.gatherEqualsBy .edge
+                    adjacentTrianglePairs =
+                        triangleIndices
+                            |> List.indexedMap Tuple.pair
+                            |> List.concatMap
+                                (\( triIndex, tri ) ->
+                                    Triangle.edges tri
+                                        |> List.indexedMap
+                                            (\edgeIndex edge ->
+                                                { edge = orderTuple edge, edgeIndex = edgeIndex, triIndex = triIndex }
+                                            )
+                                )
+                            |> List.gatherEqualsBy .edge
 
-                adjacentTriangles =
-                    adjacentTrianglePairs
-                        |> List.foldl
-                            (\( { edgeIndex, triIndex }, rest ) state ->
-                                case ( rest, state ) of
-                                    ( [], Just list ) ->
-                                        Just list
+                    adjacentTriangles =
+                        adjacentTrianglePairs
+                            |> List.foldl
+                                (\( { edgeIndex, triIndex }, rest ) state ->
+                                    case ( rest, state ) of
+                                        ( [], Just list ) ->
+                                            Just list
 
-                                    ( other :: [], Just list ) ->
-                                        [ ( ( triIndex, edgeIndex ), ( TriangleId other.triIndex, intToEdge other.edgeIndex ) )
-                                        , ( ( other.triIndex, other.edgeIndex ), ( TriangleId triIndex, intToEdge edgeIndex ) )
-                                        ]
-                                            ++ list
-                                            |> Just
+                                        ( other :: [], Just list ) ->
+                                            [ ( ( triIndex, edgeIndex ), ( TriangleId other.triIndex, intToEdge other.edgeIndex ) )
+                                            , ( ( other.triIndex, other.edgeIndex ), ( TriangleId triIndex, intToEdge edgeIndex ) )
+                                            ]
+                                                ++ list
+                                                |> Just
 
-                                    _ ->
-                                        Nothing
-                            )
-                            (Just [])
-            in
-            case adjacentTriangles of
-                Just list ->
-                    { triangles = validTriangles |> List.map (Triangle.map VertexId) |> Array.fromList
-                    , vertices = vertices
-                    , adjacentTriangles = Dict.fromList list
-                    }
-                        |> Mesh
-                        |> Ok
+                                        _ ->
+                                            Nothing
+                                )
+                                (Just [])
+                in
+                case adjacentTriangles of
+                    Just list ->
+                        { triangles = triangleIndices |> List.map (Triangle.map VertexId) |> Array.fromList
+                        , vertices = vertices
+                        , adjacentTriangles = Dict.fromList list
+                        }
+                            |> Mesh
+                            |> Ok
 
-                Nothing ->
-                    Err NonManifold
+                    Nothing ->
+                        Err NonManifold
 
-        Nothing ->
-            Err NoValidTriangles
+            Nothing ->
+                Err NoValidTriangles
+
+    else
+        Err TriangleVertexNotFound
 
 
 type alias VertexId_ =
@@ -184,22 +189,26 @@ nearestSurfacePoint point mesh =
                 SurfacePoint
                     { triangleId = triangleId
                     , position =
-                        case getTriangle mesh triangleId of
-                            Just triangle ->
-                                Point3d.projectInto sketchPlane nearestPoint |> Interpolative.fromPoint2d
+                        case ( getTriangle mesh triangleId, getSketchPlane mesh triangleId ) of
+                            ( Just triangle, Just sketchPlane ) ->
+                                let
+                                    triangle2d =
+                                        Triangle3d.projectInto sketchPlane triangle
+                                in
+                                Point3d.projectInto sketchPlane nearestPoint |> Interpolative.fromPoint2d triangle2d
 
-                            Nothing ->
-                                Point2d.origin
+                            _ ->
+                                Debug.todo "Handle degenerate case"
                     }
             )
-        |> Maybe.withDefault (SurfacePoint { triangleId = TriangleId 0, position = Point2d.origin })
+        |> Maybe.withDefault (SurfacePoint { triangleId = TriangleId 0, position = Interpolative.from 0 0 })
 
 
 surfacePointToWorld : SurfacePoint unit -> Mesh unit coordinates -> Maybe (Point3d unit coordinates)
 surfacePointToWorld (SurfacePoint surfacePoint) mesh =
-    case getSketchPlane mesh surfacePoint.triangleId of
-        Just sketchPlane ->
-            surfacePoint.position |> Point3d.on sketchPlane |> Just
+    case getTriangle mesh surfacePoint.triangleId of
+        Just triangle ->
+            Interpolative.toPoint3d triangle surfacePoint.position |> Just
 
         Nothing ->
             Nothing
@@ -273,12 +282,12 @@ adjacentTriangle (TriangleId triangleId) edge (Mesh mesh) =
 
 
 type SurfacePoint units
-    = SurfacePoint (SurfacePoint_ units MeshSurfaceCoordinates)
+    = SurfacePoint SurfacePoint_
 
 
-type alias SurfacePoint_ units coordinates =
+type alias SurfacePoint_ =
     { triangleId : TriangleId
-    , position : Interpolative units coordinates
+    , position : Interpolative
     }
 
 

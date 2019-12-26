@@ -6,7 +6,7 @@ import Interpolative
 import Point2d
 import Point3d
 import Quantity
-import Test exposing (Test, fuzz, fuzz2, fuzz3)
+import Test exposing (Test, fuzz, fuzz2, fuzz3, only, test)
 import Triangle2d
 
 
@@ -19,6 +19,63 @@ interpolativeRoundTrip =
                     Interpolative.toPoint2d triangle interpolative
             in
             expected |> Interpolative.fromPoint2d triangle |> Interpolative.toPoint2d triangle |> pointEqualWithin expected
+
+
+test0 : Test
+test0 =
+    test "fromPoint2d test 0" <|
+        \_ ->
+            let
+                triangle =
+                    Triangle2d.from (Point2d.meters 0 1) (Point2d.meters 1 1) Point2d.origin
+
+                point =
+                    Point2d.origin
+            in
+            Interpolative.fromPoint2d triangle point |> Expect.equal (Interpolative.from 0 0)
+
+
+test1 : Test
+test1 =
+    test "fromPoint2d test 1" <|
+        \_ ->
+            let
+                triangle =
+                    Triangle2d.from (Point2d.meters 0 1) (Point2d.meters 1 1) Point2d.origin
+
+                point =
+                    Point2d.meters 0.5 0.5
+            in
+            Interpolative.fromPoint2d triangle point |> Expect.equal (Interpolative.from 1 0.5)
+
+
+test2 : Test
+test2 =
+    test "fromPoint2d test 2" <|
+        \_ ->
+            let
+                triangle =
+                    Triangle2d.from (Point2d.meters 0 1) (Point2d.meters 1 1) Point2d.origin
+
+                point =
+                    Point2d.meters 0.25 0.5
+            in
+            Interpolative.fromPoint2d triangle point |> Expect.equal (Interpolative.from 0.5 0.5)
+
+
+test3 : Test
+test3 =
+    only <|
+        test "fromPoint2d line-like triangle" <|
+            \_ ->
+                let
+                    triangle =
+                        Triangle2d.from (Point2d.meters 0 1) (Point2d.meters 0 1) Point2d.origin
+
+                    point =
+                        Point2d.meters 0 0.5
+                in
+                Interpolative.fromPoint2d triangle point |> Expect.equal (Interpolative.from 0 0.5)
 
 
 fuzzInterpolative =
@@ -38,7 +95,7 @@ fuzzPoint2dRange low high =
 
 
 fuzzTriangle =
-    fuzz3 Triangle2d.from
+    Fuzz.map3 Triangle2d.from
         fuzzPoint2d
         fuzzPoint2d
         fuzzPoint2d
