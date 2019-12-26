@@ -52,6 +52,9 @@ fromPoint2d triangle point =
         --|> Debug.log "maybeV0ToV1"
     in
     case ( maybeV2ToV0, maybeV2ToPoint, maybeV0ToV1 ) of
+        ( _, Nothing, _ ) ->
+            from 0 0
+
         ( Just v2ToV0, Just v2ToPoint, Just v0ToV1 ) ->
             let
                 v0ToV2Length =
@@ -64,12 +67,12 @@ fromPoint2d triangle point =
                 --|> Debug.log "v0ToV1Length"
                 pointAngle : Angle
                 pointAngle =
-                    Direction2d.angleFrom v2ToV0 v2ToPoint |> Quantity.abs
+                    Direction2d.angleFrom v2ToPoint v2ToV0
 
                 --|> Debug.log "pointAngle"
                 v0Angle : Angle
                 v0Angle =
-                    Direction2d.angleFrom (Direction2d.reverse v2ToV0) v0ToV1 |> Quantity.abs
+                    Direction2d.angleFrom (Direction2d.reverse v2ToV0) v0ToV1
 
                 --|> Debug.log "v0Angle"
                 pointV1Angle : Angle
@@ -106,7 +109,31 @@ fromPoint2d triangle point =
             in
             from t0 t1
 
-        _ ->
+        ( Just _, Just _, Nothing ) ->
+            let
+                t0PointToV2Line =
+                    LineSegment2d.from v0 v2
+
+                t1 =
+                    Quantity.ratio
+                        (LineSegment2d.from v2 point |> LineSegment2d.length)
+                        (LineSegment2d.length t0PointToV2Line)
+            in
+            from 0 t1
+
+        ( Nothing, Just _, Just _ ) ->
+            let
+                t0PointToV2Line =
+                    LineSegment2d.from v0 v1
+
+                t0 =
+                    Quantity.ratio
+                        (LineSegment2d.from v0 point |> LineSegment2d.length)
+                        (LineSegment2d.length t0PointToV2Line)
+            in
+            from t0 0
+
+        ( Nothing, Just _, Nothing ) ->
             from 0 0
 
 

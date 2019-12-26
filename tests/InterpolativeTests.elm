@@ -65,17 +65,72 @@ test2 =
 
 test3 : Test
 test3 =
-    only <|
-        test "fromPoint2d line-like triangle" <|
-            \_ ->
-                let
-                    triangle =
-                        Triangle2d.from (Point2d.meters 0 1) (Point2d.meters 0 1) Point2d.origin
+    test "fromPoint2d line-like triangle test 0" <|
+        \_ ->
+            let
+                triangle =
+                    Triangle2d.from (Point2d.meters 0 1) (Point2d.meters 0 1) Point2d.origin
 
-                    point =
-                        Point2d.meters 0 0.5
-                in
-                Interpolative.fromPoint2d triangle point |> Expect.equal (Interpolative.from 0 0.5)
+                point =
+                    Point2d.meters 0 0.5
+            in
+            Interpolative.fromPoint2d triangle point |> Expect.equal (Interpolative.from 0 0.5)
+
+
+test4 : Test
+test4 =
+    test "fromPoint2d line-like triangle test 1" <|
+        \_ ->
+            let
+                triangle =
+                    Triangle2d.from Point2d.origin (Point2d.meters 0 1) Point2d.origin
+
+                point =
+                    Point2d.meters 0 0.5
+            in
+            Interpolative.fromPoint2d triangle point |> Expect.equal (Interpolative.from 0.5 0)
+
+
+test5 : Test
+test5 =
+    test "fromPoint2d point-like triangle" <|
+        \_ ->
+            let
+                triangle =
+                    Triangle2d.from Point2d.origin Point2d.origin Point2d.origin
+
+                point =
+                    Point2d.meters 0 0
+            in
+            Interpolative.fromPoint2d triangle point |> Expect.equal (Interpolative.from 0 0)
+
+
+test6 : Test
+test6 =
+    test "fromPoint2d with reversed winding order" <|
+        \_ ->
+            let
+                triangle =
+                    Triangle2d.from (Point2d.meters 0 1) (Point2d.meters -1 1) Point2d.origin
+
+                point =
+                    Point2d.meters -0.25 0.5
+            in
+            Interpolative.fromPoint2d triangle point |> Interpolative.toPoint2d triangle |> pointEqualWithin point
+
+
+test7 : Test
+test7 =
+    test "fromPoint2d outside of triangle" <|
+        \_ ->
+            let
+                triangle =
+                    Triangle2d.from (Point2d.meters 0 1) (Point2d.meters -1 1) Point2d.origin
+
+                point =
+                    Point2d.meters 0.1 0.5
+            in
+            Interpolative.fromPoint2d triangle point |> Expect.equal (Interpolative.from 0 0.5)
 
 
 fuzzInterpolative =
@@ -102,8 +157,8 @@ fuzzTriangle =
 
 
 equalWithin expected actual =
-    (abs (expected - actual) < 0.001)
-        || (abs (expected - actual) < (abs expected * 0.001))
+    (abs (expected - actual) < 0.01)
+        || (abs (expected - actual) < (abs expected * 0.01))
 
 
 pointEqualWithin expected actual =
