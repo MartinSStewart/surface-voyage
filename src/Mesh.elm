@@ -189,8 +189,8 @@ nearestSurfacePoint point mesh =
                 SurfacePoint
                     { triangleId = triangleId
                     , position =
-                        case ( getTriangle mesh triangleId, getSketchPlane mesh triangleId ) of
-                            ( Just triangle, Just sketchPlane ) ->
+                        case getSketchPlane mesh triangleId of
+                            Just ( triangle, sketchPlane ) ->
                                 let
                                     triangle2d =
                                         Triangle3d.projectInto sketchPlane triangle
@@ -303,7 +303,7 @@ type MeshSurfaceCoordinates
 getSketchPlane :
     Mesh units coordinates
     -> TriangleId
-    -> Maybe (SketchPlane3d units coordinates { defines : MeshSurfaceCoordinates })
+    -> Maybe ( Triangle3d units coordinates, SketchPlane3d units coordinates { defines : MeshSurfaceCoordinates } )
 getSketchPlane mesh triangleId =
     getTriangle mesh triangleId
         |> Maybe.andThen
@@ -312,35 +312,51 @@ getSketchPlane mesh triangleId =
                     ( first, second, third ) =
                         Triangle3d.vertices triangle
                 in
-                SketchPlane3d.throughPoints first second third
+                SketchPlane3d.throughPoints first second third |> Maybe.map (Tuple.pair triangle)
             )
 
 
+move : Mesh units coordinates -> Vector2d units MeshSurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
+move mesh movement ((SurfacePoint { triangleId, position }) as surfacePoint) =
+    case getSketchPlane mesh triangleId of
+        Just ( triangle, sketchPlane ) ->
+            let
+                triangle2d =
+                    Triangle3d.projectInto sketchPlane triangle
 
---
---move : Mesh units coordinates -> Vector2d units MeshSurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
---move mesh movement ((SurfacePoint { triangleId, position }) as surfacePoint) =
---    case getSketchPlane mesh triangleId of
---        Just triangle ->
---            let
---                ( e0, e1, e2 ) =
---                    Triangle2d.edges triangle
---
---                moveLine =
---                    LineSegment2d.from position (Point2d.translateBy movement position)
---            in
---            0
---
---        --let
---        --    newPosition = Point2d.translateBy movement position
---        --in
---        --if Point2dEx.insideTriangle triangle newPosition then
---        --    SurfacePoint { triangleId = triangleId, position = newPosition }
---        --else
---        --    let
---        --        (e0, e1, e2) = Triangle2d.edges triangle
---        --
---        --        moveLine = LineSegment2d.from position newPosition
---        --    in
---        Nothing ->
---            surfacePoint
+                ( e0, e1, e2 ) =
+                    Triangle2d.edges triangle2d
+
+                point =
+                    Interpolative.toPoint2d triangle2d position
+
+                endPoint =
+                    Point2d.translateBy movement point
+
+                moveLine =
+                    LineSegment2d.from point endPoint
+
+                intersections =
+                    [ e0, e1, e2 ]
+                        |> List.indexedMap Tuple.pair
+                        |> List.filterMap (\( index, edge ) -> LineSegment2d.intersectionPoint moveLine edge |> Maybe.map Tuple.pair index)
+                        |> List.minimumBy
+                            (\index intersection ->
+                                0
+                            )
+            in
+            if Point2dEx.insideTriangle triangle endPoint then
+                SurfacePoint { triangleId = triangleId, position = Interpolative.fromPoint2d triangle2d endPoint }
+
+            else
+                let
+                    ( e0, e1, e2 ) =
+                        Triangle2d.edges triangle
+
+                    moveLine =
+                        LineSegment2d.from position newPosition
+                in
+                0
+
+        Nothing ->
+            surfacePoint
