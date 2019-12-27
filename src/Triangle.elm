@@ -1,4 +1,10 @@
-module Triangle exposing (Triangle, andThen, edges, from, map, toList)
+module Triangle exposing (Triangle, andThen, edges, from, fromTriangle2d, fromTriangle3d, getSide, hasUniqueVertices, map, toList)
+
+import Point2d exposing (Point2d)
+import Point3d exposing (Point3d)
+import Triangle2d exposing (Triangle2d)
+import Triangle3d exposing (Triangle3d)
+import TriangleSide exposing (TriangleSide(..))
 
 
 type alias Triangle a =
@@ -32,3 +38,31 @@ toList ( v0, v1, v2 ) =
 edges : Triangle a -> List ( a, a )
 edges ( v0, v1, v2 ) =
     [ ( v0, v1 ), ( v1, v2 ), ( v2, v0 ) ]
+
+
+hasUniqueVertices : Triangle a -> Bool
+hasUniqueVertices ( v0, v1, v2 ) =
+    v0 /= v1 && v1 /= v2 && v2 /= v0
+
+
+getSide : TriangleSide -> Triangle a -> ( a, a )
+getSide side ( v0, v1, v2 ) =
+    case side of
+        SideZero ->
+            ( v0, v1 )
+
+        SideOne ->
+            ( v1, v2 )
+
+        SideTwo ->
+            ( v2, v0 )
+
+
+fromTriangle3d : Triangle3d units coordinates -> Triangle (Point3d units coordinates)
+fromTriangle3d =
+    Triangle3d.vertices
+
+
+fromTriangle2d : Triangle2d units coordinates -> Triangle (Point2d units coordinates)
+fromTriangle2d =
+    Triangle2d.vertices

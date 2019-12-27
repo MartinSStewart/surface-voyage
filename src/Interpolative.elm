@@ -1,4 +1,4 @@
-module Interpolative exposing (Interpolative, from, fromPoint2d, toPoint2d, toPoint3d)
+module Interpolative exposing (Interpolative, from, fromPoint2d, fromTriangleSide, toPoint2d, toPoint3d)
 
 import Angle exposing (Angle)
 import Basics.Extra exposing (flip)
@@ -10,7 +10,7 @@ import Point3d exposing (Point3d)
 import Quantity
 import Triangle2d exposing (Triangle2d)
 import Triangle3d exposing (Triangle3d)
-import Vector2d
+import TriangleSide exposing (TriangleSide(..))
 
 
 type Interpolative
@@ -29,6 +29,19 @@ from t0 t1 =
         { t0 = clamp 0 1 t0
         , t1 = clamp 0 1 t1
         }
+
+
+fromTriangleSide : Float -> TriangleSide -> Interpolative
+fromTriangleSide t triangleEdge =
+    case triangleEdge of
+        SideZero ->
+            from t 0
+
+        SideOne ->
+            from 1 t
+
+        SideTwo ->
+            from 0 t
 
 
 fromPoint2d : Triangle2d units coordinates -> Point2d units coordinates -> Interpolative
