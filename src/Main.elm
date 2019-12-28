@@ -6,8 +6,7 @@ import Color
 import Duration exposing (Duration)
 import Element
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
-import Html exposing (Html, div, h1, img, text)
-import Html.Attributes exposing (src)
+import Html exposing (Html)
 import Keyboard exposing (Key)
 import Length exposing (Meters)
 import List.Nonempty
@@ -17,9 +16,7 @@ import Mesh exposing (SurfacePoint)
 import MeshBuilder
 import Point3d
 import Quantity
-import Vector3d
 import View
-import WebGL
 
 
 

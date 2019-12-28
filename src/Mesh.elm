@@ -5,10 +5,13 @@ module Mesh exposing
     , fromVerticesAndIndices
     , getAdjacentTriangle
     , getTriangle
+    , getTriangleEdgeFrame
     , getTriangles
     , getVertices
+    , move
     , nearestSurfacePoint
     , surfacePointToWorld
+    , surfacePointTriangleId
     )
 
 import Array exposing (Array)
@@ -205,7 +208,7 @@ nearestSurfacePoint point mesh =
                                 Debug.todo "Handle degenerate case"
                     }
             )
-        |> Maybe.withDefault (SurfacePoint { triangleId = TriangleId 0, position = Interpolative.from 0 0 })
+        |> Maybe.withDefault (SurfacePoint { triangleId = TriangleId -1, position = Interpolative.from 0 0 })
 
 
 surfacePointToWorld : SurfacePoint unit -> Mesh unit coordinates -> Maybe (Point3d unit coordinates)
@@ -257,6 +260,11 @@ type alias SurfacePoint_ =
     { triangleId : TriangleId
     , position : Interpolative
     }
+
+
+surfacePointTriangleId : SurfacePoint units -> TriangleId
+surfacePointTriangleId (SurfacePoint surfacePoint) =
+    surfacePoint.triangleId
 
 
 type SurfaceSide
@@ -322,7 +330,10 @@ getTriangleEdgeFrame mesh triangleId triangleSide =
                         --    Triangle.getSide adjacentTriangleData.side adjacentTriangle2d
                     in
                     if adjacentTriangleData.isEdgeReversed then
-                        Debug.todo "Handle isEdgeReversed case"
+                        Frame2d.atOrigin
+                            |> Frame2d.rotateBy angleDiff
+                            |> Frame2d.translateBy (Vector2d.from e0 ae0)
+                            |> Just
 
                     else
                         Frame2d.atOrigin
