@@ -4,7 +4,7 @@ import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Triangle2d exposing (Triangle2d)
 import Triangle3d exposing (Triangle3d)
-import TriangleSide exposing (TriangleSide(..))
+import TriangleEdge exposing (TriangleEdge(..))
 
 
 type alias Triangle a =
@@ -45,16 +45,16 @@ hasUniqueVertices ( v0, v1, v2 ) =
     v0 /= v1 && v1 /= v2 && v2 /= v0
 
 
-getSide : TriangleSide -> Triangle a -> ( a, a )
+getSide : TriangleEdge -> Triangle a -> ( a, a )
 getSide side ( v0, v1, v2 ) =
     case side of
-        SideZero ->
+        EdgeZero ->
             ( v0, v1 )
 
-        SideOne ->
+        EdgeOne ->
             ( v1, v2 )
 
-        SideTwo ->
+        EdgeTwo ->
             ( v2, v0 )
 
 

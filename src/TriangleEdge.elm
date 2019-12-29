@@ -1,53 +1,53 @@
-module TriangleSide exposing (..)
+module TriangleEdge exposing (..)
 
 import LineSegment3d exposing (LineSegment3d)
 import Triangle3d exposing (Triangle3d)
 
 
-type TriangleSide
-    = SideZero
-    | SideOne
-    | SideTwo
+type TriangleEdge
+    = EdgeZero
+    | EdgeOne
+    | EdgeTwo
 
 
-toInt : TriangleSide -> Int
+toInt : TriangleEdge -> Int
 toInt edge =
     case edge of
-        SideZero ->
+        EdgeZero ->
             0
 
-        SideOne ->
+        EdgeOne ->
             1
 
-        SideTwo ->
+        EdgeTwo ->
             2
 
 
-toEdge : Int -> TriangleSide
+toEdge : Int -> TriangleEdge
 toEdge index =
     case modBy 3 index of
         0 ->
-            SideZero
+            EdgeZero
 
         1 ->
-            SideOne
+            EdgeOne
 
         _ ->
-            SideTwo
+            EdgeTwo
 
 
-getTriangleEdge : TriangleSide -> Triangle3d units coordinates -> LineSegment3d units coordinates
+getTriangleEdge : TriangleEdge -> Triangle3d units coordinates -> LineSegment3d units coordinates
 getTriangleEdge triangleEdge triangle =
     let
         ( first, second, third ) =
             Triangle3d.edges triangle
     in
     case triangleEdge of
-        SideZero ->
+        EdgeZero ->
             first
 
-        SideOne ->
+        EdgeOne ->
             second
 
-        SideTwo ->
+        EdgeTwo ->
             third

@@ -11,7 +11,7 @@ import Point3d
 import Point3dExTests exposing (fuzzPoint3dRange, pointEqualWithin)
 import Quantity
 import Test exposing (Test, describe, fuzz, fuzz2, only, test)
-import TriangleSide exposing (TriangleSide(..))
+import TriangleSide exposing (TriangleEdge(..))
 import Vector2d
 import Vector3d
 
@@ -83,7 +83,7 @@ frameTest =
                     Mesh.nearestSurfacePoint (Point3d.meters 0 1 0) twoTriangleSurface |> Mesh.surfacePointTriangleId
 
                 frame =
-                    Mesh.getTriangleEdgeFrame twoTriangleSurface triangleId SideTwo |> Debug.log "frame"
+                    Mesh.getTriangleEdgeFrame twoTriangleSurface triangleId EdgeTwo |> Debug.log "frame"
             in
             Expect.fail ""
 
@@ -99,8 +99,8 @@ getAdjacentTriangleTest =
                 adjacentTriangleId =
                     Mesh.nearestSurfacePoint (Point3d.meters 1 0 0) twoTriangleSurface |> Mesh.surfacePointTriangleId
             in
-            Mesh.getAdjacentTriangle twoTriangleSurface ( triangleId, SideTwo )
-                |> Expect.equal (Just { triangleId = adjacentTriangleId, side = SideZero, isEdgeReversed = True })
+            Mesh.getAdjacentTriangle twoTriangleSurface ( triangleId, EdgeTwo )
+                |> Expect.equal (Just { triangleId = adjacentTriangleId, side = EdgeZero, isEdgeReversed = True })
 
 
 moveAcrossEdgeTest : Test
