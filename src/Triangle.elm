@@ -1,10 +1,11 @@
-module Triangle exposing (Triangle, andThen, edges, from, fromTriangle2d, fromTriangle3d, getSide, hasUniqueVertices, map, toList)
+module Triangle exposing (Triangle, andThen, edges, from, fromTriangle2d, fromTriangle3d, getSide, getVertex, hasUniqueVertices, map, toList)
 
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Triangle2d exposing (Triangle2d)
 import Triangle3d exposing (Triangle3d)
 import TriangleEdge exposing (TriangleEdge(..))
+import TriangleVertex exposing (TriangleVertex(..))
 
 
 type alias Triangle a =
@@ -56,6 +57,19 @@ getSide side ( v0, v1, v2 ) =
 
         EdgeTwo ->
             ( v2, v0 )
+
+
+getVertex : TriangleVertex -> Triangle a -> a
+getVertex triangleVertex ( v0, v1, v2 ) =
+    case triangleVertex of
+        VertexZero ->
+            v0
+
+        VertexOne ->
+            v1
+
+        VertexTwo ->
+            v2
 
 
 fromTriangle3d : Triangle3d units coordinates -> Triangle (Point3d units coordinates)

@@ -23,8 +23,8 @@ toInt edge =
             2
 
 
-toEdge : Int -> TriangleEdge
-toEdge index =
+fromInt : Int -> TriangleEdge
+fromInt index =
     case modBy 3 index of
         0 ->
             EdgeZero

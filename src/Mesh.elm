@@ -30,6 +30,7 @@ import Triangle exposing (Triangle)
 import Triangle2d exposing (Triangle2d)
 import Triangle3d exposing (Triangle3d)
 import TriangleEdge exposing (TriangleEdge)
+import TriangleVertex
 import Vector2d exposing (Vector2d)
 
 
@@ -41,7 +42,12 @@ type alias TriangleData units coordinates =
     { indices : Triangle VertexId
     , sketchPlane : SketchPlane3d units coordinates { defines : SurfaceCoordinates }
     , triangle2d : Triangle2d units SurfaceCoordinates
+    , adjacent : Triangle (Maybe AdjacentTriangle)
     }
+
+
+type alias AdjacentTriangle =
+    { adjacentId : TriangleId, adjacentEdge : TriangleEdge }
 
 
 triangleDataGetTriangle3d : TriangleData units coordinates -> Triangle3d units coordinates
@@ -52,7 +58,6 @@ triangleDataGetTriangle3d { sketchPlane, triangle2d } =
 type alias Mesh_ units coordinates =
     { triangles : Array (TriangleData units coordinates)
     , vertices : Array (Point3d units coordinates)
-    , adjacentTriangles : Dict ( TriangleId_, EdgeIndex_ ) ( TriangleId, TriangleEdge )
     }
 
 
@@ -66,106 +71,109 @@ getVertices (Mesh mesh) =
     mesh.vertices
 
 
-getAdjacentTriangles : Mesh units coordinates -> Dict ( TriangleId_, Int ) ( TriangleId, TriangleEdge )
-getAdjacentTriangles (Mesh mesh) =
-    mesh.adjacentTriangles
-
-
 type Error
     = EdgeSharedBy3OrMoreTriangles
     | TriangleIsDegenerate
     | TriangleVertexNotFound
 
 
-
---generateTriangleData : Array (Point3d units coordinates) -> List (Triangle VertexId_) -> Result Error (TriangleData units coordinates)
-
-
+generateTriangleData :
+    Array (Point3d units coordinates)
+    -> List (Triangle VertexId_)
+    -> Result Error (List (TriangleData units coordinates))
 generateTriangleData vertices triangles =
-    triangles
-        |> List.foldl
-            (\indices state ->
-                case state of
-                    Ok triangleData_ ->
-                        case Triangle.andThen (flip Array.get vertices) indices of
-                            Just ( v0, v1, v2 ) ->
-                                case SketchPlane3d.throughPoints v0 v1 v2 of
-                                    Just sketchPlane ->
-                                        { indices = Triangle.map VertexId indices
-                                        , sketchPlane = sketchPlane
-                                        , triangle2d = Triangle3d.from v0 v1 v2 |> Triangle3d.projectInto sketchPlane
-                                        }
-                                            :: triangleData_
-                                            |> Ok
+    let
+        orderTuple ( a, b ) =
+            if a < b then
+                ( a, b )
+
+            else
+                ( b, a )
+
+        adjacentTrianglePairs =
+            triangles
+                |> List.indexedMap Tuple.pair
+                |> List.concatMap
+                    (\( triIndex, tri ) ->
+                        Triangle.edges tri
+                            |> List.indexedMap
+                                (\edgeIndex edge ->
+                                    { edge = orderTuple edge, edgeIndex = edgeIndex, triIndex = triIndex }
+                                )
+                    )
+                |> List.gatherEqualsBy .edge
+
+        adjacentTriangles : Maybe (Dict ( TriangleId_, VertexId_ ) AdjacentTriangle)
+        adjacentTriangles =
+            adjacentTrianglePairs
+                |> List.foldl
+                    (\( { edgeIndex, triIndex }, rest ) state ->
+                        case ( rest, state ) of
+                            ( [], Just list ) ->
+                                Just list
+
+                            ( other :: [], Just list ) ->
+                                [ ( ( triIndex, edgeIndex ), { adjacentId = TriangleId other.triIndex, adjacentEdge = TriangleEdge.fromInt other.edgeIndex } )
+                                , ( ( other.triIndex, other.edgeIndex ), { adjacentId = TriangleId triIndex, adjacentEdge = TriangleEdge.fromInt edgeIndex } )
+                                ]
+                                    ++ list
+                                    |> Just
+
+                            _ ->
+                                Nothing
+                    )
+                    (Just [])
+                |> Maybe.map Dict.fromList
+    in
+    case adjacentTriangles of
+        Just adjacentTriangles_ ->
+            triangles
+                |> List.indexedMap Tuple.pair
+                |> List.foldl
+                    (\( triangleId, indices ) state ->
+                        case state of
+                            Ok triangleData_ ->
+                                case Triangle.andThen (flip Array.get vertices) indices of
+                                    Just ( v0, v1, v2 ) ->
+                                        case SketchPlane3d.throughPoints v0 v1 v2 of
+                                            Just sketchPlane ->
+                                                { indices = Triangle.map VertexId indices
+                                                , sketchPlane = sketchPlane
+                                                , triangle2d = Triangle3d.from v0 v1 v2 |> Triangle3d.projectInto sketchPlane
+                                                , adjacent =
+                                                    Triangle.from
+                                                        (Dict.get ( triangleId, 0 ) adjacentTriangles_)
+                                                        (Dict.get ( triangleId, 1 ) adjacentTriangles_)
+                                                        (Dict.get ( triangleId, 2 ) adjacentTriangles_)
+                                                }
+                                                    :: triangleData_
+                                                    |> Ok
+
+                                            Nothing ->
+                                                Err TriangleIsDegenerate
 
                                     Nothing ->
-                                        Err TriangleIsDegenerate
+                                        Err TriangleVertexNotFound
 
-                            Nothing ->
-                                Err TriangleVertexNotFound
+                            Err _ ->
+                                state
+                    )
+                    (Ok [])
 
-                    Err _ ->
-                        state
-            )
-            (Ok [])
+        Nothing ->
+            Err
+                EdgeSharedBy3OrMoreTriangles
 
 
 fromVerticesAndIndices : Array (Point3d units coordinates) -> List (Triangle VertexId_) -> Result Error (Mesh units coordinates)
 fromVerticesAndIndices vertices triangles =
     case generateTriangleData vertices triangles of
         Ok triangleData ->
-            let
-                orderTuple ( a, b ) =
-                    if a < b then
-                        ( a, b )
-
-                    else
-                        ( b, a )
-
-                adjacentTrianglePairs =
-                    triangles
-                        |> List.indexedMap Tuple.pair
-                        |> List.concatMap
-                            (\( triIndex, tri ) ->
-                                Triangle.edges tri
-                                    |> List.indexedMap
-                                        (\edgeIndex edge ->
-                                            { edge = orderTuple edge, edgeIndex = edgeIndex, triIndex = triIndex }
-                                        )
-                            )
-                        |> List.gatherEqualsBy .edge
-
-                adjacentTriangles =
-                    adjacentTrianglePairs
-                        |> List.foldl
-                            (\( { edgeIndex, triIndex }, rest ) state ->
-                                case ( rest, state ) of
-                                    ( [], Just list ) ->
-                                        Just list
-
-                                    ( other :: [], Just list ) ->
-                                        [ ( ( triIndex, edgeIndex ), ( TriangleId other.triIndex, TriangleEdge.toEdge other.edgeIndex ) )
-                                        , ( ( other.triIndex, other.edgeIndex ), ( TriangleId triIndex, TriangleEdge.toEdge edgeIndex ) )
-                                        ]
-                                            ++ list
-                                            |> Just
-
-                                    _ ->
-                                        Nothing
-                            )
-                            (Just [])
-            in
-            case adjacentTriangles of
-                Just list ->
-                    { triangles = Array.fromList triangleData
-                    , vertices = vertices
-                    , adjacentTriangles = Dict.fromList list
-                    }
-                        |> Mesh
-                        |> Ok
-
-                Nothing ->
-                    Err EdgeSharedBy3OrMoreTriangles
+            { triangles = Array.fromList triangleData
+            , vertices = vertices
+            }
+                |> Mesh
+                |> Ok
 
         Err error ->
             Err error
@@ -264,10 +272,6 @@ getVertex (VertexId vertexId) (Mesh mesh) =
     Array.get vertexId mesh.vertices
 
 
-type alias AdjacentTriangle =
-    { triangleId : TriangleId_, flipped : Bool }
-
-
 type SurfacePoint units
     = SurfacePoint SurfacePoint_
 
@@ -304,7 +308,7 @@ getTriangleEdgeFrame :
     -> TriangleEdge
     -> Maybe (Frame2d units SurfaceCoordinates { defines : AdjacentSurfaceCoordinates })
 getTriangleEdgeFrame mesh triangleId triangleSide =
-    case ( getTriangleData triangleId mesh, getAdjacentTriangle mesh ( triangleId, triangleSide ) ) of
+    case ( getTriangleData triangleId mesh, getAdjacentTriangle mesh triangleId triangleSide ) of
         ( Just triangleData, Just adjacentTriangleData ) ->
             let
                 ( e0, e1 ) =
@@ -371,7 +375,7 @@ move mesh movement (SurfacePoint ({ triangleId, position } as surfacePoint)) =
                                     |> Maybe.map
                                         (\intersectionPoint ->
                                             { edge = edge
-                                            , sideIndex = TriangleEdge.toEdge index
+                                            , sideIndex = TriangleEdge.fromInt index
                                             , intersectionPoint = intersectionPoint
                                             }
                                         )
@@ -383,7 +387,7 @@ move mesh movement (SurfacePoint ({ triangleId, position } as surfacePoint)) =
             in
             case intersection of
                 Just { edge, sideIndex, intersectionPoint } ->
-                    case getAdjacentTriangle mesh ( triangleId, sideIndex ) of
+                    case getAdjacentTriangle mesh triangleId sideIndex of
                         Just adjacentTriangle ->
                             let
                                 t =
@@ -440,7 +444,8 @@ move mesh movement (SurfacePoint ({ triangleId, position } as surfacePoint)) =
 
 getAdjacentTriangle :
     Mesh units coordinates
-    -> ( TriangleId, TriangleEdge )
+    -> TriangleId
+    -> TriangleEdge
     ->
         Maybe
             { triangleId : TriangleId
@@ -448,11 +453,11 @@ getAdjacentTriangle :
             , side : TriangleEdge
             , isEdgeReversed : Bool
             }
-getAdjacentTriangle mesh ( TriangleId triangleId, side ) =
-    getAdjacentTriangles mesh
-        |> Dict.get ( triangleId, TriangleEdge.toInt side )
+getAdjacentTriangle mesh triangleId side =
+    getTriangleData triangleId mesh
+        |> Maybe.andThen (.adjacent >> Triangle.getVertex (TriangleEdge.toInt side |> TriangleVertex.fromInt))
         |> Maybe.andThen
-            (\( adjacentTriangleId, adjacentSide ) ->
+            (\{ adjacentId, adjacentEdge } ->
                 Maybe.map2
                     (\triangleData adjacentTriangleData ->
                         let
@@ -460,14 +465,14 @@ getAdjacentTriangle mesh ( TriangleId triangleId, side ) =
                                 Triangle.getSide side triangleData.indices
 
                             adjacentTriangleSide =
-                                Triangle.getSide adjacentSide adjacentTriangleData.indices
+                                Triangle.getSide adjacentEdge adjacentTriangleData.indices
                         in
-                        { triangleId = adjacentTriangleId
+                        { triangleId = adjacentId
                         , triangleData = adjacentTriangleData
-                        , side = adjacentSide
+                        , side = adjacentEdge
                         , isEdgeReversed = triangleSide /= adjacentTriangleSide
                         }
                     )
-                    (getTriangleData (TriangleId triangleId) mesh)
-                    (getTriangleData adjacentTriangleId mesh)
+                    (getTriangleData triangleId mesh)
+                    (getTriangleData adjacentId mesh)
             )
