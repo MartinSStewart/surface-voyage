@@ -109,6 +109,7 @@ moveAcrossEdgeTest =
     test "moveAcrossEdgeTest" <|
         \_ ->
             Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) twoTriangleSurface
+                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 0 0) twoTriangleSurface
                 |> Mesh.move twoTriangleSurface (Vector2d.meters 0.6 0)
                 |> flip Mesh.surfacePointToWorld twoTriangleSurface
                 |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.5 0))
@@ -120,6 +121,7 @@ moveWithinTriangleTest =
     test "moveWithinTriangleTest" <|
         \_ ->
             Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) twoTriangleSurface
+                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 0 0) twoTriangleSurface
                 |> Mesh.move twoTriangleSurface (Vector2d.meters 0.1 0)
                 |> flip Mesh.surfacePointToWorld twoTriangleSurface
                 |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.3 0.5 0))

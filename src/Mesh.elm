@@ -9,10 +9,13 @@ module Mesh exposing
     , getVertices
     , move
     , nearestSurfacePoint
+    , surfacePointDirectionTowards
+    , surfacePointRotateBy
     , surfacePointToWorld
     , surfacePointTriangleId
     )
 
+import Angle exposing (Angle)
 import Array exposing (Array)
 import Basics.Extra exposing (flip)
 import Dict exposing (Dict)
@@ -32,6 +35,7 @@ import Triangle3d exposing (Triangle3d)
 import TriangleEdge exposing (TriangleEdge)
 import TriangleVertex
 import Vector2d exposing (Vector2d)
+import Vector3d
 
 
 type Mesh units coordinates
@@ -284,9 +288,43 @@ type alias SurfacePoint_ =
     }
 
 
+surfacePointRotateBy : Angle -> SurfacePoint units -> SurfacePoint units
+surfacePointRotateBy angle (SurfacePoint surfacePoint) =
+    SurfacePoint { surfacePoint | direction = Direction2d.rotateBy angle surfacePoint.direction }
+
+
+surfacePointSetDirection : Direction2d SurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
+surfacePointSetDirection direction (SurfacePoint surfacePoint) =
+    SurfacePoint { surfacePoint | direction = direction }
+
+
+surfacePointDirectionTowards : Point3d units coordinates -> Mesh units coordinates -> SurfacePoint units -> SurfacePoint units
+surfacePointDirectionTowards point mesh surfacePoint =
+    case getTriangleData (surfacePointTriangleId surfacePoint) mesh of
+        Just triangleData ->
+            let
+                a =
+                    surfacePointPosition surfacePoint |> Interpolative.toPoint2d triangleData.triangle2d
+            in
+            case Point3d.projectInto triangleData.sketchPlane point |> Direction2d.from a of
+                Just newDirection ->
+                    surfacePointSetDirection newDirection surfacePoint
+
+                Nothing ->
+                    surfacePoint
+
+        _ ->
+            surfacePoint
+
+
 surfacePointTriangleId : SurfacePoint units -> TriangleId
 surfacePointTriangleId (SurfacePoint surfacePoint) =
     surfacePoint.triangleId
+
+
+surfacePointPosition : SurfacePoint units -> Interpolative
+surfacePointPosition (SurfacePoint surfacePoint) =
+    surfacePoint.position
 
 
 type SurfaceSide
@@ -322,10 +360,10 @@ getTriangleEdgeFrame mesh triangleId triangleSide =
                         |> Triangle.getSide adjacentTriangleData.side
 
                 eAngle =
-                    Direction2d.from e0 e1 |> Maybe.withDefault Direction2d.x
+                    Direction2d.from e0 e1 |> Maybe.withDefault Direction2d.y
 
                 aeAngle =
-                    Direction2d.from ae0 ae1 |> Maybe.withDefault Direction2d.x
+                    Direction2d.from ae0 ae1 |> Maybe.withDefault Direction2d.y
 
                 angleDiff =
                     Direction2d.angleFrom eAngle aeAngle
@@ -350,7 +388,7 @@ getTriangleEdgeFrame mesh triangleId triangleSide =
 
 
 move : Mesh units coordinates -> Vector2d units SurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
-move mesh movement (SurfacePoint ({ triangleId, position } as surfacePoint)) =
+move mesh movement (SurfacePoint ({ triangleId, position, direction } as surfacePoint)) =
     case getTriangleData triangleId mesh of
         Just triangleData ->
             let
@@ -361,7 +399,9 @@ move mesh movement (SurfacePoint ({ triangleId, position } as surfacePoint)) =
                     Interpolative.toPoint2d triangleData.triangle2d position
 
                 endPoint =
-                    Point2d.translateBy movement point
+                    Direction2d.angleFrom Direction2d.y direction
+                        |> flip Vector2d.rotateBy movement
+                        |> flip Point2d.translateBy point
 
                 moveLine =
                     LineSegment2d.from point endPoint
