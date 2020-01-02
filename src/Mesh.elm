@@ -354,6 +354,10 @@ getTriangleEdgeFrame mesh triangleId triangleSide =
             Nothing
 
 
+vector2dChangeCoordinate v =
+    Vector2d.toTuple rawQuantity v |> Vector2d.fromTuple Quantity.Quantity
+
+
 getTriangleEdgeFrame_ :
     TriangleEdge
     -> TriangleData units coordinates
@@ -386,12 +390,12 @@ getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
     if adjacentTriangleData.isEdgeReversed then
         Frame2d.atOrigin
             |> Frame2d.rotateBy angleDiff
-            |> Frame2d.translateBy (Vector2d.from e0 ae0)
+            |> Frame2d.translateBy (Vector2d.from ae0 e0)
 
     else
         Frame2d.atOrigin
             |> Frame2d.rotateBy angleDiff
-            |> Frame2d.translateBy (Vector2d.from e0 ae0)
+            |> Frame2d.translateBy (Vector2d.from ae0 e0)
 
 
 move : Mesh units coordinates -> Vector2d units SurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
@@ -451,8 +455,12 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                                 --        (Vector2d.length movement)
                                 --        |> (-) 1
                                 --        |> flip Vector2d.scaleBy movement
-                                a =
-                                    getTriangleEdgeFrame mesh
+                                frame =
+                                    getTriangleEdgeFrame_ sideIndex triangleData adjacentTriangle
+
+                                newMovement : Vector2d units SurfaceCoordinates
+                                newMovement =
+                                    Vector2d.relativeTo frame movement |> vector2dChangeCoordinate |> Debug.log "newMovement"
 
                                 newSurfacePosition =
                                     Interpolative.fromTriangleSide
@@ -476,7 +484,7 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                                         }
                                         |> Debug.log "newSurfacePoint"
                             in
-                            move mesh Vector2d.zero newSurfacePoint
+                            move mesh newMovement newSurfacePoint
 
                         Nothing ->
                             SurfacePoint
