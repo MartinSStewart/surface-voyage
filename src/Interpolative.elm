@@ -35,7 +35,7 @@ fromTriangleSide : Float -> TriangleEdge -> Interpolative
 fromTriangleSide t triangleEdge =
     case triangleEdge of
         EdgeZero ->
-            from t 0
+            from t 1
 
         EdgeOne ->
             from 1 t

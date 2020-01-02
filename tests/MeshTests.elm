@@ -106,14 +106,15 @@ frameTest =
 
 moveAcrossEdgeTest : Test
 moveAcrossEdgeTest =
-    test "moveAcrossEdgeTest" <|
-        \_ ->
-            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) twoTriangleSurface
-                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 0 0) twoTriangleSurface
-                |> Mesh.move twoTriangleSurface (Vector2d.meters 0.6 0)
-                |> flip Mesh.surfacePointToWorld twoTriangleSurface
-                |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.5 0))
-                |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
+    only <|
+        test "moveAcrossEdgeTest" <|
+            \_ ->
+                Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) twoTriangleSurface
+                    |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 0 0) twoTriangleSurface
+                    |> Mesh.move twoTriangleSurface (Vector2d.meters 0.6 0)
+                    |> flip Mesh.surfacePointToWorld twoTriangleSurface
+                    |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.5 0))
+                    |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
 
 
 moveWithinTriangleTest : Test

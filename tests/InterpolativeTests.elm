@@ -8,6 +8,7 @@ import Point3d
 import Quantity
 import Test exposing (Test, fuzz, fuzz2, fuzz3, only, test)
 import Triangle2d
+import TriangleEdge
 
 
 interpolativeRoundTrip : Test
@@ -131,6 +132,34 @@ test7 =
                     Point2d.meters 0.1 0.5
             in
             Interpolative.fromPoint2d triangle point |> Expect.equal (Interpolative.from 0 0.5)
+
+
+test8 : Test
+test8 =
+    test "fromTriangleSide test 0" <|
+        \_ ->
+            let
+                triangle =
+                    Triangle2d.from Point2d.origin (Point2d.meters 0 1) (Point2d.meters 1 1)
+
+                expected =
+                    Point2d.meters 0.5 0.5
+            in
+            Interpolative.fromTriangleSide 0.5 TriangleEdge.EdgeTwo |> Interpolative.toPoint2d triangle |> pointEqualWithin expected
+
+
+test9 : Test
+test9 =
+    test "fromTriangleSide test 1" <|
+        \_ ->
+            let
+                triangle =
+                    Triangle2d.from Point2d.origin (Point2d.meters 1 1) (Point2d.meters 1 0)
+
+                expected =
+                    Point2d.meters 0.5 0.5
+            in
+            Interpolative.fromTriangleSide 0.5 TriangleEdge.EdgeZero |> Interpolative.toPoint2d triangle |> pointEqualWithin expected
 
 
 fuzzInterpolative =

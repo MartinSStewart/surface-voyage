@@ -348,43 +348,50 @@ getTriangleEdgeFrame :
 getTriangleEdgeFrame mesh triangleId triangleSide =
     case ( getTriangleData triangleId mesh, getAdjacentTriangle mesh triangleId triangleSide ) of
         ( Just triangleData, Just adjacentTriangleData ) ->
-            let
-                ( e0, e1 ) =
-                    triangleData.triangle2d
-                        |> Triangle.fromTriangle2d
-                        |> Triangle.getSide triangleSide
-
-                ( ae0, ae1 ) =
-                    adjacentTriangleData.triangleData.triangle2d
-                        |> Triangle.fromTriangle2d
-                        |> Triangle.getSide adjacentTriangleData.side
-
-                eAngle =
-                    Direction2d.from e0 e1 |> Maybe.withDefault Direction2d.y
-
-                aeAngle =
-                    Direction2d.from ae0 ae1 |> Maybe.withDefault Direction2d.y
-
-                angleDiff =
-                    Direction2d.angleFrom eAngle aeAngle
-
-                --adjacentEdge =
-                --    Triangle.getSide adjacentTriangleData.side adjacentTriangle2d
-            in
-            if adjacentTriangleData.isEdgeReversed then
-                Frame2d.atOrigin
-                    |> Frame2d.rotateBy angleDiff
-                    |> Frame2d.translateBy (Vector2d.from e0 ae0)
-                    |> Just
-
-            else
-                Frame2d.atOrigin
-                    |> Frame2d.rotateBy angleDiff
-                    |> Frame2d.translateBy (Vector2d.from e0 ae0)
-                    |> Just
+            getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData |> Just
 
         _ ->
             Nothing
+
+
+getTriangleEdgeFrame_ :
+    TriangleEdge
+    -> TriangleData units coordinates
+    -> AdjacentTriangleData units coordinates
+    -> Frame2d units SurfaceCoordinates { defines : AdjacentSurfaceCoordinates }
+getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
+    let
+        ( e0, e1 ) =
+            triangleData.triangle2d
+                |> Triangle.fromTriangle2d
+                |> Triangle.getSide triangleSide
+
+        ( ae0, ae1 ) =
+            adjacentTriangleData.triangleData.triangle2d
+                |> Triangle.fromTriangle2d
+                |> Triangle.getSide adjacentTriangleData.side
+
+        eAngle =
+            Direction2d.from e0 e1 |> Maybe.withDefault Direction2d.y
+
+        aeAngle =
+            Direction2d.from ae0 ae1 |> Maybe.withDefault Direction2d.y
+
+        angleDiff =
+            Direction2d.angleFrom eAngle aeAngle
+
+        --adjacentEdge =
+        --    Triangle.getSide adjacentTriangleData.side adjacentTriangle2d
+    in
+    if adjacentTriangleData.isEdgeReversed then
+        Frame2d.atOrigin
+            |> Frame2d.rotateBy angleDiff
+            |> Frame2d.translateBy (Vector2d.from e0 ae0)
+
+    else
+        Frame2d.atOrigin
+            |> Frame2d.rotateBy angleDiff
+            |> Frame2d.translateBy (Vector2d.from e0 ae0)
 
 
 move : Mesh units coordinates -> Vector2d units SurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
@@ -393,18 +400,19 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
         Just triangleData ->
             let
                 ( e0, e1, e2 ) =
-                    Triangle2d.edges triangleData.triangle2d
+                    Triangle2d.edges triangleData.triangle2d |> Debug.log "e"
 
                 point =
-                    Interpolative.toPoint2d triangleData.triangle2d position
+                    Interpolative.toPoint2d triangleData.triangle2d position |> Debug.log "point"
 
                 endPoint =
                     Direction2d.angleFrom Direction2d.y direction
                         |> flip Vector2d.rotateBy movement
                         |> flip Point2d.translateBy point
+                        |> Debug.log "endpoint"
 
                 moveLine =
-                    LineSegment2d.from point endPoint
+                    LineSegment2d.from point endPoint |> Debug.log "moveLine"
 
                 intersection =
                     [ e0, e1, e2 ]
@@ -424,6 +432,7 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                            the nearest one is due to our starting position lying on the triangle edge
                         -}
                         |> List.maximumBy (.intersectionPoint >> Point2d.distanceFrom point >> rawQuantity)
+                        |> Debug.log "intersection"
             in
             case intersection of
                 Just { edge, sideIndex, intersectionPoint } ->
@@ -432,8 +441,9 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                             let
                                 t =
                                     Quantity.ratio
-                                        (Point2d.distanceFrom intersectionPoint point)
+                                        (Point2d.distanceFrom intersectionPoint (LineSegment2d.startPoint edge))
                                         (LineSegment2d.length edge)
+                                        |> Debug.log "t"
 
                                 --movementLeft =
                                 --    Quantity.ratio
@@ -441,6 +451,9 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                                 --        (Vector2d.length movement)
                                 --        |> (-) 1
                                 --        |> flip Vector2d.scaleBy movement
+                                a =
+                                    getTriangleEdgeFrame mesh
+
                                 newSurfacePosition =
                                     Interpolative.fromTriangleSide
                                         (if adjacentTriangle.isEdgeReversed then
@@ -449,7 +462,8 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                                          else
                                             t
                                         )
-                                        adjacentTriangle.side
+                                        (adjacentTriangle.side |> Debug.log "asdfsadf")
+                                        |> Debug.log "newSurfacePosition"
 
                                 --endPointOnAdjacentTriangle =
                                 --    getSketchPlane
@@ -460,6 +474,7 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                                         , direction = Direction2d.x
                                         , faceSide = Front
                                         }
+                                        |> Debug.log "newSurfacePoint"
                             in
                             move mesh Vector2d.zero newSurfacePoint
 
@@ -470,6 +485,7 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                                 , direction = Direction2d.x
                                 , faceSide = Front
                                 }
+                                |> Debug.log "NothingA"
 
                 Nothing ->
                     SurfacePoint
@@ -477,22 +493,25 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                             | triangleId = triangleId
                             , position = Interpolative.fromPoint2d triangleData.triangle2d endPoint
                         }
+                        |> Debug.log "NothingB"
 
         Nothing ->
             SurfacePoint surfacePoint
+
+
+type alias AdjacentTriangleData units coordinates =
+    { triangleId : TriangleId
+    , triangleData : TriangleData units coordinates
+    , side : TriangleEdge
+    , isEdgeReversed : Bool
+    }
 
 
 getAdjacentTriangle :
     Mesh units coordinates
     -> TriangleId
     -> TriangleEdge
-    ->
-        Maybe
-            { triangleId : TriangleId
-            , triangleData : TriangleData units coordinates
-            , side : TriangleEdge
-            , isEdgeReversed : Bool
-            }
+    -> Maybe (AdjacentTriangleData units coordinates)
 getAdjacentTriangle mesh triangleId side =
     getTriangleData triangleId mesh
         |> Maybe.andThen (.adjacent >> Triangle.getVertex (TriangleEdge.toInt side |> TriangleVertex.fromInt))
