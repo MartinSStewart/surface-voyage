@@ -2,9 +2,11 @@ module MeshTests exposing (..)
 
 import Basics.Extra exposing (flip)
 import Expect
+import Frame2d
 import Fuzz
+import Interpolative
 import Length exposing (Meters)
-import Mesh
+import Mesh exposing (TriangleData, TriangleId)
 import MeshBuilder
 import Point2d
 import Point3d
@@ -68,24 +70,85 @@ twoTriangleSurface =
     in
     case Mesh.fromVerticesAndIndices verts indices of
         Ok mesh ->
-            mesh
+            mesh |> Debug.log "mesh"
 
         Err error ->
             error |> Debug.toString |> Debug.todo
 
 
-frameTest : Test
-frameTest =
-    test "frame test" <|
+
+--frameTest : Test
+--frameTest =
+--    only <|
+--        test "frame test" <|
+--            \_ ->
+--                let
+--                    surfacePoint =
+--                        Mesh.nearestSurfacePoint (Point3d.meters 0.5 0.5 0) twoTriangleSurface
+--
+--                    triangleId =
+--                        Mesh.surfacePointTriangleId surfacePoint
+--                in
+--                case Mesh.getTriangleData triangleId twoTriangleSurface of
+--                    Just triangleData ->
+--                        let
+--                            edge =
+--                                getConnectedEdge triangleData
+--                        in
+--                        case Mesh.getAdjacentTriangle twoTriangleSurface triangleId edge of
+--                            Just adjacent ->
+--                                let
+--                                    frame =
+--                                        Mesh.getTriangleEdgeFrame_ edge triangleData adjacent
+--
+--                                    position =
+--                                        Mesh.surfacePointPosition surfacePoint |> Interpolative.toPoint2d triangleData.triangle2d
+--                                in
+--                                position |> Point2d.relativeTo frame |> Mesh.surfacePointToWorld |> Expect.equal expected
+--
+--                            Nothing ->
+--                                Expect.fail "Failed to get adjacent triangle data"
+--
+--                    Nothing ->
+--                        Expect.fail "Failed to get triangle data"
+
+
+getAdjacentTriangleTest : Test
+getAdjacentTriangleTest =
+    test "getAdjacentTriangle test" <|
         \_ ->
             let
-                triangleId =
-                    Mesh.nearestSurfacePoint (Point3d.meters 0 1 0) twoTriangleSurface |> Mesh.surfacePointTriangleId
+                surfacePoint =
+                    Mesh.nearestSurfacePoint (Point3d.meters 0 1 0) twoTriangleSurface
 
-                frame =
-                    Mesh.getTriangleEdgeFrame twoTriangleSurface triangleId EdgeTwo |> Debug.log "frame"
+                triangleId : TriangleId
+                triangleId =
+                    Mesh.surfacePointTriangleId surfacePoint
             in
-            Expect.fail ""
+            case Mesh.getTriangleData triangleId twoTriangleSurface |> Maybe.map getConnectedEdge of
+                Just edge ->
+                    Mesh.getAdjacentTriangle twoTriangleSurface triangleId edge
+                        |> Maybe.map (.triangleId >> (/=) triangleId)
+                        |> Expect.equal (Just True)
+
+                Nothing ->
+                    Expect.fail "Failed to get connected edge"
+
+
+getConnectedEdge : TriangleData units coordinates -> TriangleEdge
+getConnectedEdge triangleData =
+    case triangleData.adjacent of
+        ( Just _, _, _ ) ->
+            EdgeZero
+
+        ( Nothing, Just _, _ ) ->
+            EdgeOne
+
+        ( Nothing, Nothing, Just _ ) ->
+            EdgeTwo
+
+        ( Nothing, Nothing, Nothing ) ->
+            EdgeZero
 
 
 
@@ -106,15 +169,14 @@ frameTest =
 
 moveAcrossEdgeTest : Test
 moveAcrossEdgeTest =
-    only <|
-        test "moveAcrossEdgeTest" <|
-            \_ ->
-                Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) twoTriangleSurface
-                    |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 0 0) twoTriangleSurface
-                    |> Mesh.move twoTriangleSurface (Vector2d.meters 0.6 0)
-                    |> flip Mesh.surfacePointToWorld twoTriangleSurface
-                    |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.5 0))
-                    |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
+    test "moveAcrossEdgeTest" <|
+        \_ ->
+            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) twoTriangleSurface
+                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 0 0) twoTriangleSurface
+                |> Mesh.move twoTriangleSurface (Vector2d.meters 0.6 0)
+                |> flip Mesh.surfacePointToWorld twoTriangleSurface
+                |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.5 0))
+                |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
 
 
 moveWithinTriangleTest : Test

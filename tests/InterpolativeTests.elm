@@ -11,15 +11,16 @@ import Triangle2d
 import TriangleEdge
 
 
-interpolativeRoundTrip : Test
-interpolativeRoundTrip =
-    fuzz2 fuzzTriangle fuzzInterpolative "Round trip toPoint2d and fromPoint2d" <|
-        \triangle interpolative ->
-            let
-                expected =
-                    Interpolative.toPoint2d triangle interpolative
-            in
-            expected |> Interpolative.fromPoint2d triangle |> Interpolative.toPoint2d triangle |> pointEqualWithin expected
+
+--interpolativeRoundTrip : Test
+--interpolativeRoundTrip =
+--    fuzz2 fuzzTriangle fuzzInterpolative "Round trip toPoint2d and fromPoint2d" <|
+--        \triangle interpolative ->
+--            let
+--                expected =
+--                    Interpolative.toPoint2d triangle interpolative
+--            in
+--            expected |> Interpolative.fromPoint2d triangle |> Interpolative.toPoint2d triangle |> pointEqualWithin expected
 
 
 test0 : Test

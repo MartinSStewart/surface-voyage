@@ -2,14 +2,20 @@ module Mesh exposing
     ( Error(..)
     , Mesh
     , SurfacePoint
+    , SurfaceSide(..)
+    , TriangleData
+    , TriangleId
+    , VertexId
     , fromVerticesAndIndices
     , getAdjacentTriangle
     , getTriangleData
     , getTriangleEdgeFrame
+    , getTriangleEdgeFrame_
     , getVertices
     , move
     , nearestSurfacePoint
     , surfacePointDirectionTowards
+    , surfacePointPosition
     , surfacePointRotateBy
     , surfacePointToWorld
     , surfacePointTriangleId
@@ -117,8 +123,12 @@ generateTriangleData vertices triangles =
                                 Just list
 
                             ( other :: [], Just list ) ->
-                                [ ( ( triIndex, edgeIndex ), { adjacentId = TriangleId other.triIndex, adjacentEdge = TriangleEdge.fromInt other.edgeIndex } )
-                                , ( ( other.triIndex, other.edgeIndex ), { adjacentId = TriangleId triIndex, adjacentEdge = TriangleEdge.fromInt edgeIndex } )
+                                [ ( ( triIndex, edgeIndex )
+                                  , { adjacentId = TriangleId other.triIndex, adjacentEdge = TriangleEdge.fromInt other.edgeIndex }
+                                  )
+                                , ( ( other.triIndex, other.edgeIndex )
+                                  , { adjacentId = TriangleId triIndex, adjacentEdge = TriangleEdge.fromInt edgeIndex }
+                                  )
                                 ]
                                     ++ list
                                     |> Just
@@ -163,6 +173,7 @@ generateTriangleData vertices triangles =
                                 state
                     )
                     (Ok [])
+                |> Result.map List.reverse
 
         Nothing ->
             Err
@@ -400,11 +411,15 @@ getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
 
 move : Mesh units coordinates -> Vector2d units SurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
 move mesh movement (SurfacePoint ({ triangleId, position, direction } as surfacePoint)) =
+    let
+        _ =
+            Debug.log "start" surfacePoint
+    in
     case getTriangleData triangleId mesh of
         Just triangleData ->
             let
                 ( e0, e1, e2 ) =
-                    Triangle2d.edges triangleData.triangle2d |> Debug.log "e"
+                    triangleData.triangle2d |> Debug.log "triangle2d" |> Triangle2d.edges
 
                 point =
                     Interpolative.toPoint2d triangleData.triangle2d position |> Debug.log "point"
@@ -470,7 +485,7 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                                          else
                                             t
                                         )
-                                        (adjacentTriangle.side |> Debug.log "asdfsadf")
+                                        adjacentTriangle.side
                                         |> Debug.log "newSurfacePosition"
 
                                 --endPointOnAdjacentTriangle =
