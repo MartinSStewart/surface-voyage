@@ -70,7 +70,7 @@ twoTriangleSurface =
     in
     case Mesh.fromVerticesAndIndices verts indices of
         Ok mesh ->
-            mesh |> Debug.log "mesh"
+            mesh
 
         Err error ->
             error |> Debug.toString |> Debug.todo

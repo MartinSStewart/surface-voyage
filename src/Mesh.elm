@@ -143,7 +143,7 @@ generateTriangleData vertices triangles =
         Just adjacentTriangles_ ->
             triangles
                 |> List.indexedMap Tuple.pair
-                |> List.foldl
+                |> List.foldr
                     (\( triangleId, indices ) state ->
                         case state of
                             Ok triangleData_ ->
@@ -173,7 +173,6 @@ generateTriangleData vertices triangles =
                                 state
                     )
                     (Ok [])
-                |> Result.map List.reverse
 
         Nothing ->
             Err
@@ -418,6 +417,9 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
     case getTriangleData triangleId mesh of
         Just triangleData ->
             let
+                _ =
+                    triangleDataGetTriangle3d triangleData |> Debug.log "triangle3d"
+
                 ( e0, e1, e2 ) =
                     triangleData.triangle2d |> Debug.log "triangle2d" |> Triangle2d.edges
 
