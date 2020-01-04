@@ -50,19 +50,14 @@ fromPoint2d triangle point =
         ( v0, v1, v2 ) =
             Triangle2d.vertices triangle
 
-        --|> Debug.log "v0 v1 v2"
         maybeV2ToV0 =
             Direction2d.from v2 v0
 
-        --|> Debug.log "maybeV2ToV0"
         maybeV2ToPoint =
             Direction2d.from v2 point
 
-        --|> Debug.log "maybeV2ToPoint"
         maybeV0ToV1 =
             Direction2d.from v0 v1
-
-        --|> Debug.log "maybeV0ToV1"
     in
     case ( maybeV2ToV0, maybeV2ToPoint, maybeV0ToV1 ) of
         ( _, Nothing, _ ) ->
@@ -73,52 +68,40 @@ fromPoint2d triangle point =
                 v0ToV2Length =
                     Point2d.distanceFrom v0 v2
 
-                --|> Debug.log "v0ToV2Length"
                 v0ToV1Length =
                     Point2d.distanceFrom v0 v1
 
-                --|> Debug.log "v0ToV1Length"
                 pointAngle : Angle
                 pointAngle =
                     Direction2d.angleFrom v2ToPoint v2ToV0
 
-                --|> Debug.log "pointAngle"
                 v0Angle : Angle
                 v0Angle =
                     Direction2d.angleFrom (Direction2d.reverse v2ToV0) v0ToV1
 
-                --|> Debug.log "v0Angle"
                 pointV1Angle : Angle
                 pointV1Angle =
                     Quantity.sum [ pointAngle, v0Angle, Angle.radians -pi ] |> Quantity.negate
 
-                --|> Debug.log "pointV1Angle"
                 cDivByC =
                     Quantity.divideBy (Angle.sin pointV1Angle) v0ToV2Length
 
-                --|> Debug.log "cDivByC"
                 b =
                     Quantity.multiplyBy (Angle.sin pointAngle) cDivByC
 
-                --|> Debug.log "b"
                 t0 =
                     Quantity.ratio b v0ToV1Length
 
-                --|> Debug.log "t0"
                 t0Point =
                     LineSegment2d.interpolate (LineSegment2d.from v0 v1) t0
 
-                --|> Debug.log "t0Point"
                 t0PointToV2Line =
                     LineSegment2d.from t0Point v2
 
-                --|> Debug.log "t0PointToV2Line"
                 t1 =
                     Quantity.ratio
                         (LineSegment2d.from v2 point |> LineSegment2d.length)
                         (LineSegment2d.length t0PointToV2Line)
-
-                --|> Debug.log "t1"
             in
             from t0 t1
 

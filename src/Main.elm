@@ -14,6 +14,7 @@ import Math.Vector3 as Vec3
 import Math.Vector4 as Vec4
 import Mesh exposing (SurfacePoint)
 import MeshBuilder
+import Point2d
 import Point3d
 import Quantity
 import View
@@ -135,6 +136,31 @@ surfaceCube =
     let
         ( verts, indices ) =
             MeshBuilder.toVerticesAndIndices baseCube
+    in
+    case Mesh.fromVerticesAndIndices verts indices of
+        Ok mesh ->
+            mesh
+
+        Err error ->
+            error |> Debug.toString |> Debug.todo
+
+
+twoTriangleMesh =
+    MeshBuilder.square
+        |> MeshBuilder.map
+            (\point ->
+                Point3d.xyz
+                    (Point2d.xCoordinate point)
+                    (Point2d.yCoordinate point)
+                    Quantity.zero
+            )
+
+
+twoTriangleSurface : Mesh.Mesh Meters coordinates
+twoTriangleSurface =
+    let
+        ( verts, indices ) =
+            MeshBuilder.toVerticesAndIndices twoTriangleMesh
     in
     case Mesh.fromVerticesAndIndices verts indices of
         Ok mesh ->

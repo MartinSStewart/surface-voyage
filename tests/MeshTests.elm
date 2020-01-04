@@ -5,14 +5,17 @@ import Expect
 import Frame2d
 import Fuzz
 import Interpolative
+import InterpolativeTests exposing (rawQuantity)
 import Length exposing (Meters)
 import Mesh exposing (TriangleData, TriangleId)
 import MeshBuilder
+import Plane3d
 import Point2d
 import Point3d
 import Point3dExTests exposing (fuzzPoint3dRange, pointEqualWithin)
 import Quantity
 import Test exposing (Test, describe, fuzz, fuzz2, only, test)
+import Triangle2d
 import TriangleEdge exposing (TriangleEdge(..))
 import Vector2d
 import Vector3d
@@ -74,6 +77,76 @@ twoTriangleSurface =
 
         Err error ->
             error |> Debug.toString |> Debug.todo
+
+
+twoTriangleSurfaceFlipped : Mesh.Mesh Meters coordinates
+twoTriangleSurfaceFlipped =
+    let
+        ( verts, indices ) =
+            twoTriangleMesh
+                |> MeshBuilder.map
+                    (Point3d.mirrorAcross
+                        (Plane3d.zx |> Plane3d.translateBy (Vector3d.meters 0 0.5 0))
+                    )
+                |> MeshBuilder.toVerticesAndIndices
+    in
+    case Mesh.fromVerticesAndIndices verts indices of
+        Ok mesh ->
+            mesh
+
+        Err error ->
+            error |> Debug.toString |> Debug.todo
+
+
+vector2dChangeCoordinate v =
+    Vector2d.toTuple rawQuantity v |> Vector2d.fromTuple Quantity.Quantity
+
+
+frameTest2 =
+    only <|
+        test "frame test 2" <|
+            \_ ->
+                let
+                    mesh =
+                        twoTriangleSurfaceFlipped
+
+                    triangleId =
+                        Mesh.nearestSurfacePoint (Point3d.meters 0 0 0) mesh |> Mesh.surfacePointTriangleId
+                in
+                case Mesh.getTriangleData triangleId mesh of
+                    Just triangleData ->
+                        let
+                            connectedEdge =
+                                getConnectedEdge triangleData
+
+                            _ =
+                                triangleData.triangle2d |> Debug.log "top left tri"
+                        in
+                        case Mesh.getAdjacentTriangle_ mesh triangleData connectedEdge of
+                            Just adjacentTriangle ->
+                                let
+                                    frame =
+                                        Mesh.getTriangleEdgeFrame_ connectedEdge triangleData adjacentTriangle
+
+                                    a : Triangle2d.Triangle2d Meters Mesh.SurfaceCoordinates
+                                    a =
+                                        adjacentTriangle.triangleData.triangle2d
+                                            |> Triangle2d.relativeTo frame
+                                            |> Debug.log "a"
+
+                                    b : Triangle2d.Triangle2d Meters Mesh.SurfaceCoordinates
+                                    b =
+                                        adjacentTriangle.triangleData.triangle2d
+                                            |> Triangle2d.placeIn frame
+                                            |> Debug.log "b"
+                                in
+                                Expect.pass
+
+                            Nothing ->
+                                Expect.fail "failed"
+
+                    Nothing ->
+                        Expect.fail "failed"
 
 
 

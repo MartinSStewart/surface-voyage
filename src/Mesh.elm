@@ -1,6 +1,8 @@
 module Mesh exposing
-    ( Error(..)
+    ( AdjacentSurfaceCoordinates
+    , Error(..)
     , Mesh
+    , SurfaceCoordinates
     , SurfacePoint
     , SurfaceSide(..)
     , TriangleData
@@ -8,6 +10,7 @@ module Mesh exposing
     , VertexId
     , fromVerticesAndIndices
     , getAdjacentTriangle
+    , getAdjacentTriangle_
     , getTriangleData
     , getTriangleEdgeFrame
     , getTriangleEdgeFrame_
@@ -30,6 +33,7 @@ import Frame2d exposing (Frame2d)
 import Interpolative exposing (Interpolative)
 import LineSegment2d
 import List.Extra as List
+import List.Nonempty exposing (Nonempty)
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Point3dEx
@@ -354,7 +358,7 @@ getTriangleEdgeFrame :
     Mesh units coordinates
     -> TriangleId
     -> TriangleEdge
-    -> Maybe (Frame2d units SurfaceCoordinates { defines : AdjacentSurfaceCoordinates })
+    -> Maybe (Frame2d units SurfaceCoordinates { defines : SurfaceCoordinates })
 getTriangleEdgeFrame mesh triangleId triangleSide =
     case ( getTriangleData triangleId mesh, getAdjacentTriangle mesh triangleId triangleSide ) of
         ( Just triangleData, Just adjacentTriangleData ) ->
@@ -372,7 +376,7 @@ getTriangleEdgeFrame_ :
     TriangleEdge
     -> TriangleData units coordinates
     -> AdjacentTriangleData units coordinates
-    -> Frame2d units SurfaceCoordinates { defines : AdjacentSurfaceCoordinates }
+    -> Frame2d units SurfaceCoordinates { defines : SurfaceCoordinates }
 getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
     let
         ( e0, e1 ) =
@@ -384,6 +388,9 @@ getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
             adjacentTriangleData.triangleData.triangle2d
                 |> Triangle.fromTriangle2d
                 |> Triangle.getSide adjacentTriangleData.side
+
+        _ =
+            adjacentTriangleData.triangleData |> triangleDataGetTriangle3d |> Debug.log "triangle 3d"
 
         eAngle =
             Direction2d.from e0 e1 |> Maybe.withDefault Direction2d.y
@@ -401,11 +408,113 @@ getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
         Frame2d.atOrigin
             |> Frame2d.rotateBy angleDiff
             |> Frame2d.translateBy (Vector2d.from ae0 e0)
+            |> Debug.log "flipped"
 
     else
         Frame2d.atOrigin
             |> Frame2d.rotateBy angleDiff
-            |> Frame2d.translateBy (Vector2d.from ae0 e0)
+            |> Frame2d.translateBy (Vector2d.from e0 ae0)
+            |> Debug.log "notflipped"
+
+
+
+--flatten :
+--    Mesh units coordinates
+--    -> Vector2d units SurfaceCoordinates
+--    -> SurfacePoint units
+--    -> List ( TriangleId, TriangleData units coordinates )
+--flatten mesh movement (SurfacePoint ({ triangleId, position, direction } as surfacePoint)) =
+--    case traverseStart mesh triangleId of
+--        Just traverse ->
+--            let
+--                triangleData =
+--                    getCurrentTriangle traverse
+--
+--                _ =
+--                    triangleDataGetTriangle3d triangleData |> Debug.log "triangle3d"
+--
+--                ( e0, e1, e2 ) =
+--                    triangleData.triangle2d |> Debug.log "triangle2d" |> Triangle2d.edges
+--
+--                point =
+--                    Interpolative.toPoint2d triangleData.triangle2d position |> Debug.log "point"
+--
+--                endPoint =
+--                    Direction2d.angleFrom Direction2d.y direction
+--                        |> flip Vector2d.rotateBy movement
+--                        |> flip Point2d.translateBy point
+--                        |> Debug.log "endpoint"
+--
+--                moveLine =
+--                    LineSegment2d.from point endPoint |> Debug.log "moveLine"
+--
+--                intersection =
+--                    [ e0, e1, e2 ]
+--                        |> List.indexedMap Tuple.pair
+--                        |> List.filterMap
+--                            (\( index, edge ) ->
+--                                LineSegment2d.intersectionPoint moveLine edge
+--                                    |> Maybe.map
+--                                        (\intersectionPoint ->
+--                                            { edge = edge
+--                                            , sideIndex = TriangleEdge.fromInt index
+--                                            , intersectionPoint = intersectionPoint
+--                                            }
+--                                        )
+--                            )
+--                        {- We want the maximum (not minimum) distance intersection because if we ever end up with two intersections,
+--                           the nearest one is due to our starting position lying on the triangle edge
+--                        -}
+--                        |> List.maximumBy (.intersectionPoint >> Point2d.distanceFrom point >> rawQuantity)
+--                        |> Debug.log "intersection"
+--            in
+--            case intersection of
+--                Just { edge, sideIndex, intersectionPoint } ->
+--                    [ (triangleId, triangleData) ] --getTriangleEdgeFrame_ sideIndex triangleData
+--
+--                Nothing ->
+--                    [(triangleId, triangleData)]
+--
+--        Nothing ->
+--            []
+
+
+traverseStart :
+    Mesh units coordinates
+    -> TriangleId
+    -> Maybe (Traverse units coordinates)
+traverseStart mesh triangleId =
+    case getTriangleData triangleId mesh of
+        Just triangleData ->
+            { mesh = mesh, currentTriangle = triangleData } |> Traverse |> Just
+
+        Nothing ->
+            Nothing
+
+
+traverseNext : TriangleEdge -> Traverse units coordinates -> Maybe (Traverse units coordinates)
+traverseNext triangleEdge (Traverse { mesh, currentTriangle }) =
+    case getAdjacentTriangle_ mesh currentTriangle triangleEdge of
+        Just adjacentTriangle ->
+            { mesh = mesh, currentTriangle = adjacentTriangle.triangleData } |> Traverse |> Just
+
+        Nothing ->
+            Nothing
+
+
+type Traverse units coordinates
+    = Traverse (Traverse_ units coordinates)
+
+
+type alias Traverse_ units coordinates =
+    { mesh : Mesh units coordinates
+    , currentTriangle : TriangleData units coordinates
+    }
+
+
+getCurrentTriangle : Traverse units coordinates -> TriangleData units coordinates
+getCurrentTriangle (Traverse traverse) =
+    traverse.currentTriangle
 
 
 move : Mesh units coordinates -> Vector2d units SurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
@@ -457,7 +566,7 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
             in
             case intersection of
                 Just { edge, sideIndex, intersectionPoint } ->
-                    case getAdjacentTriangle mesh triangleId sideIndex of
+                    case getAdjacentTriangle_ mesh triangleData sideIndex of
                         Just adjacentTriangle ->
                             let
                                 t =
@@ -490,8 +599,6 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                                         adjacentTriangle.side
                                         |> Debug.log "newSurfacePosition"
 
-                                --endPointOnAdjacentTriangle =
-                                --    getSketchPlane
                                 newSurfacePoint =
                                     SurfacePoint
                                         { triangleId = adjacentTriangle.triangleId
@@ -521,7 +628,7 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                         |> Debug.log "NothingB"
 
         Nothing ->
-            SurfacePoint surfacePoint
+            SurfacePoint surfacePoint |> Debug.log "NothingC"
 
 
 type alias AdjacentTriangleData units coordinates =
@@ -538,25 +645,38 @@ getAdjacentTriangle :
     -> TriangleEdge
     -> Maybe (AdjacentTriangleData units coordinates)
 getAdjacentTriangle mesh triangleId side =
-    getTriangleData triangleId mesh
-        |> Maybe.andThen (.adjacent >> Triangle.getVertex (TriangleEdge.toInt side |> TriangleVertex.fromInt))
+    case getTriangleData triangleId mesh of
+        Just triangleData ->
+            getAdjacentTriangle_ mesh triangleData side
+
+        Nothing ->
+            Nothing
+
+
+getAdjacentTriangle_ :
+    Mesh units coordinates
+    -> TriangleData units coordinates
+    -> TriangleEdge
+    -> Maybe (AdjacentTriangleData units coordinates)
+getAdjacentTriangle_ mesh triangleData side =
+    triangleData.adjacent
+        |> Triangle.getVertex (TriangleEdge.toInt side |> TriangleVertex.fromInt)
         |> Maybe.andThen
             (\{ adjacentId, adjacentEdge } ->
-                Maybe.map2
-                    (\triangleData adjacentTriangleData ->
-                        let
-                            triangleSide =
-                                Triangle.getSide side triangleData.indices
+                getTriangleData adjacentId mesh
+                    |> Maybe.map
+                        (\adjacentTriangleData ->
+                            let
+                                triangleSide =
+                                    Triangle.getSide side triangleData.indices
 
-                            adjacentTriangleSide =
-                                Triangle.getSide adjacentEdge adjacentTriangleData.indices
-                        in
-                        { triangleId = adjacentId
-                        , triangleData = adjacentTriangleData
-                        , side = adjacentEdge
-                        , isEdgeReversed = triangleSide /= adjacentTriangleSide
-                        }
-                    )
-                    (getTriangleData triangleId mesh)
-                    (getTriangleData adjacentId mesh)
+                                adjacentTriangleSide =
+                                    Triangle.getSide adjacentEdge adjacentTriangleData.indices
+                            in
+                            { triangleId = adjacentId
+                            , triangleData = adjacentTriangleData
+                            , side = adjacentEdge
+                            , isEdgeReversed = triangleSide /= adjacentTriangleSide
+                            }
+                        )
             )
