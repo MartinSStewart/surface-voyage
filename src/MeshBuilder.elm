@@ -1,4 +1,4 @@
-module MeshBuilder exposing (MeshPart(..), Vertex, circle, colorToVec4, cube, line, map, splitFacesCube, square, toVerticesAndIndices, toWebGlMesh)
+module MeshBuilder exposing (MeshPart(..), Vertex, circle, colorToVec4, cube, line, map, splitFacesCube, square, square2, toVerticesAndIndices, toWebGlMesh)
 
 import Array exposing (Array)
 import Basics.Extra exposing (flip)
@@ -246,6 +246,12 @@ circle detail =
 square : MeshPart (Point2d u c)
 square =
     TriangleFan ( 0, 0 ) ( 0, 1 ) ( 1, 1 ) [ ( 1, 0 ) ]
+        |> map (\( x, y ) -> Point2d.xy (Quantity.Quantity x) (Quantity.Quantity y))
+
+
+square2 : MeshPart (Point2d u c)
+square2 =
+    TriangleFan ( 0, 0 ) ( 1, 0 ) ( 0, 1 ) []
         |> map (\( x, y ) -> Point2d.xy (Quantity.Quantity x) (Quantity.Quantity y))
 
 

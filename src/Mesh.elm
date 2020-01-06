@@ -26,6 +26,7 @@ module Mesh exposing
 
 import Angle exposing (Angle)
 import Array exposing (Array)
+import Axis2d
 import Basics.Extra exposing (flip)
 import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
@@ -227,6 +228,15 @@ allTriangleIds (Mesh mesh) =
 
 nearestSurfacePoint : Point3d unit coordinates -> Mesh unit coordinates -> SurfacePoint unit
 nearestSurfacePoint point mesh =
+    let
+        thisShouldNeverHappenDefaultValue =
+            SurfacePoint
+                { triangleId = TriangleId -1
+                , position = Interpolative.from 0 0
+                , direction = Direction2d.x
+                , faceSide = Front
+                }
+    in
     allTriangleIds mesh
         |> List.range 0
         |> List.filterMap
@@ -251,19 +261,12 @@ nearestSurfacePoint point mesh =
                                 Point3d.projectInto triangleData.sketchPlane nearestPoint |> Interpolative.fromPoint2d triangleData.triangle2d
 
                             _ ->
-                                Debug.todo "Handle degenerate case"
+                                Interpolative.from 0 0
                     , direction = Direction2d.x
                     , faceSide = Front
                     }
             )
-        |> Maybe.withDefault
-            (SurfacePoint
-                { triangleId = TriangleId -1
-                , position = Interpolative.from 0 0
-                , direction = Direction2d.x
-                , faceSide = Front
-                }
-            )
+        |> Maybe.withDefault thisShouldNeverHappenDefaultValue
 
 
 surfacePointToWorld : SurfacePoint unit -> Mesh unit coordinates -> Maybe (Point3d unit coordinates)
@@ -384,13 +387,16 @@ getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
                 |> Triangle.fromTriangle2d
                 |> Triangle.getSide triangleSide
 
+        axis =
+            Axis2d.through e0 (Direction2d.from e0 e1 |> Maybe.withDefault Direction2d.x)
+
         ( ae0, ae1 ) =
             adjacentTriangleData.triangleData.triangle2d
                 |> Triangle.fromTriangle2d
                 |> Triangle.getSide adjacentTriangleData.side
 
         _ =
-            adjacentTriangleData.triangleData |> triangleDataGetTriangle3d |> Debug.log "triangle 3d"
+            adjacentTriangleData.triangleData |> triangleDataGetTriangle3d
 
         eAngle =
             Direction2d.from e0 e1 |> Maybe.withDefault Direction2d.y
@@ -399,10 +405,7 @@ getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
             Direction2d.from ae0 ae1 |> Maybe.withDefault Direction2d.y
 
         angleDiff =
-            Direction2d.angleFrom eAngle aeAngle
-
-        --adjacentEdge =
-        --    Triangle.getSide adjacentTriangleData.side adjacentTriangle2d
+            Direction2d.angleFrom aeAngle eAngle
     in
     if adjacentTriangleData.isEdgeReversed then
         Frame2d.atOrigin
@@ -413,8 +416,14 @@ getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
     else
         Frame2d.atOrigin
             |> Frame2d.rotateBy angleDiff
-            |> Frame2d.translateBy (Vector2d.from e0 ae0)
+            |> Frame2d.translateBy (Vector2d.from ae0 e0)
+            |> Frame2d.mirrorAcross axis
             |> Debug.log "notflipped"
+
+
+throughPoints : Point2d units coordinates -> Point2d units coordinates -> Maybe (Axis2d.Axis2d units coordinates)
+throughPoints p0 p1 =
+    Direction2d.from p0 p1 |> Maybe.map (Axis2d.through p0)
 
 
 
@@ -526,20 +535,16 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
     case getTriangleData triangleId mesh of
         Just triangleData ->
             let
-                _ =
-                    triangleDataGetTriangle3d triangleData |> Debug.log "triangle3d"
-
                 ( e0, e1, e2 ) =
-                    triangleData.triangle2d |> Debug.log "triangle2d" |> Triangle2d.edges
+                    triangleData.triangle2d |> Triangle2d.edges
 
                 point =
-                    Interpolative.toPoint2d triangleData.triangle2d position |> Debug.log "point"
+                    Interpolative.toPoint2d triangleData.triangle2d position
 
                 endPoint =
                     Direction2d.angleFrom Direction2d.y direction
                         |> flip Vector2d.rotateBy movement
                         |> flip Point2d.translateBy point
-                        |> Debug.log "endpoint"
 
                 moveLine =
                     LineSegment2d.from point endPoint |> Debug.log "moveLine"
