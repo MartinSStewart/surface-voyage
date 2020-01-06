@@ -409,7 +409,7 @@ getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
     in
     if adjacentTriangleData.isEdgeReversed then
         Frame2d.atOrigin
-            |> Frame2d.rotateBy angleDiff
+            |> Frame2d.rotateBy (Quantity.plus angleDiff (Angle.radians pi))
             |> Frame2d.translateBy (Vector2d.from ae0 e0)
             |> Debug.log "flipped"
 
@@ -527,7 +527,7 @@ getCurrentTriangle (Traverse traverse) =
 
 
 move : Mesh units coordinates -> Vector2d units SurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
-move mesh movement (SurfacePoint ({ triangleId, position } as surfacePoint)) =
+move mesh movement (SurfacePoint ({ triangleId, position, direction, faceSide } as surfacePoint)) =
     let
         _ =
             Debug.log "start" surfacePoint
@@ -542,12 +542,11 @@ move mesh movement (SurfacePoint ({ triangleId, position } as surfacePoint)) =
                     Interpolative.toPoint2d triangleData.triangle2d position
 
                 endPoint =
-                    movement
-                        |> flip Point2d.translateBy point
+                    Point2d.translateBy movement point
 
-                --Direction2d.angleFrom Direction2d.y direction
+                --Direction2d.angleFrom Direction2d.negativeX direction
                 --    |> flip Vector2d.rotateBy movement
-                --    |> flip Point2d.translateBy point
+                --    |> flip Point2d.translateBy  point
                 moveLine =
                     LineSegment2d.from point endPoint |> Debug.log "moveLine"
 
@@ -609,8 +608,13 @@ move mesh movement (SurfacePoint ({ triangleId, position } as surfacePoint)) =
                                     SurfacePoint
                                         { triangleId = adjacentTriangle.triangleId
                                         , position = newSurfacePosition
-                                        , direction = Direction2d.x
-                                        , faceSide = Front
+                                        , direction = Direction2d.relativeTo frame direction
+                                        , faceSide =
+                                            if adjacentTriangle.isEdgeReversed then
+                                                flipFaceSide faceSide
+
+                                            else
+                                                faceSide
                                         }
                                         |> Debug.log "newSurfacePoint"
                             in
@@ -635,6 +639,15 @@ move mesh movement (SurfacePoint ({ triangleId, position } as surfacePoint)) =
 
         Nothing ->
             SurfacePoint surfacePoint |> Debug.log "NothingC"
+
+
+flipFaceSide faceSide =
+    case faceSide of
+        Front ->
+            Back
+
+        Back ->
+            Front
 
 
 type alias AdjacentTriangleData units coordinates =

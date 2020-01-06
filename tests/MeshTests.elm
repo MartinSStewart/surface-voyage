@@ -263,6 +263,32 @@ moveAcrossEdgeTest2 =
                 |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
 
 
+twoTriangleSurface3 : Mesh.Mesh Meters coordinates
+twoTriangleSurface3 =
+    case
+        Mesh.fromVerticesAndIndices
+            (Array.fromList [ Point3d.meters 0 0 0, Point3d.meters 1 0 0, Point3d.meters 0 1 0, Point3d.meters 1 1 0 ])
+            [ ( 0, 1, 2 ), ( 1, 3, 2 ) ]
+    of
+        Ok mesh ->
+            mesh
+
+        Err error ->
+            error |> Debug.toString |> Debug.todo
+
+
+moveAcrossEdgeTest3 : Test
+moveAcrossEdgeTest3 =
+    test "moveAcrossEdgeTest 3" <|
+        \_ ->
+            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.4 0) twoTriangleSurface3
+                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 1 0) twoTriangleSurface3
+                |> Mesh.move twoTriangleSurface3 (Vector2d.meters 0.6 0)
+                |> flip Mesh.surfacePointToWorld twoTriangleSurface3
+                |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.4 0))
+                |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
+
+
 moveWithinTriangleTest : Test
 moveWithinTriangleTest =
     test "moveWithinTriangleTest" <|

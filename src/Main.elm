@@ -8,6 +8,7 @@ import Element
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Html exposing (Html)
 import Keyboard exposing (Key)
+import KeyboardHelper as Keyboard
 import Length exposing (Meters)
 import List.Nonempty
 import Math.Vector3 as Vec3
@@ -17,6 +18,7 @@ import MeshBuilder
 import Point2d
 import Point3d
 import Quantity
+import Vector2d
 import View
 
 
@@ -76,7 +78,7 @@ update msg model =
             { model | windowSize = ( width, height ) } |> addCmdNone
 
         AnimationFrameDelta delta ->
-            { model | time = Quantity.plus model.time delta } |> addCmdNone
+            { model | time = Quantity.plus model.time delta } |> step |> addCmdNone
 
 
 keyMsgUpdate keyMsg model =
@@ -86,6 +88,14 @@ keyMsgUpdate keyMsg model =
     in
     { model | keys = newKeys, previousKeys = model.keys }
         |> addCmdNone
+
+
+step : Model -> Model
+step model =
+    { model
+        | surfacePoint =
+            Mesh.move surfaceCube (Keyboard.arrowDown model |> Vector2d.scaleBy 0.01) model.surfacePoint
+    }
 
 
 addCmdNone : a -> ( a, Cmd msg )
