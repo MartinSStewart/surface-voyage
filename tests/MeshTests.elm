@@ -241,24 +241,35 @@ getConnectedEdge triangleData =
 
 moveAcrossEdgeTest : Test
 moveAcrossEdgeTest =
-    only <|
-        test "moveAcrossEdgeTest" <|
-            \_ ->
-                Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) twoTriangleSurface2
-                    |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 1 0) twoTriangleSurface2
-                    |> Mesh.move twoTriangleSurface2 (Vector2d.meters 0.6 0)
-                    |> flip Mesh.surfacePointToWorld twoTriangleSurface2
-                    |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.5 0))
-                    |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
+    test "moveAcrossEdgeTest" <|
+        \_ ->
+            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) twoTriangleSurface2
+                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 1 0) twoTriangleSurface2
+                |> Mesh.move twoTriangleSurface2 (Vector2d.meters 0.6 0)
+                |> flip Mesh.surfacePointToWorld twoTriangleSurface2
+                |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.5 0))
+                |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
+
+
+moveAcrossEdgeTest2 : Test
+moveAcrossEdgeTest2 =
+    test "moveAcrossEdgeTest 2" <|
+        \_ ->
+            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.4 0) twoTriangleSurface2
+                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 1 0) twoTriangleSurface2
+                |> Mesh.move twoTriangleSurface2 (Vector2d.meters 0.6 0)
+                |> flip Mesh.surfacePointToWorld twoTriangleSurface2
+                |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.4 0))
+                |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
 
 
 moveWithinTriangleTest : Test
 moveWithinTriangleTest =
     test "moveWithinTriangleTest" <|
         \_ ->
-            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) twoTriangleSurface
-                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 0 0) twoTriangleSurface
-                |> Mesh.move twoTriangleSurface (Vector2d.meters 0.1 0)
-                |> flip Mesh.surfacePointToWorld twoTriangleSurface
+            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) twoTriangleSurface2
+                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 0 0) twoTriangleSurface2
+                |> Mesh.move twoTriangleSurface2 (Vector2d.meters 0.1 0)
+                |> flip Mesh.surfacePointToWorld twoTriangleSurface2
                 |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.3 0.5 0))
                 |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
