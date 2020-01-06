@@ -26,8 +26,8 @@ type Interpolative
 from : Float -> Float -> Interpolative
 from t0 t1 =
     Interpolative
-        { t0 = clamp 0.01 0.99 t0
-        , t1 = clamp 0.01 0.99 t1
+        { t0 = clamp 0.0001 0.9999 t0
+        , t1 = clamp 0.0001 0.9999 t1
         }
 
 

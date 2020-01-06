@@ -527,7 +527,7 @@ getCurrentTriangle (Traverse traverse) =
 
 
 move : Mesh units coordinates -> Vector2d units SurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
-move mesh movement (SurfacePoint ({ triangleId, position, direction } as surfacePoint)) =
+move mesh movement (SurfacePoint ({ triangleId, position } as surfacePoint)) =
     let
         _ =
             Debug.log "start" surfacePoint
@@ -536,16 +536,18 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
         Just triangleData ->
             let
                 ( e0, e1, e2 ) =
-                    triangleData.triangle2d |> Triangle2d.edges
+                    triangleData.triangle2d |> Debug.log "triangle2d" |> Triangle2d.edges
 
                 point =
                     Interpolative.toPoint2d triangleData.triangle2d position
 
                 endPoint =
-                    Direction2d.angleFrom Direction2d.y direction
-                        |> flip Vector2d.rotateBy movement
+                    movement
                         |> flip Point2d.translateBy point
 
+                --Direction2d.angleFrom Direction2d.y direction
+                --    |> flip Vector2d.rotateBy movement
+                --    |> flip Point2d.translateBy point
                 moveLine =
                     LineSegment2d.from point endPoint |> Debug.log "moveLine"
 
@@ -580,18 +582,17 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction } as surface
                                         (LineSegment2d.length edge)
                                         |> Debug.log "t"
 
-                                --movementLeft =
-                                --    Quantity.ratio
-                                --        (Point2d.distanceFrom intersectionPoint point)
-                                --        (Vector2d.length movement)
-                                --        |> (-) 1
-                                --        |> flip Vector2d.scaleBy movement
                                 frame =
                                     getTriangleEdgeFrame_ sideIndex triangleData adjacentTriangle
 
-                                newMovement : Vector2d units SurfaceCoordinates
+                                newEndPoint =
+                                    Point2d.relativeTo frame endPoint |> Debug.log "newEndPoint"
+
+                                newStart =
+                                    Point2d.relativeTo frame intersectionPoint |> Debug.log "newStartPoint"
+
                                 newMovement =
-                                    Vector2d.relativeTo frame movement |> vector2dChangeCoordinate |> Debug.log "newMovement"
+                                    Vector2d.from newStart newEndPoint
 
                                 newSurfacePosition =
                                     Interpolative.fromTriangleSide
