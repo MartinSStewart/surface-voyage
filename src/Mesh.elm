@@ -24,6 +24,7 @@ module Mesh exposing
     , surfacePointRotateBy
     , surfacePointToWorld
     , surfacePointTriangleId
+    , triangleDataGetTriangle3d
     )
 
 import Angle exposing (Angle)
@@ -422,9 +423,13 @@ getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
             adjacentTriangleData.triangleData.triangle2d
                 |> Triangle.fromTriangle2d
                 |> Triangle.getSide adjacentTriangleData.side
+                |> (\( a, b ) ->
+                        if adjacentTriangleData.isEdgeReversed then
+                            ( b, a )
 
-        _ =
-            adjacentTriangleData.triangleData |> triangleDataGetTriangle3d
+                        else
+                            ( a, b )
+                   )
 
         eAngle =
             Direction2d.from e0 e1 |> Maybe.withDefault Direction2d.y
@@ -437,8 +442,11 @@ getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
     in
     if adjacentTriangleData.isEdgeReversed then
         Frame2d.atOrigin
-            |> Frame2d.rotateBy (Quantity.plus angleDiff (Angle.radians pi))
+            --|> Frame2d.rotateBy angleDiff
+            --(Quantity.plus angleDiff (Angle.radians pi))
             |> Frame2d.translateBy (Vector2d.from ae0 e0)
+            |> Frame2d.rotateAround e0 angleDiff
+        --|> Frame2d.mirrorAcross axis
 
     else
         Frame2d.atOrigin
