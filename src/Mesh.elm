@@ -41,7 +41,7 @@ import List.Nonempty exposing (Nonempty)
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Point3dEx
-import Quantity
+import Quantity exposing (Quantity)
 import SketchPlane3d exposing (SketchPlane3d)
 import Triangle exposing (Triangle)
 import Triangle2d exposing (Triangle2d)
@@ -554,8 +554,8 @@ getCurrentTriangle (Traverse traverse) =
     traverse.currentTriangle
 
 
-move : Mesh units coordinates -> Vector2d units SurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
-move mesh movement (SurfacePoint ({ triangleId, position, direction, faceSide } as surfacePoint)) =
+move : Mesh units coordinates -> Angle -> Quantity Float units -> SurfacePoint units -> SurfacePoint units
+move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, direction, faceSide } as surfacePoint)) =
     let
         _ =
             Debug.log "start" surfacePoint
@@ -570,8 +570,9 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction, faceSide } 
                     Interpolative.toPoint2d triangleData.triangle2d position
 
                 endPoint =
-                    Point2d.translateBy movement point
+                    Point2d.translateIn (Direction2d.rotateBy rotationOffset direction) distance point
 
+                --Point2d.translateBy movement point
                 --Direction2d.angleFrom direction Direction2d.y
                 --    |> flip Vector2d.rotateBy movement
                 --    |> flip Point2d.translateBy point
@@ -618,9 +619,8 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction, faceSide } 
                                 newStart =
                                     Point2d.relativeTo frame intersectionPoint |> Debug.log "newStartPoint"
 
-                                newMovement =
-                                    Vector2d.from newStart newEndPoint
-
+                                --newMovement =
+                                --    Vector2d.from newStart newEndPoint
                                 newSurfacePosition =
                                     Interpolative.fromTriangleSide
                                         (if adjacentTriangle.isEdgeReversed then
@@ -631,6 +631,11 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction, faceSide } 
                                         )
                                         adjacentTriangle.side
                                         |> Debug.log "newSurfacePosition"
+
+                                newDistance =
+                                    distance
+                                        |> Quantity.minus (Point2d.distanceFrom point intersectionPoint)
+                                        |> Quantity.max Quantity.zero
 
                                 newSurfacePoint =
                                     SurfacePoint
@@ -646,7 +651,7 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction, faceSide } 
                                         }
                                         |> Debug.log "newSurfacePoint"
                             in
-                            move mesh newMovement newSurfacePoint
+                            move mesh rotationOffset newDistance newSurfacePoint
 
                         Nothing ->
                             SurfacePoint

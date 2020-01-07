@@ -94,7 +94,7 @@ perspective ( windowWidth, windowHeight ) =
 cameraMatrix time =
     let
         time_ =
-            Duration.inSeconds time
+            1.4
 
         distance =
             2

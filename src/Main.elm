@@ -3,6 +3,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 import Browser
 import Browser.Events
 import Color
+import Direction2d
 import Duration exposing (Duration)
 import Element
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
@@ -94,7 +95,16 @@ step : Model -> Model
 step model =
     { model
         | surfacePoint =
-            Mesh.move surfaceCube (Keyboard.arrowDown model |> Vector2d.scaleBy 0.01) model.surfacePoint
+            case Keyboard.arrowDown model |> Vector2d.direction of
+                Just direction ->
+                    Mesh.move
+                        surfaceCube
+                        (Direction2d.angleFrom Direction2d.y direction)
+                        (Length.meters 0.01)
+                        model.surfacePoint
+
+                Nothing ->
+                    model.surfacePoint
     }
 
 
