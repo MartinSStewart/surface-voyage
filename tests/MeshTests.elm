@@ -1,7 +1,9 @@
 module MeshTests exposing (..)
 
+import Angle
 import Array
 import Basics.Extra exposing (flip)
+import Direction3d
 import Expect
 import Frame2d
 import Fuzz
@@ -244,7 +246,7 @@ moveAcrossEdgeTest =
     test "moveAcrossEdgeTest" <|
         \_ ->
             Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) twoTriangleSurface2
-                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 1 0) twoTriangleSurface2
+                |> Mesh.setSurfacePointDirectionTowards (Point3d.meters 0.2 1 0) twoTriangleSurface2
                 |> Mesh.move twoTriangleSurface2 (Vector2d.meters 0.6 0)
                 |> flip Mesh.surfacePointToWorld twoTriangleSurface2
                 |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.5 0))
@@ -256,7 +258,7 @@ moveAcrossEdgeTest2 =
     test "moveAcrossEdgeTest 2" <|
         \_ ->
             Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.4 0) twoTriangleSurface2
-                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 1 0) twoTriangleSurface2
+                |> Mesh.setSurfacePointDirectionTowards (Point3d.meters 0.2 1 0) twoTriangleSurface2
                 |> Mesh.move twoTriangleSurface2 (Vector2d.meters 0.6 0)
                 |> flip Mesh.surfacePointToWorld twoTriangleSurface2
                 |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.4 0))
@@ -282,7 +284,7 @@ moveAcrossEdgeTest3 =
     test "moveAcrossEdgeTest 3" <|
         \_ ->
             Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.4 0) twoTriangleSurface3
-                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 1 0) twoTriangleSurface3
+                |> Mesh.setSurfacePointDirectionTowards (Point3d.meters 0.2 1 0) twoTriangleSurface3
                 |> Mesh.move twoTriangleSurface3 (Vector2d.meters 0.6 0)
                 |> flip Mesh.surfacePointToWorld twoTriangleSurface3
                 |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.4 0))
@@ -294,8 +296,66 @@ moveWithinTriangleTest =
     test "moveWithinTriangleTest" <|
         \_ ->
             Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) twoTriangleSurface2
-                |> Mesh.surfacePointDirectionTowards (Point3d.meters 0.2 0 0) twoTriangleSurface2
-                |> Mesh.move twoTriangleSurface2 (Vector2d.meters 0.1 0)
+                |> Mesh.setSurfacePointDirection Direction3d.y twoTriangleSurface2
+                |> Mesh.move twoTriangleSurface2 (Vector2d.meters 0.6 0)
                 |> flip Mesh.surfacePointToWorld twoTriangleSurface2
-                |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.3 0.5 0))
+                |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.8 0.5 0))
+                |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
+
+
+preserveDirectionTest : Test
+preserveDirectionTest =
+    test "preserveDirectionTest" <|
+        \_ ->
+            let
+                expected =
+                    Direction3d.y
+
+                mesh =
+                    twoTriangleSurface2
+            in
+            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) mesh
+                |> Mesh.setSurfacePointDirection expected mesh
+                |> Mesh.move mesh (Vector2d.meters 0.6 0)
+                |> Mesh.getSurfacePointDirection mesh
+                |> Maybe.map (Direction3d.equalWithin (Angle.radians 0.001) expected >> Expect.true "Directions don't match")
+                |> Maybe.withDefault (Expect.fail "Couldn't get direction")
+
+
+preserveDirectionTest2 : Test
+preserveDirectionTest2 =
+    test "preserveDirectionTest2" <|
+        \_ ->
+            let
+                expected =
+                    Direction3d.y
+
+                mesh =
+                    twoTriangleSurface3
+            in
+            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) mesh
+                |> Mesh.setSurfacePointDirection expected mesh
+                |> Mesh.move mesh (Vector2d.meters 0.6 0)
+                |> Mesh.getSurfacePointDirection mesh
+                |> Maybe.map (Direction3d.equalWithin (Angle.radians 0.001) expected >> Expect.true "Directions don't match")
+                |> Maybe.withDefault (Expect.fail "Couldn't get direction")
+
+
+preserveDirectionTest3 : Test
+preserveDirectionTest3 =
+    test "preserveDirectionTest3" <|
+        \_ ->
+            let
+                expected =
+                    Direction3d.y
+
+                mesh =
+                    twoTriangleSurface3
+            in
+            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.5 0) mesh
+                |> Mesh.setSurfacePointDirection expected mesh
+                |> Mesh.move mesh (Vector2d.meters 0.6 0)
+                |> Mesh.move mesh (Vector2d.meters 0.1 0)
+                |> flip Mesh.surfacePointToWorld twoTriangleSurface2
+                |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.9 0.5 0))
                 |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")

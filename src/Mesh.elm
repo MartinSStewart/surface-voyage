@@ -11,13 +11,15 @@ module Mesh exposing
     , fromVerticesAndIndices
     , getAdjacentTriangle
     , getAdjacentTriangle_
+    , getSurfacePointDirection
     , getTriangleData
     , getTriangleEdgeFrame
     , getTriangleEdgeFrame_
     , getVertices
     , move
     , nearestSurfacePoint
-    , surfacePointDirectionTowards
+    , setSurfacePointDirection
+    , setSurfacePointDirectionTowards
     , surfacePointPosition
     , surfacePointRotateBy
     , surfacePointToWorld
@@ -30,6 +32,7 @@ import Axis2d
 import Basics.Extra exposing (flip)
 import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
+import Direction3d exposing (Direction3d)
 import Frame2d exposing (Frame2d)
 import Interpolative exposing (Interpolative)
 import LineSegment2d
@@ -315,8 +318,8 @@ surfacePointSetDirection direction (SurfacePoint surfacePoint) =
     SurfacePoint { surfacePoint | direction = direction }
 
 
-surfacePointDirectionTowards : Point3d units coordinates -> Mesh units coordinates -> SurfacePoint units -> SurfacePoint units
-surfacePointDirectionTowards point mesh surfacePoint =
+setSurfacePointDirectionTowards : Point3d units coordinates -> Mesh units coordinates -> SurfacePoint units -> SurfacePoint units
+setSurfacePointDirectionTowards point mesh surfacePoint =
     case getTriangleData (surfacePointTriangleId surfacePoint) mesh of
         Just triangleData ->
             let
@@ -332,6 +335,31 @@ surfacePointDirectionTowards point mesh surfacePoint =
 
         _ ->
             surfacePoint
+
+
+setSurfacePointDirection : Direction3d coordinates -> Mesh units coordinates -> SurfacePoint units -> SurfacePoint units
+setSurfacePointDirection direction mesh surfacePoint =
+    case getTriangleData (surfacePointTriangleId surfacePoint) mesh of
+        Just triangleData ->
+            case Direction3d.projectInto triangleData.sketchPlane direction of
+                Just newDirection ->
+                    surfacePointSetDirection newDirection surfacePoint
+
+                Nothing ->
+                    surfacePoint
+
+        _ ->
+            surfacePoint
+
+
+getSurfacePointDirection : Mesh units coordinates -> SurfacePoint units -> Maybe (Direction3d coordinates)
+getSurfacePointDirection mesh ((SurfacePoint { direction }) as surfacePoint) =
+    case getTriangleData (surfacePointTriangleId surfacePoint) mesh of
+        Just triangleData ->
+            Direction3d.on triangleData.sketchPlane direction |> Just
+
+        _ ->
+            Nothing
 
 
 surfacePointTriangleId : SurfacePoint units -> TriangleId
@@ -544,9 +572,9 @@ move mesh movement (SurfacePoint ({ triangleId, position, direction, faceSide } 
                 endPoint =
                     Point2d.translateBy movement point
 
-                --Direction2d.angleFrom Direction2d.negativeX direction
+                --Direction2d.angleFrom direction Direction2d.y
                 --    |> flip Vector2d.rotateBy movement
-                --    |> flip Point2d.translateBy  point
+                --    |> flip Point2d.translateBy point
                 moveLine =
                     LineSegment2d.from point endPoint |> Debug.log "moveLine"
 
