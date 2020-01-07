@@ -439,132 +439,21 @@ getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
         Frame2d.atOrigin
             |> Frame2d.rotateBy (Quantity.plus angleDiff (Angle.radians pi))
             |> Frame2d.translateBy (Vector2d.from ae0 e0)
-            |> Debug.log "flipped"
 
     else
         Frame2d.atOrigin
             |> Frame2d.rotateBy angleDiff
             |> Frame2d.translateBy (Vector2d.from ae0 e0)
             |> Frame2d.mirrorAcross axis
-            |> Debug.log "notflipped"
-
-
-throughPoints : Point2d units coordinates -> Point2d units coordinates -> Maybe (Axis2d.Axis2d units coordinates)
-throughPoints p0 p1 =
-    Direction2d.from p0 p1 |> Maybe.map (Axis2d.through p0)
-
-
-
---flatten :
---    Mesh units coordinates
---    -> Vector2d units SurfaceCoordinates
---    -> SurfacePoint units
---    -> List ( TriangleId, TriangleData units coordinates )
---flatten mesh movement (SurfacePoint ({ triangleId, position, direction } as surfacePoint)) =
---    case traverseStart mesh triangleId of
---        Just traverse ->
---            let
---                triangleData =
---                    getCurrentTriangle traverse
---
---                _ =
---                    triangleDataGetTriangle3d triangleData |> Debug.log "triangle3d"
---
---                ( e0, e1, e2 ) =
---                    triangleData.triangle2d |> Debug.log "triangle2d" |> Triangle2d.edges
---
---                point =
---                    Interpolative.toPoint2d triangleData.triangle2d position |> Debug.log "point"
---
---                endPoint =
---                    Direction2d.angleFrom Direction2d.y direction
---                        |> flip Vector2d.rotateBy movement
---                        |> flip Point2d.translateBy point
---                        |> Debug.log "endpoint"
---
---                moveLine =
---                    LineSegment2d.from point endPoint |> Debug.log "moveLine"
---
---                intersection =
---                    [ e0, e1, e2 ]
---                        |> List.indexedMap Tuple.pair
---                        |> List.filterMap
---                            (\( index, edge ) ->
---                                LineSegment2d.intersectionPoint moveLine edge
---                                    |> Maybe.map
---                                        (\intersectionPoint ->
---                                            { edge = edge
---                                            , sideIndex = TriangleEdge.fromInt index
---                                            , intersectionPoint = intersectionPoint
---                                            }
---                                        )
---                            )
---                        {- We want the maximum (not minimum) distance intersection because if we ever end up with two intersections,
---                           the nearest one is due to our starting position lying on the triangle edge
---                        -}
---                        |> List.maximumBy (.intersectionPoint >> Point2d.distanceFrom point >> rawQuantity)
---                        |> Debug.log "intersection"
---            in
---            case intersection of
---                Just { edge, sideIndex, intersectionPoint } ->
---                    [ (triangleId, triangleData) ] --getTriangleEdgeFrame_ sideIndex triangleData
---
---                Nothing ->
---                    [(triangleId, triangleData)]
---
---        Nothing ->
---            []
-
-
-traverseStart :
-    Mesh units coordinates
-    -> TriangleId
-    -> Maybe (Traverse units coordinates)
-traverseStart mesh triangleId =
-    case getTriangleData triangleId mesh of
-        Just triangleData ->
-            { mesh = mesh, currentTriangle = triangleData } |> Traverse |> Just
-
-        Nothing ->
-            Nothing
-
-
-traverseNext : TriangleEdge -> Traverse units coordinates -> Maybe (Traverse units coordinates)
-traverseNext triangleEdge (Traverse { mesh, currentTriangle }) =
-    case getAdjacentTriangle_ mesh currentTriangle triangleEdge of
-        Just adjacentTriangle ->
-            { mesh = mesh, currentTriangle = adjacentTriangle.triangleData } |> Traverse |> Just
-
-        Nothing ->
-            Nothing
-
-
-type Traverse units coordinates
-    = Traverse (Traverse_ units coordinates)
-
-
-type alias Traverse_ units coordinates =
-    { mesh : Mesh units coordinates
-    , currentTriangle : TriangleData units coordinates
-    }
-
-
-getCurrentTriangle : Traverse units coordinates -> TriangleData units coordinates
-getCurrentTriangle (Traverse traverse) =
-    traverse.currentTriangle
 
 
 move : Mesh units coordinates -> Angle -> Quantity Float units -> SurfacePoint units -> SurfacePoint units
 move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, direction, faceSide } as surfacePoint)) =
-    let
-        _ =
-            Debug.log "start" surfacePoint
-    in
     case getTriangleData triangleId mesh of
         Just triangleData ->
             let
                 ( e0, e1, e2 ) =
-                    triangleData.triangle2d |> Debug.log "triangle2d" |> Triangle2d.edges
+                    triangleData.triangle2d |> Triangle2d.edges
 
                 point =
                     Interpolative.toPoint2d triangleData.triangle2d position
@@ -577,7 +466,7 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                 --    |> flip Vector2d.rotateBy movement
                 --    |> flip Point2d.translateBy point
                 moveLine =
-                    LineSegment2d.from point endPoint |> Debug.log "moveLine"
+                    LineSegment2d.from point endPoint
 
                 intersection =
                     [ e0, e1, e2 ]
@@ -597,7 +486,6 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                            the nearest one is due to our starting position lying on the triangle edge
                         -}
                         |> List.maximumBy (.intersectionPoint >> Point2d.distanceFrom point >> rawQuantity)
-                        |> Debug.log "intersection"
             in
             case intersection of
                 Just { edge, sideIndex, intersectionPoint } ->
@@ -608,16 +496,15 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                                     Quantity.ratio
                                         (Point2d.distanceFrom intersectionPoint (LineSegment2d.startPoint edge))
                                         (LineSegment2d.length edge)
-                                        |> Debug.log "t"
 
                                 frame =
                                     getTriangleEdgeFrame_ sideIndex triangleData adjacentTriangle
 
                                 newEndPoint =
-                                    Point2d.relativeTo frame endPoint |> Debug.log "newEndPoint"
+                                    Point2d.relativeTo frame endPoint
 
                                 newStart =
-                                    Point2d.relativeTo frame intersectionPoint |> Debug.log "newStartPoint"
+                                    Point2d.relativeTo frame intersectionPoint
 
                                 --newMovement =
                                 --    Vector2d.from newStart newEndPoint
@@ -630,7 +517,6 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                                             t
                                         )
                                         adjacentTriangle.side
-                                        |> Debug.log "newSurfacePosition"
 
                                 newDistance =
                                     distance
@@ -644,12 +530,11 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                                         , direction = Direction2d.relativeTo frame direction
                                         , faceSide =
                                             if adjacentTriangle.isEdgeReversed then
-                                                flipFaceSide faceSide
+                                                faceSide
 
                                             else
-                                                faceSide
+                                                flipFaceSide faceSide
                                         }
-                                        |> Debug.log "newSurfacePoint"
                             in
                             move mesh rotationOffset newDistance newSurfacePoint
 
@@ -660,7 +545,6 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                                 , direction = Direction2d.x
                                 , faceSide = Front
                                 }
-                                |> Debug.log "NothingA"
 
                 Nothing ->
                     SurfacePoint
@@ -668,10 +552,9 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                             | triangleId = triangleId
                             , position = Interpolative.fromPoint2d triangleData.triangle2d endPoint
                         }
-                        |> Debug.log "NothingB"
 
         Nothing ->
-            SurfacePoint surfacePoint |> Debug.log "NothingC"
+            SurfacePoint surfacePoint
 
 
 flipFaceSide faceSide =
