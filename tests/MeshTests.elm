@@ -381,18 +381,19 @@ moveOnTriangle =
                     |> flip Mesh.surfacePointToWorld mesh
                     |> Maybe.map (Point3dExTests.pointEqualWithin (Point3d.meters 0.9 0.5 0))
                     |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
-        , test "moveAcrossEdgeTest5" <|
-            \_ ->
-                let
-                    mesh =
-                        twoTriangleSurface2
-                in
-                Mesh.nearestSurfacePoint end mesh
-                    |> Mesh.setSurfacePointDirection Direction3d.x mesh
-                    |> Mesh.move mesh Quantity.zero (Length.meters -0.8)
-                    |> flip Mesh.surfacePointToWorld mesh
-                    |> Maybe.map (Point3dExTests.pointEqualWithin start)
-                    |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
+        , only <|
+            test "moveAcrossEdgeTest5" <|
+                \_ ->
+                    let
+                        mesh =
+                            twoTriangleSurface2
+                    in
+                    Mesh.nearestSurfacePoint end mesh
+                        |> Mesh.setSurfacePointDirection Direction3d.x mesh
+                        |> Mesh.move mesh Quantity.zero (Length.meters -0.8)
+                        |> flip Mesh.surfacePointToWorld mesh
+                        |> Maybe.map (Point3dExTests.pointEqualWithin start)
+                        |> Maybe.withDefault (Expect.fail "Failed to convert surface point to world coordinates")
         , test "moveAcrossEdgeTest6" <|
             \_ ->
                 let

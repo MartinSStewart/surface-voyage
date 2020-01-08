@@ -512,19 +512,24 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                                     Point2d.relativeTo frame endPoint
 
                                 newStart =
-                                    Point2d.relativeTo frame intersectionPoint
+                                    Point2d.relativeTo frame intersectionPoint |> Interpolative.fromPoint2d adjacentTriangle.triangleData.triangle2d
 
                                 --newMovement =
                                 --    Vector2d.from newStart newEndPoint
-                                newSurfacePosition =
-                                    Interpolative.fromTriangleSide
-                                        (if adjacentTriangle.isEdgeReversed then
-                                            1 - t
+                                newSurfacePosition0 =
+                                    Interpolative.fromTriangleSide t adjacentTriangle.side
 
-                                         else
-                                            t
-                                        )
-                                        adjacentTriangle.side
+                                newSurfacePosition1 =
+                                    Interpolative.fromTriangleSide (1 - t) adjacentTriangle.side
+
+                                a =
+                                    intersectionPoint |> Point3d.on triangleData.sketchPlane
+
+                                b =
+                                    newSurfacePosition0 |> Interpolative.toPoint3d (triangleDataGetTriangle3d adjacentTriangle.triangleData)
+
+                                c =
+                                    newSurfacePosition1 |> Interpolative.toPoint3d (triangleDataGetTriangle3d adjacentTriangle.triangleData)
 
                                 newDistance =
                                     distance
@@ -534,7 +539,12 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                                 newSurfacePoint =
                                     SurfacePoint
                                         { triangleId = adjacentTriangle.triangleId
-                                        , position = newSurfacePosition
+                                        , position =
+                                            if Point3d.distanceFrom a b |> Quantity.lessThan (Point3d.distanceFrom a c) then
+                                                newSurfacePosition0
+
+                                            else
+                                                newSurfacePosition1
                                         , direction = Direction2d.relativeTo frame direction
                                         , faceSide =
                                             if adjacentTriangle.isEdgeReversed then
