@@ -132,11 +132,18 @@ step model =
         | surfacePoint =
             case Keyboard.arrowDown model |> Vector2d.direction of
                 Just direction ->
-                    Mesh.move
-                        model.mesh
-                        (Direction2d.angleFrom Direction2d.y direction)
-                        (Length.meters 0.01)
-                        model.surfacePoint
+                    case
+                        Mesh.move
+                            model.mesh
+                            (Direction2d.angleFrom Direction2d.y direction)
+                            (Length.meters 0.01)
+                            model.surfacePoint
+                    of
+                        Just { end } ->
+                            end
+
+                        Nothing ->
+                            model.surfacePoint
 
                 Nothing ->
                     model.surfacePoint

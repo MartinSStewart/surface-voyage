@@ -14,6 +14,8 @@ import MeshBuilder
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Pixels exposing (Pixels)
 import Point3d exposing (Point3d)
+import Polyline3d
+import Quantity
 import Vector2i exposing (Vector2i)
 import Vector3d
 import WebGL exposing (Shader)
@@ -118,6 +120,14 @@ cameraMatrix config =
 
         playerPosition =
             Mesh.surfacePointToWorld config.surfacePoint config.mesh
+
+        --a =
+        --    case Mesh.move config.mesh Quantity.zero (Length.meters 0.5) config.surfacePoint of
+        --        Just { path, end } ->
+        --            path |> List.foldr
+        --
+        --        Nothing ->
+        --            0
     in
     case
         ( playerPosition

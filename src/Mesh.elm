@@ -1,8 +1,7 @@
 module Mesh exposing
-    ( AdjacentSurfaceCoordinates
-    , Error(..)
+    ( Error(..)
     , Mesh
-    , SurfaceCoordinates
+    , SurfaceCoordinate
     , SurfacePoint
     , SurfaceSide(..)
     , TriangleData
@@ -43,6 +42,7 @@ import List.Nonempty exposing (Nonempty)
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Point3dEx
+import Polyline3d exposing (Polyline3d)
 import Quantity exposing (Quantity)
 import SketchPlane3d exposing (SketchPlane3d)
 import Triangle exposing (Triangle)
@@ -60,8 +60,8 @@ type Mesh units coordinates
 
 type alias TriangleData units coordinates =
     { indices : Triangle VertexId
-    , sketchPlane : SketchPlane3d units coordinates { defines : SurfaceCoordinates }
-    , triangle2d : Triangle2d units SurfaceCoordinates
+    , sketchPlane : SketchPlane3d units coordinates { defines : SurfaceCoordinate }
+    , triangle2d : Triangle2d units SurfaceCoordinate
     , adjacent : Triangle (Maybe AdjacentTriangle)
     }
 
@@ -305,7 +305,7 @@ type SurfacePoint units
 type alias SurfacePoint_ =
     { triangleId : TriangleId
     , position : Interpolative
-    , direction : Direction2d SurfaceCoordinates
+    , direction : Direction2d SurfaceCoordinate
     , faceSide : SurfaceSide
     }
 
@@ -315,7 +315,7 @@ surfacePointRotateBy angle (SurfacePoint surfacePoint) =
     SurfacePoint { surfacePoint | direction = Direction2d.rotateBy angle surfacePoint.direction }
 
 
-surfacePointSetDirection : Direction2d SurfaceCoordinates -> SurfacePoint units -> SurfacePoint units
+surfacePointSetDirection : Direction2d SurfaceCoordinate -> SurfacePoint units -> SurfacePoint units
 surfacePointSetDirection direction (SurfacePoint surfacePoint) =
     SurfacePoint { surfacePoint | direction = direction }
 
@@ -394,19 +394,15 @@ type SurfaceSide
     | Back
 
 
-type SurfaceCoordinates
-    = SurfaceCoordinates Never
-
-
-type AdjacentSurfaceCoordinates
-    = AdjacentSurfaceCoordinates Never
+type SurfaceCoordinate
+    = SurfaceCoordinate Never
 
 
 getTriangleEdgeFrame :
     Mesh units coordinates
     -> TriangleId
     -> TriangleEdge
-    -> Maybe (Frame2d units SurfaceCoordinates { defines : SurfaceCoordinates })
+    -> Maybe (Frame2d units SurfaceCoordinate { defines : SurfaceCoordinate })
 getTriangleEdgeFrame mesh triangleId triangleSide =
     case ( getTriangleData triangleId mesh, getAdjacentTriangle mesh triangleId triangleSide ) of
         ( Just triangleData, Just adjacentTriangleData ) ->
@@ -416,15 +412,11 @@ getTriangleEdgeFrame mesh triangleId triangleSide =
             Nothing
 
 
-vector2dChangeCoordinate v =
-    Vector2d.toTuple rawQuantity v |> Vector2d.fromTuple Quantity.Quantity
-
-
 getTriangleEdgeFrame_ :
     TriangleEdge
     -> TriangleData units coordinates
     -> AdjacentTriangleData units coordinates
-    -> Frame2d units SurfaceCoordinates { defines : SurfaceCoordinates }
+    -> Frame2d units SurfaceCoordinate { defines : SurfaceCoordinate }
 getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
     let
         ( e0, e1 ) =
@@ -471,8 +463,38 @@ getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
             |> Frame2d.mirrorAcross axis
 
 
-move : Mesh units coordinates -> Angle -> Quantity Float units -> SurfacePoint units -> SurfacePoint units
-move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, direction, faceSide } as surfacePoint)) =
+move :
+    Mesh units coordinates
+    -> Angle
+    -> Quantity Float units
+    -> SurfacePoint units
+    -> Maybe { path : List EdgePoint, end : SurfacePoint units }
+move mesh rotationOffset distance surfacePoint =
+    case moveHelper mesh rotationOffset distance surfacePoint [] of
+        Just ( path, surfacePoint_ ) ->
+            Just { path = List.reverse path, end = surfacePoint_ }
+
+        Nothing ->
+            Nothing
+
+
+type EdgePoint
+    = EdgePoint
+        { triangleId : TriangleId
+        , edge : TriangleEdge
+        , faceSide : SurfaceSide
+        , t : Float
+        }
+
+
+moveHelper :
+    Mesh units coordinates
+    -> Angle
+    -> Quantity Float units
+    -> SurfacePoint units
+    -> List EdgePoint
+    -> Maybe ( List EdgePoint, SurfacePoint units )
+moveHelper mesh rotationOffset distance (SurfacePoint ({ triangleId, position, direction, faceSide } as surfacePoint)) path =
     case getTriangleData triangleId mesh of
         Just triangleData ->
             let
@@ -485,10 +507,6 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                 endPoint =
                     Point2d.translateIn (Direction2d.rotateBy rotationOffset direction) distance point
 
-                --Point2d.translateBy movement point
-                --Direction2d.angleFrom direction Direction2d.y
-                --    |> flip Vector2d.rotateBy movement
-                --    |> flip Point2d.translateBy point
                 moveLine =
                     LineSegment2d.from point endPoint
 
@@ -521,25 +539,17 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                                         (Point2d.distanceFrom intersectionPoint (LineSegment2d.startPoint edge))
                                         (LineSegment2d.length edge)
 
+                                intersectionPoint3d =
+                                    intersectionPoint |> Point3d.on triangleData.sketchPlane
+
                                 frame =
                                     getTriangleEdgeFrame_ sideIndex triangleData adjacentTriangle
 
-                                newEndPoint =
-                                    Point2d.relativeTo frame endPoint
-
-                                newStart =
-                                    Point2d.relativeTo frame intersectionPoint |> Interpolative.fromPoint2d adjacentTriangle.triangleData.triangle2d
-
-                                --newMovement =
-                                --    Vector2d.from newStart newEndPoint
                                 newSurfacePosition0 =
                                     Interpolative.fromTriangleSide t adjacentTriangle.side
 
                                 newSurfacePosition1 =
                                     Interpolative.fromTriangleSide (1 - t) adjacentTriangle.side
-
-                                a =
-                                    intersectionPoint |> Point3d.on triangleData.sketchPlane
 
                                 b =
                                     newSurfacePosition0 |> Interpolative.toPoint3d (triangleDataGetTriangle3d adjacentTriangle.triangleData)
@@ -552,11 +562,22 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                                         |> Quantity.minus (Point2d.distanceFrom point intersectionPoint)
                                         |> Quantity.max Quantity.zero
 
+                                newEdgePoint =
+                                    EdgePoint
+                                        { triangleId = triangleId
+                                        , t = t
+                                        , edge = sideIndex
+                                        , faceSide = faceSide
+                                        }
+
                                 newSurfacePoint =
                                     SurfacePoint
                                         { triangleId = adjacentTriangle.triangleId
                                         , position =
-                                            if Point3d.distanceFrom a b |> Quantity.lessThan (Point3d.distanceFrom a c) then
+                                            if
+                                                Point3d.distanceFrom intersectionPoint3d b
+                                                    |> Quantity.lessThan (Point3d.distanceFrom intersectionPoint3d c)
+                                            then
                                                 newSurfacePosition0
 
                                             else
@@ -570,25 +591,35 @@ move mesh rotationOffset distance (SurfacePoint ({ triangleId, position, directi
                                                 flipFaceSide faceSide
                                         }
                             in
-                            move mesh rotationOffset newDistance newSurfacePoint
+                            moveHelper mesh rotationOffset newDistance newSurfacePoint (newEdgePoint :: path)
 
                         Nothing ->
-                            SurfacePoint
+                            ( path
+                            , SurfacePoint
                                 { triangleId = triangleId
                                 , position = Interpolative.fromPoint2d triangleData.triangle2d intersectionPoint
                                 , direction = Direction2d.x
                                 , faceSide = Front
                                 }
+                            )
+                                |> Just
 
                 Nothing ->
-                    SurfacePoint
+                    let
+                        endPosition =
+                            Interpolative.fromPoint2d triangleData.triangle2d endPoint
+                    in
+                    ( path
+                    , SurfacePoint
                         { surfacePoint
                             | triangleId = triangleId
-                            , position = Interpolative.fromPoint2d triangleData.triangle2d endPoint
+                            , position = endPosition
                         }
+                    )
+                        |> Just
 
         Nothing ->
-            SurfacePoint surfacePoint
+            Nothing
 
 
 flipFaceSide faceSide =

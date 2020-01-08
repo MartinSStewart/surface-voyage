@@ -29,11 +29,6 @@ triangleStrip first second third rest =
     TriangleStrip False first second third rest
 
 
-fromMesh : Mesh.Mesh unit coordinates -> MeshPart a
-fromMesh mesh =
-    Debug.todo ""
-
-
 type alias Vertex =
     { color : Vec4
     , position : Vec3
