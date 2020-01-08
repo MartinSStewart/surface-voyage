@@ -5,7 +5,7 @@ import Browser.Events
 import Color
 import Direction2d
 import Duration exposing (Duration)
-import Element
+import Element exposing (Element)
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Html exposing (Html)
 import Keyboard exposing (Key)
@@ -14,26 +14,41 @@ import Length exposing (Meters)
 import List.Nonempty
 import Math.Vector3 as Vec3
 import Math.Vector4 as Vec4
-import Mesh exposing (SurfacePoint)
-import MeshBuilder
+import Mesh exposing (Mesh, SurfacePoint)
+import MeshBuilder exposing (Vertex)
+import MeshData exposing (ScreenCoordinate, WorldCoordinate)
+import Pixels exposing (Pixels)
 import Point2d
 import Point3d
-import Quantity
+import Quantity exposing (Quantity)
 import Vector2d
+import Vector2i exposing (Vector2i)
 import View
+import WebGL
 
 
 
 ---- MODEL ----
 
 
-type alias Model =
+type alias SuccessModel_ =
     { keys : List Key
     , previousKeys : List Key
-    , windowSize : ( Int, Int )
+    , windowSize : Vector2i Pixels ScreenCoordinate
     , surfacePoint : SurfacePoint Meters
     , time : Duration
+    , mesh : Mesh Meters WorldCoordinate
+    , webGlMesh : WebGL.Mesh Vertex
     }
+
+
+type Model
+    = SuccessModel SuccessModel_
+    | FailureModel FailureModel_
+
+
+type alias FailureModel_ =
+    { message : String }
 
 
 type alias Flags =
@@ -44,15 +59,25 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    ( { keys = []
-      , previousKeys = []
-      , windowSize = ( flags.windowWidth, flags.windowHeight )
-      , surfacePoint =
-            Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.2 1) surfaceCube
-      , time = Quantity.zero
-      }
-    , Cmd.none
-    )
+    case MeshData.surfaceCube of
+        Ok mesh ->
+            ( SuccessModel
+                { keys = []
+                , previousKeys = []
+                , windowSize = Vector2i.pixels flags.windowWidth flags.windowHeight
+                , surfacePoint =
+                    Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.2 1) mesh
+                , time = Quantity.zero
+                , mesh = mesh
+                , webGlMesh = MeshData.renderCube
+                }
+            , Cmd.none
+            )
+
+        Err _ ->
+            ( FailureModel { message = "" }
+            , Cmd.none
+            )
 
 
 
@@ -62,12 +87,22 @@ init flags =
 type Msg
     = NoOp
     | KeyMsg Keyboard.Msg
-    | WindowResize Int Int
+    | WindowResize (Vector2i Pixels ScreenCoordinate)
     | AnimationFrameDelta Duration
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    case model of
+        SuccessModel model_ ->
+            updateSuccessModel msg model_ |> Tuple.mapFirst SuccessModel
+
+        FailureModel _ ->
+            ( model, Cmd.none )
+
+
+updateSuccessModel : Msg -> SuccessModel_ -> ( SuccessModel_, Cmd Msg )
+updateSuccessModel msg model =
     case msg of
         NoOp ->
             model |> addCmdNone
@@ -75,8 +110,8 @@ update msg model =
         KeyMsg keyMsg ->
             keyMsgUpdate keyMsg model
 
-        WindowResize width height ->
-            { model | windowSize = ( width, height ) } |> addCmdNone
+        WindowResize windowSize ->
+            { model | windowSize = windowSize } |> addCmdNone
 
         AnimationFrameDelta delta ->
             { model | time = Quantity.plus model.time delta } |> step |> addCmdNone
@@ -91,14 +126,14 @@ keyMsgUpdate keyMsg model =
         |> addCmdNone
 
 
-step : Model -> Model
+step : SuccessModel_ -> SuccessModel_
 step model =
     { model
         | surfacePoint =
             case Keyboard.arrowDown model |> Vector2d.direction of
                 Just direction ->
                     Mesh.move
-                        surfaceCube
+                        model.mesh
                         (Direction2d.angleFrom Direction2d.y direction)
                         (Length.meters 0.01)
                         model.surfacePoint
@@ -116,53 +151,6 @@ addCmdNone a =
 addCmd : Cmd msg -> a -> ( a, Cmd msg )
 addCmd cmd a =
     ( a, cmd )
-
-
-baseCube =
-    MeshBuilder.cube
-
-
-colorToVec4 color =
-    let
-        { red, green, blue, alpha } =
-            Color.toRgba color
-    in
-    Vec4.vec4 (red * alpha) (green * alpha) (blue * alpha) alpha
-
-
-cubeColors =
-    List.Nonempty.Nonempty (Color.rgb 0.9 0.1 0.1)
-        [ Color.rgb 0.1 0.9 0.1
-        , Color.rgb 0.1 0.1 0.9
-        , Color.rgb 0.9 0.9 0.1
-        , Color.rgb 0.9 0.1 0.9
-        , Color.rgb 0.1 0.9 0.9
-        ]
-
-
-renderCube =
-    MeshBuilder.splitFacesCube
-        |> MeshBuilder.map
-            (\{ position, cubeFaceIndex } ->
-                { color = cubeColors |> List.Nonempty.get cubeFaceIndex |> colorToVec4
-                , position = position |> Point3d.toVec3
-                , normal = Vec3.vec3 0 0 1
-                }
-            )
-        |> MeshBuilder.toWebGlMesh
-
-
-surfaceCube =
-    let
-        ( verts, indices ) =
-            MeshBuilder.toVerticesAndIndices baseCube
-    in
-    case Mesh.fromVerticesAndIndices verts indices of
-        Ok mesh ->
-            mesh
-
-        Err error ->
-            error |> Debug.toString |> Debug.todo
 
 
 twoTriangleMesh =
@@ -197,15 +185,24 @@ twoTriangleSurface =
 view : Model -> Html Msg
 view model =
     Element.layout [] <|
-        Element.html <|
-            View.view model model.windowSize renderCube (Mesh.surfacePointToWorld model.surfacePoint surfaceCube)
+        case model of
+            SuccessModel model_ ->
+                viewSuccessModel model_
+
+            FailureModel model_ ->
+                Element.text model_.message
+
+
+viewSuccessModel : SuccessModel_ -> Element Msg
+viewSuccessModel model =
+    View.view model
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.batch
         [ Sub.map KeyMsg Keyboard.subscriptions
-        , Browser.Events.onResize WindowResize
+        , Browser.Events.onResize (\w h -> Vector2i.pixels w h |> WindowResize)
         , Browser.Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameDelta)
         ]
 

@@ -37,6 +37,7 @@ fromMesh mesh =
 type alias Vertex =
     { color : Vec4
     , position : Vec3
+    , normal : Vec3
     }
 
 

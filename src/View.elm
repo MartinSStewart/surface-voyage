@@ -1,16 +1,20 @@
 module View exposing (view)
 
 import Duration exposing (Duration)
+import Element exposing (Element)
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
+import Geometry.Interop.LinearAlgebra.Vector3d as Vector3d
 import Html.Attributes
 import Length exposing (Meters)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector3 as Vec3 exposing (Vec3)
 import Math.Vector4 as Vec4 exposing (Vec4)
-import Mesh exposing (SurfacePoint)
+import Mesh exposing (Mesh, SurfacePoint)
 import MeshBuilder
+import MeshData exposing (ScreenCoordinate, WorldCoordinate)
+import Pixels exposing (Pixels)
 import Point3d exposing (Point3d)
-import Quantity exposing (Quantity)
+import Vector2i exposing (Vector2i)
 import Vector3d
 import WebGL exposing (Shader)
 import WebGL.Settings
@@ -22,10 +26,21 @@ type alias Config a =
     { a
         | time : Duration
         , surfacePoint : SurfacePoint Meters
+        , mesh : Mesh Meters WorldCoordinate
+        , webGlMesh : WebGL.Mesh Vertex
+        , windowSize : Vector2i Pixels ScreenCoordinate
     }
 
 
-view config (( windowWidth, windowHeight ) as windowSize) mesh playerPosition =
+view : Config a -> Element msg
+view config =
+    let
+        ( windowWidth, windowHeight ) =
+            Vector2i.toTuple Pixels.inPixels config.windowSize
+
+        playerPosition =
+            Mesh.surfacePointToWorld config.surfacePoint config.mesh
+    in
     WebGL.toHtml
         [ Html.Attributes.width windowWidth
         , Html.Attributes.height windowHeight
@@ -33,8 +48,8 @@ view config (( windowWidth, windowHeight ) as windowSize) mesh playerPosition =
         ([ entity
             vertexShader
             fragmentShader
-            mesh
-            (uniforms config.time Mat4.identity windowSize)
+            config.webGlMesh
+            (uniforms config Mat4.identity)
          ]
             ++ (case playerPosition of
                     Just playerPosition_ ->
@@ -42,13 +57,14 @@ view config (( windowWidth, windowHeight ) as windowSize) mesh playerPosition =
                             vertexShader
                             fragmentShader
                             playerMesh
-                            (uniforms config.time (playerPosition_ |> Point3d.toVec3 |> Mat4.makeTranslate) windowSize)
+                            (uniforms config (playerPosition_ |> Point3d.toVec3 |> Mat4.makeTranslate))
                         ]
 
                     Nothing ->
                         []
                )
         )
+        |> Element.html
 
 
 entity =
@@ -74,16 +90,20 @@ playerMesh =
         |> MeshBuilder.toWebGlMesh
 
 
-uniforms : Duration -> Mat4 -> ( Int, Int ) -> Uniforms
-uniforms time local windowSize =
+uniforms : Config a -> Mat4 -> Uniforms
+uniforms confg local =
     { local = local
-    , perspective = perspective windowSize
-    , camera = cameraMatrix time
+    , perspective = perspective confg.windowSize
+    , camera = cameraMatrix confg
     }
 
 
-perspective : ( Int, Int ) -> Mat4
-perspective ( windowWidth, windowHeight ) =
+perspective : Vector2i Pixels ScreenCoordinate -> Mat4
+perspective windowSize =
+    let
+        ( windowWidth, windowHeight ) =
+            Vector2i.toTuple Pixels.inPixels windowSize
+    in
     Mat4.makePerspective
         60
         ((max 1 windowWidth |> toFloat) / (max 1 windowHeight |> toFloat))
@@ -91,18 +111,38 @@ perspective ( windowWidth, windowHeight ) =
         100
 
 
-cameraMatrix time =
+cameraMatrix config =
     let
-        time_ =
-            1.4
-
         distance =
             2
+
+        playerPosition =
+            Mesh.surfacePointToWorld config.surfacePoint config.mesh
     in
-    Mat4.makeLookAt
-        (Vec3.vec3 (cos time_ * distance + 0.5) (sin time_ * distance + 0.5) 2)
-        (Vec3.vec3 0.5 0.5 0.5)
-        (Vec3.vec3 0 0 1)
+    case
+        ( playerPosition
+        , Mesh.getSurfacePointNormal config.mesh config.surfacePoint
+        , Mesh.getSurfacePointDirection config.mesh config.surfacePoint
+        )
+    of
+        ( Just playerPosition_, Just surfaceNormal, Just surfaceDirection ) ->
+            let
+                cameraPosition =
+                    Point3d.translateIn surfaceNormal (Length.meters 2) playerPosition_ |> Point3d.toVec3
+
+                up =
+                    Vector3d.withLength (Length.meters 1) surfaceDirection |> Vector3d.toVec3
+            in
+            Mat4.makeLookAt
+                cameraPosition
+                (Point3d.toVec3 playerPosition_)
+                up
+
+        _ ->
+            Mat4.makeLookAt
+                (Vec3.vec3 0 0 2)
+                (Vec3.vec3 0.5 0.5 0.5)
+                (Vec3.vec3 0 0 1)
 
 
 type alias Uniforms =

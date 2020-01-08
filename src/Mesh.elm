@@ -12,6 +12,7 @@ module Mesh exposing
     , getAdjacentTriangle
     , getAdjacentTriangle_
     , getSurfacePointDirection
+    , getSurfacePointNormal
     , getTriangleData
     , getTriangleEdgeFrame
     , getTriangleEdgeFrame_
@@ -358,6 +359,21 @@ getSurfacePointDirection mesh ((SurfacePoint { direction }) as surfacePoint) =
     case getTriangleData (surfacePointTriangleId surfacePoint) mesh of
         Just triangleData ->
             Direction3d.on triangleData.sketchPlane direction |> Just
+
+        _ ->
+            Nothing
+
+
+getSurfacePointNormal : Mesh units coordinates -> SurfacePoint units -> Maybe (Direction3d coordinates)
+getSurfacePointNormal mesh ((SurfacePoint { faceSide }) as surfacePoint) =
+    case getTriangleData (surfacePointTriangleId surfacePoint) mesh of
+        Just triangleData ->
+            case faceSide of
+                Front ->
+                    SketchPlane3d.normalDirection triangleData.sketchPlane |> Just
+
+                Back ->
+                    SketchPlane3d.normalDirection triangleData.sketchPlane |> Direction3d.reverse |> Just
 
         _ ->
             Nothing
