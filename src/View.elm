@@ -42,7 +42,7 @@ view config =
             Vector2i.toTuple Pixels.inPixels config.windowSize
 
         playerPosition =
-            SurfacePoint.surfacePointToWorld config.surfacePoint config.mesh
+            SurfacePoint.worldPosition config.surfacePoint config.mesh
     in
     WebGL.toHtml
         [ Html.Attributes.width windowWidth
@@ -120,7 +120,7 @@ cameraMatrix config =
             2
 
         playerPosition =
-            SurfacePoint.surfacePointToWorld config.surfacePoint config.mesh
+            SurfacePoint.worldPosition config.surfacePoint config.mesh
 
         --a =
         --    case Mesh.move config.mesh Quantity.zero (Length.meters 0.5) config.surfacePoint of
@@ -132,8 +132,8 @@ cameraMatrix config =
     in
     case
         ( playerPosition
-        , SurfacePoint.getSurfacePointNormal config.mesh config.surfacePoint
-        , SurfacePoint.getSurfacePointDirection config.mesh config.surfacePoint
+        , SurfacePoint.getNormal config.mesh config.surfacePoint
+        , SurfacePoint.worldDirection config.mesh config.surfacePoint
         )
     of
         ( Just playerPosition_, Just surfaceNormal, Just surfaceDirection ) ->

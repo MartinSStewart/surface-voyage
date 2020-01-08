@@ -68,6 +68,15 @@ type alias SurfacePoint_ =
     }
 
 
+type EdgePoint
+    = EdgePoint
+        { triangleId : TriangleId
+        , edge : TriangleEdge
+        , faceSide : SurfaceSide
+        , t : Float
+        }
+
+
 type SurfaceSide
     = Front
     | Back

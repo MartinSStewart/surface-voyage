@@ -197,7 +197,7 @@ nearestSurfacePoint point mesh =
                     |> Maybe.map
                         (\triangleData ->
                             { triangleId = Types.TriangleId triangleId
-                            , nearestPoint = Point3dEx.nearestPointOnTriangle (TriangleData.triangleDataGetTriangle3d triangleData) point
+                            , nearestPoint = Point3dEx.nearestPointOnTriangle (TriangleData.worldTriangle triangleData) point
                             }
                         )
             )
@@ -299,7 +299,7 @@ move :
     -> Angle
     -> Quantity Float units
     -> Types.SurfacePoint units
-    -> Maybe { path : List EdgePoint, end : Types.SurfacePoint units }
+    -> Maybe { path : List Types.EdgePoint, end : Types.SurfacePoint units }
 move mesh rotationOffset distance surfacePoint =
     case moveHelper mesh rotationOffset distance surfacePoint [] of
         Just ( path, surfacePoint_ ) ->
@@ -309,22 +309,13 @@ move mesh rotationOffset distance surfacePoint =
             Nothing
 
 
-type EdgePoint
-    = EdgePoint
-        { triangleId : Types.TriangleId
-        , edge : TriangleEdge
-        , faceSide : Types.SurfaceSide
-        , t : Float
-        }
-
-
 moveHelper :
     Mesh units coordinates
     -> Angle
     -> Quantity Float units
     -> Types.SurfacePoint units
-    -> List EdgePoint
-    -> Maybe ( List EdgePoint, Types.SurfacePoint units )
+    -> List Types.EdgePoint
+    -> Maybe ( List Types.EdgePoint, Types.SurfacePoint units )
 moveHelper mesh rotationOffset distance (Types.SurfacePoint ({ triangleId, position, direction, faceSide } as surfacePoint)) path =
     case Types.getTriangleData triangleId mesh of
         Just triangleData ->
@@ -383,10 +374,10 @@ moveHelper mesh rotationOffset distance (Types.SurfacePoint ({ triangleId, posit
                                     Interpolative.fromTriangleSide (1 - t) adjacentTriangle.side
 
                                 b =
-                                    newSurfacePosition0 |> Interpolative.toPoint3d (TriangleData.triangleDataGetTriangle3d adjacentTriangle.triangleData)
+                                    newSurfacePosition0 |> Interpolative.toPoint3d (TriangleData.worldTriangle adjacentTriangle.triangleData)
 
                                 c =
-                                    newSurfacePosition1 |> Interpolative.toPoint3d (TriangleData.triangleDataGetTriangle3d adjacentTriangle.triangleData)
+                                    newSurfacePosition1 |> Interpolative.toPoint3d (TriangleData.worldTriangle adjacentTriangle.triangleData)
 
                                 newDistance =
                                     distance
@@ -394,7 +385,7 @@ moveHelper mesh rotationOffset distance (Types.SurfacePoint ({ triangleId, posit
                                         |> Quantity.max Quantity.zero
 
                                 newEdgePoint =
-                                    EdgePoint
+                                    Types.EdgePoint
                                         { triangleId = triangleId
                                         , t = t
                                         , edge = sideIndex

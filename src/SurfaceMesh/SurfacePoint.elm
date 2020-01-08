@@ -1,4 +1,4 @@
-module SurfaceMesh.SurfacePoint exposing (..)
+module SurfaceMesh.SurfacePoint exposing (SurfacePoint, directionFromWorldDirection, getNormal, localPosition, pointTowards, rotateBy, triangleId, worldDirection, worldPosition)
 
 import Angle exposing (Angle)
 import Direction2d exposing (Direction2d)
@@ -14,27 +14,27 @@ type alias SurfacePoint units =
     Types.SurfacePoint units
 
 
-surfacePointRotateBy : Angle -> Types.SurfacePoint units -> Types.SurfacePoint units
-surfacePointRotateBy angle (Types.SurfacePoint surfacePoint) =
+rotateBy : Angle -> Types.SurfacePoint units -> Types.SurfacePoint units
+rotateBy angle (Types.SurfacePoint surfacePoint) =
     Types.SurfacePoint { surfacePoint | direction = Direction2d.rotateBy angle surfacePoint.direction }
 
 
-surfacePointSetDirection : Direction2d Types.SurfaceCoordinate -> Types.SurfacePoint units -> Types.SurfacePoint units
-surfacePointSetDirection direction (Types.SurfacePoint surfacePoint) =
+setDirection_ : Direction2d Types.SurfaceCoordinate -> Types.SurfacePoint units -> Types.SurfacePoint units
+setDirection_ direction (Types.SurfacePoint surfacePoint) =
     Types.SurfacePoint { surfacePoint | direction = direction }
 
 
-setSurfacePointDirectionTowards : Point3d units coordinates -> Types.Mesh units coordinates -> Types.SurfacePoint units -> Types.SurfacePoint units
-setSurfacePointDirectionTowards point mesh surfacePoint =
-    case Types.getTriangleData (surfacePointTriangleId surfacePoint) mesh of
+pointTowards : Point3d units coordinates -> Types.Mesh units coordinates -> Types.SurfacePoint units -> Types.SurfacePoint units
+pointTowards point mesh surfacePoint =
+    case Types.getTriangleData (triangleId surfacePoint) mesh of
         Just triangleData ->
             let
                 a =
-                    surfacePointPosition surfacePoint |> Interpolative.toPoint2d triangleData.triangle2d
+                    localPosition surfacePoint |> Interpolative.toPoint2d triangleData.triangle2d
             in
             case Point3d.projectInto triangleData.sketchPlane point |> Direction2d.from a of
                 Just newDirection ->
-                    surfacePointSetDirection newDirection surfacePoint
+                    setDirection_ newDirection surfacePoint
 
                 Nothing ->
                     surfacePoint
@@ -43,23 +43,23 @@ setSurfacePointDirectionTowards point mesh surfacePoint =
             surfacePoint
 
 
-surfacePointToWorld : Types.SurfacePoint unit -> Types.Mesh unit coordinates -> Maybe (Point3d unit coordinates)
-surfacePointToWorld (Types.SurfacePoint surfacePoint) mesh =
+worldPosition : Types.SurfacePoint unit -> Types.Mesh unit coordinates -> Maybe (Point3d unit coordinates)
+worldPosition (Types.SurfacePoint surfacePoint) mesh =
     case Types.getTriangleData surfacePoint.triangleId mesh of
         Just triangleData ->
-            Interpolative.toPoint3d (TriangleData.triangleDataGetTriangle3d triangleData) surfacePoint.position |> Just
+            Interpolative.toPoint3d (TriangleData.worldTriangle triangleData) surfacePoint.position |> Just
 
         Nothing ->
             Nothing
 
 
-setSurfacePointDirection : Direction3d coordinates -> Types.Mesh units coordinates -> Types.SurfacePoint units -> Types.SurfacePoint units
-setSurfacePointDirection direction mesh surfacePoint =
-    case Types.getTriangleData (surfacePointTriangleId surfacePoint) mesh of
+directionFromWorldDirection : Direction3d coordinates -> Types.Mesh units coordinates -> Types.SurfacePoint units -> Types.SurfacePoint units
+directionFromWorldDirection direction mesh surfacePoint =
+    case Types.getTriangleData (triangleId surfacePoint) mesh of
         Just triangleData ->
             case Direction3d.projectInto triangleData.sketchPlane direction of
                 Just newDirection ->
-                    surfacePointSetDirection newDirection surfacePoint
+                    setDirection_ newDirection surfacePoint
 
                 Nothing ->
                     surfacePoint
@@ -68,9 +68,9 @@ setSurfacePointDirection direction mesh surfacePoint =
             surfacePoint
 
 
-getSurfacePointDirection : Types.Mesh units coordinates -> Types.SurfacePoint units -> Maybe (Direction3d coordinates)
-getSurfacePointDirection mesh ((Types.SurfacePoint { direction }) as surfacePoint) =
-    case Types.getTriangleData (surfacePointTriangleId surfacePoint) mesh of
+worldDirection : Types.Mesh units coordinates -> Types.SurfacePoint units -> Maybe (Direction3d coordinates)
+worldDirection mesh ((Types.SurfacePoint { direction }) as surfacePoint) =
+    case Types.getTriangleData (triangleId surfacePoint) mesh of
         Just triangleData ->
             Direction3d.on triangleData.sketchPlane direction |> Just
 
@@ -78,9 +78,9 @@ getSurfacePointDirection mesh ((Types.SurfacePoint { direction }) as surfacePoin
             Nothing
 
 
-getSurfacePointNormal : Types.Mesh units coordinates -> Types.SurfacePoint units -> Maybe (Direction3d coordinates)
-getSurfacePointNormal mesh ((Types.SurfacePoint { faceSide }) as surfacePoint) =
-    case Types.getTriangleData (surfacePointTriangleId surfacePoint) mesh of
+getNormal : Types.Mesh units coordinates -> Types.SurfacePoint units -> Maybe (Direction3d coordinates)
+getNormal mesh ((Types.SurfacePoint { faceSide }) as surfacePoint) =
+    case Types.getTriangleData (triangleId surfacePoint) mesh of
         Just triangleData ->
             case faceSide of
                 Types.Front ->
@@ -93,11 +93,11 @@ getSurfacePointNormal mesh ((Types.SurfacePoint { faceSide }) as surfacePoint) =
             Nothing
 
 
-surfacePointTriangleId : Types.SurfacePoint units -> Types.TriangleId
-surfacePointTriangleId (Types.SurfacePoint surfacePoint) =
+triangleId : Types.SurfacePoint units -> Types.TriangleId
+triangleId (Types.SurfacePoint surfacePoint) =
     surfacePoint.triangleId
 
 
-surfacePointPosition : Types.SurfacePoint units -> Interpolative
-surfacePointPosition (Types.SurfacePoint surfacePoint) =
+localPosition : Types.SurfacePoint units -> Interpolative
+localPosition (Types.SurfacePoint surfacePoint) =
     surfacePoint.position
