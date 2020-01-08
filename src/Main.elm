@@ -16,6 +16,7 @@ import Point2d
 import Point3d
 import Quantity exposing (Quantity)
 import SurfaceMesh.Mesh as Mesh exposing (Mesh)
+import SurfaceMesh.Path as Path
 import SurfaceMesh.SurfacePoint exposing (SurfacePoint)
 import Vector2d
 import Vector2i exposing (Vector2i)
@@ -135,8 +136,8 @@ step model =
                             (Length.meters 0.01)
                             model.surfacePoint
                     of
-                        Just { end } ->
-                            end
+                        Just path ->
+                            Path.endPoint path
 
                         Nothing ->
                             model.surfacePoint

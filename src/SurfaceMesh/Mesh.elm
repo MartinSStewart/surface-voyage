@@ -22,12 +22,14 @@ import Direction2d exposing (Direction2d)
 import Frame2d exposing (Frame2d)
 import LineSegment2d
 import List.Extra as List
+import List.Nonempty as Nonempty
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Point3dEx
 import Quantity exposing (Quantity)
 import SketchPlane3d exposing (SketchPlane3d)
 import SurfaceMesh.Interpolative as Interpolative exposing (Interpolative)
+import SurfaceMesh.Path exposing (Path)
 import SurfaceMesh.Triangle as Triangle exposing (Triangle)
 import SurfaceMesh.TriangleData as TriangleData
 import SurfaceMesh.TriangleEdge as TriangleEdge exposing (TriangleEdge)
@@ -299,11 +301,11 @@ move :
     -> Angle
     -> Quantity Float units
     -> Types.SurfacePoint units
-    -> Maybe { path : List Types.EdgePoint, end : Types.SurfacePoint units }
+    -> Maybe (Types.Path units coordinates)
 move mesh rotationOffset distance surfacePoint =
     case moveHelper mesh rotationOffset distance surfacePoint [] of
-        Just ( path, surfacePoint_ ) ->
-            Just { path = List.reverse path, end = surfacePoint_ }
+        Just path ->
+            Types.Path path |> Just
 
         Nothing ->
             Nothing
@@ -314,9 +316,13 @@ moveHelper :
     -> Angle
     -> Quantity Float units
     -> Types.SurfacePoint units
-    -> List Types.EdgePoint
-    -> Maybe ( List Types.EdgePoint, Types.SurfacePoint units )
-moveHelper mesh rotationOffset distance (Types.SurfacePoint ({ triangleId, position, direction, faceSide } as surfacePoint)) path =
+    -> List ( Types.SurfacePoint units, Types.SurfacePoint units )
+    -> Maybe (Nonempty.Nonempty ( Types.SurfacePoint units, Types.SurfacePoint units ))
+moveHelper mesh rotationOffset distance surfacePoint path =
+    let
+        (Types.SurfacePoint ({ triangleId, position, direction, faceSide } as surfacePoint_)) =
+            surfacePoint
+    in
     case Types.getTriangleData triangleId mesh of
         Just triangleData ->
             let
@@ -384,14 +390,6 @@ moveHelper mesh rotationOffset distance (Types.SurfacePoint ({ triangleId, posit
                                         |> Quantity.minus (Point2d.distanceFrom point intersectionPoint)
                                         |> Quantity.max Quantity.zero
 
-                                newEdgePoint =
-                                    Types.EdgePoint
-                                        { triangleId = triangleId
-                                        , t = t
-                                        , edge = sideIndex
-                                        , faceSide = faceSide
-                                        }
-
                                 newSurfacePoint =
                                     Types.SurfacePoint
                                         { triangleId = adjacentTriangle.triangleId
@@ -413,17 +411,24 @@ moveHelper mesh rotationOffset distance (Types.SurfacePoint ({ triangleId, posit
                                                 flipFaceSide faceSide
                                         }
                             in
-                            moveHelper mesh rotationOffset newDistance newSurfacePoint (newEdgePoint :: path)
+                            moveHelper
+                                mesh
+                                rotationOffset
+                                newDistance
+                                newSurfacePoint
+                                (( surfacePoint, newSurfacePoint ) :: path)
 
                         Nothing ->
-                            ( path
-                            , Types.SurfacePoint
-                                { triangleId = triangleId
-                                , position = Interpolative.fromPoint2d triangleData.triangle2d intersectionPoint
-                                , direction = Direction2d.x
-                                , faceSide = Types.Front
-                                }
-                            )
+                            Nonempty.Nonempty
+                                ( surfacePoint
+                                , Types.SurfacePoint
+                                    { triangleId = triangleId
+                                    , position = Interpolative.fromPoint2d triangleData.triangle2d intersectionPoint
+                                    , direction = Direction2d.x
+                                    , faceSide = Types.Front
+                                    }
+                                )
+                                path
                                 |> Just
 
                 Nothing ->
@@ -431,13 +436,15 @@ moveHelper mesh rotationOffset distance (Types.SurfacePoint ({ triangleId, posit
                         endPosition =
                             Interpolative.fromPoint2d triangleData.triangle2d endPoint
                     in
-                    ( path
-                    , Types.SurfacePoint
-                        { surfacePoint
-                            | triangleId = triangleId
-                            , position = endPosition
-                        }
-                    )
+                    Nonempty.Nonempty
+                        ( surfacePoint
+                        , Types.SurfacePoint
+                            { surfacePoint_
+                                | triangleId = triangleId
+                                , position = endPosition
+                            }
+                        )
+                        path
                         |> Just
 
         Nothing ->

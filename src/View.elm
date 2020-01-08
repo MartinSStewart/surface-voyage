@@ -1,11 +1,14 @@
 module View exposing (view)
 
+import Angle
+import Direction3d
 import Duration exposing (Duration)
 import Element exposing (Element)
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Geometry.Interop.LinearAlgebra.Vector3d as Vector3d
 import Html.Attributes
 import Length exposing (Meters)
+import LineSegment3d
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector3 as Vec3 exposing (Vec3)
 import Math.Vector4 as Vec4 exposing (Vec4)
@@ -16,6 +19,7 @@ import Point3d exposing (Point3d)
 import Polyline3d
 import Quantity
 import SurfaceMesh.Mesh as Mesh exposing (Mesh)
+import SurfaceMesh.Path as Path
 import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
 import Vector2i exposing (Vector2i)
 import Vector3d
@@ -114,6 +118,10 @@ perspective windowSize =
         100
 
 
+vectorSum =
+    List.foldl Vector3d.plus Vector3d.zero
+
+
 cameraMatrix config =
     let
         distance =
@@ -122,27 +130,58 @@ cameraMatrix config =
         playerPosition =
             SurfacePoint.worldPosition config.surfacePoint config.mesh
 
-        --a =
-        --    case Mesh.move config.mesh Quantity.zero (Length.meters 0.5) config.surfacePoint of
-        --        Just { path, end } ->
-        --            path |> List.foldr
-        --
-        --        Nothing ->
-        --            0
+        a angleOffset =
+            case Mesh.move config.mesh angleOffset (Length.meters 0.3) config.surfacePoint of
+                Just path ->
+                    case Path.edgeNormals config.mesh path of
+                        Just edges ->
+                            edges
+                                |> List.map
+                                    (\( line, normal ) ->
+                                        let
+                                            length =
+                                                LineSegment3d.length line
+                                        in
+                                        { normal = Vector3d.withLength length normal
+                                        , direction =
+                                            case LineSegment3d.direction line of
+                                                Just lineDir ->
+                                                    Vector3d.withLength length lineDir
+
+                                                Nothing ->
+                                                    Vector3d.zero
+                                        }
+                                    )
+
+                        Nothing ->
+                            []
+
+                Nothing ->
+                    []
+
+        b =
+            [ Angle.radians 0, Angle.radians (pi / 2), Angle.radians pi, Angle.radians (-pi / 2) ]
+                |> List.concatMap a
+
+        cameraNormal =
+            b |> List.map .normal |> vectorSum |> Debug.log "normal" |> Vector3d.direction
+
+        cameraUp =
+            b |> List.map .direction |> vectorSum |> Debug.log "up" |> Vector3d.direction
     in
     case
         ( playerPosition
-        , SurfacePoint.getNormal config.mesh config.surfacePoint
-        , SurfacePoint.worldDirection config.mesh config.surfacePoint
+        , cameraNormal
+        , cameraUp
         )
     of
-        ( Just playerPosition_, Just surfaceNormal, Just surfaceDirection ) ->
+        ( Just playerPosition_, Just cameraDirection_, Just cameraUp_ ) ->
             let
                 cameraPosition =
-                    Point3d.translateIn surfaceNormal (Length.meters 2) playerPosition_ |> Point3d.toVec3
+                    Point3d.translateIn cameraDirection_ (Length.meters 2) playerPosition_ |> Point3d.toVec3
 
                 up =
-                    Vector3d.withLength (Length.meters 1) surfaceDirection |> Vector3d.toVec3
+                    Vector3d.withLength (Length.meters 1) cameraUp_ |> Vector3d.toVec3
             in
             Mat4.makeLookAt
                 cameraPosition

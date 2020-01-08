@@ -2,6 +2,7 @@ module SurfaceMesh.Types exposing (..)
 
 import Array exposing (Array)
 import Direction2d exposing (Direction2d)
+import List.Nonempty exposing (Nonempty)
 import Point3d exposing (Point3d)
 import SketchPlane3d exposing (SketchPlane3d)
 import SurfaceMesh.Interpolative exposing (Interpolative)
@@ -68,13 +69,14 @@ type alias SurfacePoint_ =
     }
 
 
-type EdgePoint
-    = EdgePoint
-        { triangleId : TriangleId
-        , edge : TriangleEdge
-        , faceSide : SurfaceSide
-        , t : Float
-        }
+
+--type EdgePoint
+--    = EdgePoint
+--        { triangleId : TriangleId
+--        , edge : TriangleEdge
+--        , faceSide : SurfaceSide
+--        , t : Float
+--        }
 
 
 type SurfaceSide
@@ -89,3 +91,7 @@ type SurfaceCoordinate
 getTriangleData : TriangleId -> Mesh units coordinates -> Maybe (TriangleData units coordinates)
 getTriangleData (TriangleId triangleId) (Mesh mesh) =
     Array.get triangleId mesh.triangles
+
+
+type Path units coordinates
+    = Path (Nonempty ( SurfacePoint units, SurfacePoint units ))
