@@ -1,4 +1,4 @@
-module Interpolative exposing (Interpolative, from, fromPoint2d, fromTriangleSide, toPoint2d, toPoint3d)
+module SurfaceMesh.Interpolative exposing (Interpolative, from, fromPoint2d, fromTriangleSide, toPoint2d, toPoint3d)
 
 import Angle exposing (Angle)
 import Basics.Extra exposing (flip)
@@ -8,9 +8,9 @@ import LineSegment3d
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Quantity
+import SurfaceMesh.TriangleEdge exposing (TriangleEdge(..))
 import Triangle2d exposing (Triangle2d)
 import Triangle3d exposing (Triangle3d)
-import TriangleEdge exposing (TriangleEdge(..))
 
 
 type Interpolative

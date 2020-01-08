@@ -2,13 +2,13 @@ module InterpolativeTests exposing (..)
 
 import Expect
 import Fuzz
-import Interpolative
 import Point2d
 import Point3d
 import Quantity
+import SurfaceMesh.Interpolative as Interpolative
+import SurfaceMesh.TriangleEdge as TriangleEdge
 import Test exposing (Test, fuzz, fuzz2, fuzz3, only, test)
 import Triangle2d
-import TriangleEdge
 
 
 

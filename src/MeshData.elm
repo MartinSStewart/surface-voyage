@@ -6,8 +6,8 @@ import Length exposing (Meters)
 import List.Nonempty
 import Math.Vector3 as Vec3
 import Math.Vector4 as Vec4
-import Mesh
 import MeshBuilder exposing (Vertex)
+import SurfaceMesh.Mesh as Mesh
 import WebGL
 
 

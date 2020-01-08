@@ -1,4 +1,4 @@
-module TriangleEdge exposing (..)
+module SurfaceMesh.TriangleEdge exposing (..)
 
 import LineSegment3d exposing (LineSegment3d)
 import Triangle3d exposing (Triangle3d)

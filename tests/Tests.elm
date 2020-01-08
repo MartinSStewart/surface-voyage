@@ -1,12 +1,9 @@
 module Tests exposing (..)
 
 import Array
-import Dict
-import Expect
-import Mesh
 import Point3d
-import Test exposing (..)
-import Triangle
+import SurfaceMesh.Mesh as Mesh
+import SurfaceMesh.Triangle as Triangle
 
 
 

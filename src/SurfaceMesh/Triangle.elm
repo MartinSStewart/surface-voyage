@@ -1,11 +1,11 @@
-module Triangle exposing (Triangle, andThen, edges, from, fromTriangle2d, fromTriangle3d, getSide, getVertex, hasUniqueVertices, map, toList)
+module SurfaceMesh.Triangle exposing (Triangle, andThen, edges, from, fromTriangle2d, fromTriangle3d, getSide, getVertex, hasUniqueVertices, map, toList)
 
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
+import SurfaceMesh.TriangleEdge exposing (TriangleEdge(..))
+import SurfaceMesh.TriangleVertex exposing (TriangleVertex(..))
 import Triangle2d exposing (Triangle2d)
 import Triangle3d exposing (Triangle3d)
-import TriangleEdge exposing (TriangleEdge(..))
-import TriangleVertex exposing (TriangleVertex(..))
 
 
 type alias Triangle a =

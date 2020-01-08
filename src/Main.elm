@@ -2,25 +2,21 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Browser.Events
-import Color
 import Direction2d
 import Duration exposing (Duration)
 import Element exposing (Element)
-import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Html exposing (Html)
 import Keyboard exposing (Key)
 import KeyboardHelper as Keyboard
 import Length exposing (Meters)
-import List.Nonempty
-import Math.Vector3 as Vec3
-import Math.Vector4 as Vec4
-import Mesh exposing (Mesh, SurfacePoint)
 import MeshBuilder exposing (Vertex)
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Pixels exposing (Pixels)
 import Point2d
 import Point3d
 import Quantity exposing (Quantity)
+import SurfaceMesh.Mesh as Mesh exposing (Mesh)
+import SurfaceMesh.SurfacePoint exposing (SurfacePoint)
 import Vector2d
 import Vector2i exposing (Vector2i)
 import View

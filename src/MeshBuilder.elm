@@ -7,11 +7,11 @@ import LineSegment2d exposing (LineSegment2d)
 import ListHelper as List
 import Math.Vector3 as Vec3 exposing (Vec3)
 import Math.Vector4 as Vec4 exposing (Vec4)
-import Mesh
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Quantity
-import Triangle exposing (Triangle)
+import SurfaceMesh.Mesh
+import SurfaceMesh.Triangle exposing (Triangle)
 import Vector2d exposing (Vector2d)
 import Vector3d exposing (Vector3d)
 import WebGL exposing (Mesh)

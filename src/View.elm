@@ -9,13 +9,14 @@ import Length exposing (Meters)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector3 as Vec3 exposing (Vec3)
 import Math.Vector4 as Vec4 exposing (Vec4)
-import Mesh exposing (Mesh, SurfacePoint)
 import MeshBuilder
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Pixels exposing (Pixels)
 import Point3d exposing (Point3d)
 import Polyline3d
 import Quantity
+import SurfaceMesh.Mesh as Mesh exposing (Mesh)
+import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
 import Vector2i exposing (Vector2i)
 import Vector3d
 import WebGL exposing (Shader)
@@ -41,7 +42,7 @@ view config =
             Vector2i.toTuple Pixels.inPixels config.windowSize
 
         playerPosition =
-            Mesh.surfacePointToWorld config.surfacePoint config.mesh
+            SurfacePoint.surfacePointToWorld config.surfacePoint config.mesh
     in
     WebGL.toHtml
         [ Html.Attributes.width windowWidth
@@ -119,7 +120,7 @@ cameraMatrix config =
             2
 
         playerPosition =
-            Mesh.surfacePointToWorld config.surfacePoint config.mesh
+            SurfacePoint.surfacePointToWorld config.surfacePoint config.mesh
 
         --a =
         --    case Mesh.move config.mesh Quantity.zero (Length.meters 0.5) config.surfacePoint of
@@ -131,8 +132,8 @@ cameraMatrix config =
     in
     case
         ( playerPosition
-        , Mesh.getSurfacePointNormal config.mesh config.surfacePoint
-        , Mesh.getSurfacePointDirection config.mesh config.surfacePoint
+        , SurfacePoint.getSurfacePointNormal config.mesh config.surfacePoint
+        , SurfacePoint.getSurfacePointDirection config.mesh config.surfacePoint
         )
     of
         ( Just playerPosition_, Just surfaceNormal, Just surfaceDirection ) ->

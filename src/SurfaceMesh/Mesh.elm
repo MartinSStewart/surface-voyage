@@ -1,30 +1,16 @@
-module Mesh exposing
+module SurfaceMesh.Mesh exposing
     ( Error(..)
     , Mesh
-    , SurfaceCoordinate
-    , SurfacePoint
-    , SurfaceSide(..)
-    , TriangleData
     , TriangleId
-    , VertexId
     , fromVerticesAndIndices
     , getAdjacentTriangle
     , getAdjacentTriangle_
-    , getSurfacePointDirection
-    , getSurfacePointNormal
     , getTriangleData
     , getTriangleEdgeFrame
     , getTriangleEdgeFrame_
     , getVertices
     , move
     , nearestSurfacePoint
-    , setSurfacePointDirection
-    , setSurfacePointDirectionTowards
-    , surfacePointPosition
-    , surfacePointRotateBy
-    , surfacePointToWorld
-    , surfacePointTriangleId
-    , triangleDataGetTriangle3d
     )
 
 import Angle exposing (Angle)
@@ -33,62 +19,46 @@ import Axis2d
 import Basics.Extra exposing (flip)
 import Dict exposing (Dict)
 import Direction2d exposing (Direction2d)
-import Direction3d exposing (Direction3d)
 import Frame2d exposing (Frame2d)
-import Interpolative exposing (Interpolative)
 import LineSegment2d
 import List.Extra as List
-import List.Nonempty exposing (Nonempty)
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Point3dEx
-import Polyline3d exposing (Polyline3d)
 import Quantity exposing (Quantity)
 import SketchPlane3d exposing (SketchPlane3d)
-import Triangle exposing (Triangle)
+import SurfaceMesh.Interpolative as Interpolative exposing (Interpolative)
+import SurfaceMesh.Triangle as Triangle exposing (Triangle)
+import SurfaceMesh.TriangleData as TriangleData
+import SurfaceMesh.TriangleEdge as TriangleEdge exposing (TriangleEdge)
+import SurfaceMesh.TriangleVertex as TriangleVertex
+import SurfaceMesh.Types as Types
 import Triangle2d exposing (Triangle2d)
 import Triangle3d exposing (Triangle3d)
-import TriangleEdge exposing (TriangleEdge)
-import TriangleVertex
 import Vector2d exposing (Vector2d)
-import Vector3d
 
 
-type Mesh units coordinates
-    = Mesh (Mesh_ units coordinates)
+type alias Mesh units coordinates =
+    Types.Mesh units coordinates
 
 
-type alias TriangleData units coordinates =
-    { indices : Triangle VertexId
-    , sketchPlane : SketchPlane3d units coordinates { defines : SurfaceCoordinate }
-    , triangle2d : Triangle2d units SurfaceCoordinate
-    , adjacent : Triangle (Maybe AdjacentTriangle)
-    }
+type alias TriangleId =
+    Types.TriangleId
 
 
-type alias AdjacentTriangle =
-    { adjacentId : TriangleId, adjacentEdge : TriangleEdge }
-
-
-triangleDataGetTriangle3d : TriangleData units coordinates -> Triangle3d units coordinates
-triangleDataGetTriangle3d { sketchPlane, triangle2d } =
-    Triangle3d.on sketchPlane triangle2d
-
-
-type alias Mesh_ units coordinates =
-    { triangles : Array (TriangleData units coordinates)
-    , vertices : Array (Point3d units coordinates)
-    }
-
-
-getTriangles : Mesh units coordinates -> Array (TriangleData units coordinates)
-getTriangles (Mesh mesh) =
+getTriangles : Mesh units coordinates -> Array (Types.TriangleData units coordinates)
+getTriangles (Types.Mesh mesh) =
     mesh.triangles
 
 
 getVertices : Mesh units coordinates -> Array (Point3d units coordinates)
-getVertices (Mesh mesh) =
+getVertices (Types.Mesh mesh) =
     mesh.vertices
+
+
+getTriangleData : Types.TriangleId -> Types.Mesh units coordinates -> Maybe (Types.TriangleData units coordinates)
+getTriangleData =
+    Types.getTriangleData
 
 
 type Error
@@ -99,8 +69,8 @@ type Error
 
 generateTriangleData :
     Array (Point3d units coordinates)
-    -> List (Triangle VertexId_)
-    -> Result Error (List (TriangleData units coordinates))
+    -> List (Triangle Types.VertexId_)
+    -> Result Error (List (Types.TriangleData units coordinates))
 generateTriangleData vertices triangles =
     let
         orderTuple ( a, b ) =
@@ -123,7 +93,7 @@ generateTriangleData vertices triangles =
                     )
                 |> List.gatherEqualsBy .edge
 
-        adjacentTriangles : Maybe (Dict ( TriangleId_, VertexId_ ) AdjacentTriangle)
+        adjacentTriangles : Maybe (Dict ( Types.TriangleId_, Types.VertexId_ ) Types.AdjacentTriangle)
         adjacentTriangles =
             adjacentTrianglePairs
                 |> List.foldl
@@ -134,10 +104,10 @@ generateTriangleData vertices triangles =
 
                             ( other :: [], Just list ) ->
                                 [ ( ( triIndex, edgeIndex )
-                                  , { adjacentId = TriangleId other.triIndex, adjacentEdge = TriangleEdge.fromInt other.edgeIndex }
+                                  , { adjacentId = Types.TriangleId other.triIndex, adjacentEdge = TriangleEdge.fromInt other.edgeIndex }
                                   )
                                 , ( ( other.triIndex, other.edgeIndex )
-                                  , { adjacentId = TriangleId triIndex, adjacentEdge = TriangleEdge.fromInt edgeIndex }
+                                  , { adjacentId = Types.TriangleId triIndex, adjacentEdge = TriangleEdge.fromInt edgeIndex }
                                   )
                                 ]
                                     ++ list
@@ -161,7 +131,7 @@ generateTriangleData vertices triangles =
                                     Just ( v0, v1, v2 ) ->
                                         case SketchPlane3d.throughPoints v0 v1 v2 of
                                             Just sketchPlane ->
-                                                { indices = Triangle.map VertexId indices
+                                                { indices = Triangle.map Types.VertexId indices
                                                 , sketchPlane = sketchPlane
                                                 , triangle2d = Triangle3d.from v0 v1 v2 |> Triangle3d.projectInto sketchPlane
                                                 , adjacent =
@@ -189,222 +159,83 @@ generateTriangleData vertices triangles =
                 EdgeSharedBy3OrMoreTriangles
 
 
-fromVerticesAndIndices : Array (Point3d units coordinates) -> List (Triangle VertexId_) -> Result Error (Mesh units coordinates)
+fromVerticesAndIndices : Array (Point3d units coordinates) -> List (Triangle Types.VertexId_) -> Result Error (Mesh units coordinates)
 fromVerticesAndIndices vertices triangles =
     case generateTriangleData vertices triangles of
         Ok triangleData ->
             { triangles = Array.fromList triangleData
             , vertices = vertices
             }
-                |> Mesh
+                |> Types.Mesh
                 |> Ok
 
         Err error ->
             Err error
 
 
-type alias VertexId_ =
-    Int
-
-
-type TriangleId
-    = TriangleId Int
-
-
-type VertexId
-    = VertexId Int
-
-
-type alias EdgeIndex_ =
-    Int
-
-
-type alias TriangleId_ =
-    Int
-
-
-type alias SurfaceMarkerId_ =
-    Int
-
-
-allTriangleIds (Mesh mesh) =
+allTriangleIds (Types.Mesh mesh) =
     Array.length mesh.triangles - 1
 
 
-nearestSurfacePoint : Point3d unit coordinates -> Mesh unit coordinates -> SurfacePoint unit
+nearestSurfacePoint : Point3d unit coordinates -> Mesh unit coordinates -> Types.SurfacePoint unit
 nearestSurfacePoint point mesh =
     let
         thisShouldNeverHappenDefaultValue =
-            SurfacePoint
-                { triangleId = TriangleId -1
+            Types.SurfacePoint
+                { triangleId = Types.TriangleId -1
                 , position = Interpolative.from 0 0
                 , direction = Direction2d.x
-                , faceSide = Front
+                , faceSide = Types.Front
                 }
     in
     allTriangleIds mesh
         |> List.range 0
         |> List.filterMap
             (\triangleId ->
-                TriangleId triangleId
-                    |> flip getTriangleData mesh
+                Types.TriangleId triangleId
+                    |> flip Types.getTriangleData mesh
                     |> Maybe.map
                         (\triangleData ->
-                            { triangleId = TriangleId triangleId
-                            , nearestPoint = Point3dEx.nearestPointOnTriangle (triangleDataGetTriangle3d triangleData) point
+                            { triangleId = Types.TriangleId triangleId
+                            , nearestPoint = Point3dEx.nearestPointOnTriangle (TriangleData.triangleDataGetTriangle3d triangleData) point
                             }
                         )
             )
         |> List.minimumBy (.nearestPoint >> Point3d.distanceFrom point >> rawQuantity)
         |> Maybe.map
             (\{ triangleId, nearestPoint } ->
-                SurfacePoint
+                Types.SurfacePoint
                     { triangleId = triangleId
                     , position =
-                        case getTriangleData triangleId mesh of
+                        case Types.getTriangleData triangleId mesh of
                             Just triangleData ->
                                 Point3d.projectInto triangleData.sketchPlane nearestPoint |> Interpolative.fromPoint2d triangleData.triangle2d
 
                             _ ->
                                 Interpolative.from 0 0
                     , direction = Direction2d.x
-                    , faceSide = Front
+                    , faceSide = Types.Front
                     }
             )
         |> Maybe.withDefault thisShouldNeverHappenDefaultValue
-
-
-surfacePointToWorld : SurfacePoint unit -> Mesh unit coordinates -> Maybe (Point3d unit coordinates)
-surfacePointToWorld (SurfacePoint surfacePoint) mesh =
-    case getTriangleData surfacePoint.triangleId mesh of
-        Just triangleData ->
-            Interpolative.toPoint3d (triangleDataGetTriangle3d triangleData) surfacePoint.position |> Just
-
-        Nothing ->
-            Nothing
 
 
 rawQuantity (Quantity.Quantity value) =
     value
 
 
-getTriangleData : TriangleId -> Mesh units coordinates -> Maybe (TriangleData units coordinates)
-getTriangleData (TriangleId triangleId) (Mesh mesh) =
-    Array.get triangleId mesh.triangles
-
-
-getVertex : VertexId -> Mesh units coordinates -> Maybe (Point3d units coordinates)
-getVertex (VertexId vertexId) (Mesh mesh) =
+getVertex : Types.VertexId -> Mesh units coordinates -> Maybe (Point3d units coordinates)
+getVertex (Types.VertexId vertexId) (Types.Mesh mesh) =
     Array.get vertexId mesh.vertices
-
-
-type SurfacePoint units
-    = SurfacePoint SurfacePoint_
-
-
-type alias SurfacePoint_ =
-    { triangleId : TriangleId
-    , position : Interpolative
-    , direction : Direction2d SurfaceCoordinate
-    , faceSide : SurfaceSide
-    }
-
-
-surfacePointRotateBy : Angle -> SurfacePoint units -> SurfacePoint units
-surfacePointRotateBy angle (SurfacePoint surfacePoint) =
-    SurfacePoint { surfacePoint | direction = Direction2d.rotateBy angle surfacePoint.direction }
-
-
-surfacePointSetDirection : Direction2d SurfaceCoordinate -> SurfacePoint units -> SurfacePoint units
-surfacePointSetDirection direction (SurfacePoint surfacePoint) =
-    SurfacePoint { surfacePoint | direction = direction }
-
-
-setSurfacePointDirectionTowards : Point3d units coordinates -> Mesh units coordinates -> SurfacePoint units -> SurfacePoint units
-setSurfacePointDirectionTowards point mesh surfacePoint =
-    case getTriangleData (surfacePointTriangleId surfacePoint) mesh of
-        Just triangleData ->
-            let
-                a =
-                    surfacePointPosition surfacePoint |> Interpolative.toPoint2d triangleData.triangle2d
-            in
-            case Point3d.projectInto triangleData.sketchPlane point |> Direction2d.from a of
-                Just newDirection ->
-                    surfacePointSetDirection newDirection surfacePoint
-
-                Nothing ->
-                    surfacePoint
-
-        _ ->
-            surfacePoint
-
-
-setSurfacePointDirection : Direction3d coordinates -> Mesh units coordinates -> SurfacePoint units -> SurfacePoint units
-setSurfacePointDirection direction mesh surfacePoint =
-    case getTriangleData (surfacePointTriangleId surfacePoint) mesh of
-        Just triangleData ->
-            case Direction3d.projectInto triangleData.sketchPlane direction of
-                Just newDirection ->
-                    surfacePointSetDirection newDirection surfacePoint
-
-                Nothing ->
-                    surfacePoint
-
-        _ ->
-            surfacePoint
-
-
-getSurfacePointDirection : Mesh units coordinates -> SurfacePoint units -> Maybe (Direction3d coordinates)
-getSurfacePointDirection mesh ((SurfacePoint { direction }) as surfacePoint) =
-    case getTriangleData (surfacePointTriangleId surfacePoint) mesh of
-        Just triangleData ->
-            Direction3d.on triangleData.sketchPlane direction |> Just
-
-        _ ->
-            Nothing
-
-
-getSurfacePointNormal : Mesh units coordinates -> SurfacePoint units -> Maybe (Direction3d coordinates)
-getSurfacePointNormal mesh ((SurfacePoint { faceSide }) as surfacePoint) =
-    case getTriangleData (surfacePointTriangleId surfacePoint) mesh of
-        Just triangleData ->
-            case faceSide of
-                Front ->
-                    SketchPlane3d.normalDirection triangleData.sketchPlane |> Just
-
-                Back ->
-                    SketchPlane3d.normalDirection triangleData.sketchPlane |> Direction3d.reverse |> Just
-
-        _ ->
-            Nothing
-
-
-surfacePointTriangleId : SurfacePoint units -> TriangleId
-surfacePointTriangleId (SurfacePoint surfacePoint) =
-    surfacePoint.triangleId
-
-
-surfacePointPosition : SurfacePoint units -> Interpolative
-surfacePointPosition (SurfacePoint surfacePoint) =
-    surfacePoint.position
-
-
-type SurfaceSide
-    = Front
-    | Back
-
-
-type SurfaceCoordinate
-    = SurfaceCoordinate Never
 
 
 getTriangleEdgeFrame :
     Mesh units coordinates
-    -> TriangleId
+    -> Types.TriangleId
     -> TriangleEdge
-    -> Maybe (Frame2d units SurfaceCoordinate { defines : SurfaceCoordinate })
+    -> Maybe (Frame2d units Types.SurfaceCoordinate { defines : Types.SurfaceCoordinate })
 getTriangleEdgeFrame mesh triangleId triangleSide =
-    case ( getTriangleData triangleId mesh, getAdjacentTriangle mesh triangleId triangleSide ) of
+    case ( Types.getTriangleData triangleId mesh, getAdjacentTriangle mesh triangleId triangleSide ) of
         ( Just triangleData, Just adjacentTriangleData ) ->
             getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData |> Just
 
@@ -414,9 +245,9 @@ getTriangleEdgeFrame mesh triangleId triangleSide =
 
 getTriangleEdgeFrame_ :
     TriangleEdge
-    -> TriangleData units coordinates
+    -> Types.TriangleData units coordinates
     -> AdjacentTriangleData units coordinates
-    -> Frame2d units SurfaceCoordinate { defines : SurfaceCoordinate }
+    -> Frame2d units Types.SurfaceCoordinate { defines : Types.SurfaceCoordinate }
 getTriangleEdgeFrame_ triangleSide triangleData adjacentTriangleData =
     let
         ( e0, e1 ) =
@@ -467,8 +298,8 @@ move :
     Mesh units coordinates
     -> Angle
     -> Quantity Float units
-    -> SurfacePoint units
-    -> Maybe { path : List EdgePoint, end : SurfacePoint units }
+    -> Types.SurfacePoint units
+    -> Maybe { path : List EdgePoint, end : Types.SurfacePoint units }
 move mesh rotationOffset distance surfacePoint =
     case moveHelper mesh rotationOffset distance surfacePoint [] of
         Just ( path, surfacePoint_ ) ->
@@ -480,9 +311,9 @@ move mesh rotationOffset distance surfacePoint =
 
 type EdgePoint
     = EdgePoint
-        { triangleId : TriangleId
+        { triangleId : Types.TriangleId
         , edge : TriangleEdge
-        , faceSide : SurfaceSide
+        , faceSide : Types.SurfaceSide
         , t : Float
         }
 
@@ -491,11 +322,11 @@ moveHelper :
     Mesh units coordinates
     -> Angle
     -> Quantity Float units
-    -> SurfacePoint units
+    -> Types.SurfacePoint units
     -> List EdgePoint
-    -> Maybe ( List EdgePoint, SurfacePoint units )
-moveHelper mesh rotationOffset distance (SurfacePoint ({ triangleId, position, direction, faceSide } as surfacePoint)) path =
-    case getTriangleData triangleId mesh of
+    -> Maybe ( List EdgePoint, Types.SurfacePoint units )
+moveHelper mesh rotationOffset distance (Types.SurfacePoint ({ triangleId, position, direction, faceSide } as surfacePoint)) path =
+    case Types.getTriangleData triangleId mesh of
         Just triangleData ->
             let
                 ( e0, e1, e2 ) =
@@ -552,10 +383,10 @@ moveHelper mesh rotationOffset distance (SurfacePoint ({ triangleId, position, d
                                     Interpolative.fromTriangleSide (1 - t) adjacentTriangle.side
 
                                 b =
-                                    newSurfacePosition0 |> Interpolative.toPoint3d (triangleDataGetTriangle3d adjacentTriangle.triangleData)
+                                    newSurfacePosition0 |> Interpolative.toPoint3d (TriangleData.triangleDataGetTriangle3d adjacentTriangle.triangleData)
 
                                 c =
-                                    newSurfacePosition1 |> Interpolative.toPoint3d (triangleDataGetTriangle3d adjacentTriangle.triangleData)
+                                    newSurfacePosition1 |> Interpolative.toPoint3d (TriangleData.triangleDataGetTriangle3d adjacentTriangle.triangleData)
 
                                 newDistance =
                                     distance
@@ -571,7 +402,7 @@ moveHelper mesh rotationOffset distance (SurfacePoint ({ triangleId, position, d
                                         }
 
                                 newSurfacePoint =
-                                    SurfacePoint
+                                    Types.SurfacePoint
                                         { triangleId = adjacentTriangle.triangleId
                                         , position =
                                             if
@@ -595,11 +426,11 @@ moveHelper mesh rotationOffset distance (SurfacePoint ({ triangleId, position, d
 
                         Nothing ->
                             ( path
-                            , SurfacePoint
+                            , Types.SurfacePoint
                                 { triangleId = triangleId
                                 , position = Interpolative.fromPoint2d triangleData.triangle2d intersectionPoint
                                 , direction = Direction2d.x
-                                , faceSide = Front
+                                , faceSide = Types.Front
                                 }
                             )
                                 |> Just
@@ -610,7 +441,7 @@ moveHelper mesh rotationOffset distance (SurfacePoint ({ triangleId, position, d
                             Interpolative.fromPoint2d triangleData.triangle2d endPoint
                     in
                     ( path
-                    , SurfacePoint
+                    , Types.SurfacePoint
                         { surfacePoint
                             | triangleId = triangleId
                             , position = endPosition
@@ -624,16 +455,16 @@ moveHelper mesh rotationOffset distance (SurfacePoint ({ triangleId, position, d
 
 flipFaceSide faceSide =
     case faceSide of
-        Front ->
-            Back
+        Types.Front ->
+            Types.Back
 
-        Back ->
-            Front
+        Types.Back ->
+            Types.Front
 
 
 type alias AdjacentTriangleData units coordinates =
-    { triangleId : TriangleId
-    , triangleData : TriangleData units coordinates
+    { triangleId : Types.TriangleId
+    , triangleData : Types.TriangleData units coordinates
     , side : TriangleEdge
     , isEdgeReversed : Bool
     }
@@ -641,11 +472,11 @@ type alias AdjacentTriangleData units coordinates =
 
 getAdjacentTriangle :
     Mesh units coordinates
-    -> TriangleId
+    -> Types.TriangleId
     -> TriangleEdge
     -> Maybe (AdjacentTriangleData units coordinates)
 getAdjacentTriangle mesh triangleId side =
-    case getTriangleData triangleId mesh of
+    case Types.getTriangleData triangleId mesh of
         Just triangleData ->
             getAdjacentTriangle_ mesh triangleData side
 
@@ -655,7 +486,7 @@ getAdjacentTriangle mesh triangleId side =
 
 getAdjacentTriangle_ :
     Mesh units coordinates
-    -> TriangleData units coordinates
+    -> Types.TriangleData units coordinates
     -> TriangleEdge
     -> Maybe (AdjacentTriangleData units coordinates)
 getAdjacentTriangle_ mesh triangleData side =
@@ -663,7 +494,7 @@ getAdjacentTriangle_ mesh triangleData side =
         |> Triangle.getVertex (TriangleEdge.toInt side |> TriangleVertex.fromInt)
         |> Maybe.andThen
             (\{ adjacentId, adjacentEdge } ->
-                getTriangleData adjacentId mesh
+                Types.getTriangleData adjacentId mesh
                     |> Maybe.map
                         (\adjacentTriangleData ->
                             let

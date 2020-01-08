@@ -1,4 +1,4 @@
-module TriangleVertex exposing (..)
+module SurfaceMesh.TriangleVertex exposing (..)
 
 import Point3d exposing (Point3d)
 import Triangle3d exposing (Triangle3d)
