@@ -1,4 +1,4 @@
-module SurfaceMesh.Triangle exposing (Triangle, andThen, edges, from, fromTriangle2d, fromTriangle3d, getSide, getVertex, hasUniqueVertices, map, toList)
+module SurfaceMesh.Triangle exposing (Triangle, andThen, edges, from, fromTriangle2d, fromTriangle3d, getSide, getVertex, hasUniqueVertices, map, reverse, toList)
 
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
@@ -80,3 +80,8 @@ fromTriangle3d =
 fromTriangle2d : Triangle2d units coordinates -> Triangle (Point2d units coordinates)
 fromTriangle2d =
     Triangle2d.vertices
+
+
+reverse : Triangle a -> Triangle a
+reverse ( v0, v1, v2 ) =
+    ( v2, v1, v0 )

@@ -2,6 +2,8 @@ module SurfaceMesh.Mesh exposing
     ( Error(..)
     , Mesh
     , TriangleId
+    , defaultMesh
+    , errorToString
     , fromVerticesAndIndices
     , getAdjacentTriangle
     , getAdjacentTriangle_
@@ -29,12 +31,11 @@ import Point3dEx
 import Quantity exposing (Quantity)
 import SketchPlane3d exposing (SketchPlane3d)
 import SurfaceMesh.Interpolative as Interpolative exposing (Interpolative)
-import SurfaceMesh.Path exposing (Path)
 import SurfaceMesh.Triangle as Triangle exposing (Triangle)
 import SurfaceMesh.TriangleData as TriangleData
 import SurfaceMesh.TriangleEdge as TriangleEdge exposing (TriangleEdge)
 import SurfaceMesh.TriangleVertex as TriangleVertex
-import SurfaceMesh.Types as Types
+import SurfaceMesh.Types as Types exposing (VertexId(..))
 import Triangle2d exposing (Triangle2d)
 import Triangle3d exposing (Triangle3d)
 import Vector2d exposing (Vector2d)
@@ -67,6 +68,19 @@ type Error
     = EdgeSharedBy3OrMoreTriangles
     | TriangleIsDegenerate
     | TriangleVertexNotFound
+
+
+errorToString : Error -> String
+errorToString error =
+    case error of
+        EdgeSharedBy3OrMoreTriangles ->
+            "An edge is shared by 3 or more triangles"
+
+        TriangleIsDegenerate ->
+            "Triange is degenerate"
+
+        TriangleVertexNotFound ->
+            "Triangle vertex is not found"
 
 
 generateTriangleData :
@@ -173,6 +187,30 @@ fromVerticesAndIndices vertices triangles =
 
         Err error ->
             Err error
+
+
+defaultMesh : Types.Mesh units coordinates
+defaultMesh =
+    { triangles =
+        Array.fromList
+            [ { indices = Triangle.from (VertexId 0) (VertexId 1) (VertexId 2)
+              , sketchPlane = SketchPlane3d.xy
+              , triangle2d =
+                    Triangle2d.from
+                        (Point2d.unsafe { x = 0, y = 0 })
+                        (Point2d.unsafe { x = 1, y = 0 })
+                        (Point2d.unsafe { x = 0, y = 1 })
+              , adjacent = Triangle.from Nothing Nothing Nothing
+              }
+            ]
+    , vertices =
+        Array.fromList
+            [ Point3d.unsafe { x = 0, y = 0, z = 0 }
+            , Point3d.unsafe { x = 1, y = 0, z = 0 }
+            , Point3d.unsafe { x = 0, y = 1, z = 0 }
+            ]
+    }
+        |> Types.Mesh
 
 
 allTriangleIds (Types.Mesh mesh) =
@@ -424,8 +462,8 @@ moveHelper mesh rotationOffset distance surfacePoint path =
                                 , Types.SurfacePoint
                                     { triangleId = triangleId
                                     , position = Interpolative.fromPoint2d triangleData.triangle2d intersectionPoint
-                                    , direction = Direction2d.x
-                                    , faceSide = Types.Front
+                                    , direction = surfacePoint_.direction
+                                    , faceSide = surfacePoint_.faceSide
                                     }
                                 )
                                 path
@@ -439,9 +477,10 @@ moveHelper mesh rotationOffset distance surfacePoint path =
                     Nonempty.Nonempty
                         ( surfacePoint
                         , Types.SurfacePoint
-                            { surfacePoint_
-                                | triangleId = triangleId
-                                , position = endPosition
+                            { triangleId = triangleId
+                            , position = endPosition
+                            , direction = surfacePoint_.direction
+                            , faceSide = surfacePoint_.faceSide
                             }
                         )
                         path

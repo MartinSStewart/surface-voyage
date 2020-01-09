@@ -35,20 +35,24 @@ type alias Config a =
         , surfacePoint : SurfacePoint Meters
         , cameraNormal : Direction3d WorldCoordinate
         , cameraUp : Direction3d WorldCoordinate
-        , mesh : Mesh Meters WorldCoordinate
-        , webGlMesh : WebGL.Mesh Vertex
+
+        --, mesh : Mesh Meters WorldCoordinate
+        --, webGlMesh : WebGL.Mesh Vertex
         , windowSize : Vector2i Pixels ScreenCoordinate
     }
 
 
-view : Config a -> Element msg
-view config =
+view : Config a -> WebGL.Mesh Vertex -> Mesh Meters WorldCoordinate -> Element msg
+view config webGlMesh mesh =
     let
         ( windowWidth, windowHeight ) =
             Vector2i.toTuple Pixels.inPixels config.windowSize
 
         playerPosition =
-            SurfacePoint.worldPosition config.surfacePoint config.mesh
+            SurfacePoint.worldPosition config.surfacePoint mesh
+
+        cameraMatrix_ =
+            cameraMatrix config mesh
     in
     WebGL.toHtml
         [ Html.Attributes.width windowWidth
@@ -57,8 +61,8 @@ view config =
         ([ entity
             vertexShader
             fragmentShader
-            config.webGlMesh
-            (uniforms config Mat4.identity)
+            webGlMesh
+            (uniforms config cameraMatrix_ Mat4.identity)
          ]
             ++ (case playerPosition of
                     Just playerPosition_ ->
@@ -66,7 +70,7 @@ view config =
                             vertexShader
                             fragmentShader
                             playerMesh
-                            (uniforms config (playerPosition_ |> Point3d.toVec3 |> Mat4.makeTranslate))
+                            (uniforms config cameraMatrix_ (playerPosition_ |> Point3d.toVec3 |> Mat4.makeTranslate))
                         ]
 
                     Nothing ->
@@ -99,11 +103,11 @@ playerMesh =
         |> MeshBuilder.toWebGlMesh
 
 
-uniforms : Config a -> Mat4 -> Uniforms
-uniforms confg local =
+uniforms : Config a -> Mat4 -> Mat4 -> Uniforms
+uniforms confg cameraMatrix_ local =
     { local = local
     , perspective = perspective confg.windowSize
-    , camera = cameraMatrix confg
+    , camera = cameraMatrix_
     }
 
 
@@ -120,14 +124,14 @@ perspective windowSize =
         100
 
 
-cameraMatrix : Config a -> Mat4
-cameraMatrix config =
+cameraMatrix : Config a -> Mesh Meters WorldCoordinate -> Mat4
+cameraMatrix config mesh =
     let
         distance =
             2
 
         playerPosition =
-            SurfacePoint.worldPosition config.surfacePoint config.mesh
+            SurfacePoint.worldPosition config.surfacePoint mesh
     in
     case playerPosition of
         Just playerPosition_ ->

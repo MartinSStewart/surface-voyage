@@ -40,8 +40,10 @@ type alias SuccessModel_ =
     , cameraNormal : Direction3d WorldCoordinate
     , cameraUp : Direction3d WorldCoordinate
     , time : Duration
-    , mesh : Mesh Meters WorldCoordinate
-    , webGlMesh : WebGL.Mesh Vertex
+    , a : () -> Int
+
+    --, mesh : Mesh Meters WorldCoordinate
+    --, webGlMesh : WebGL.Mesh Vertex
     }
 
 
@@ -62,11 +64,11 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    case MeshData.surfaceCube of
-        Ok mesh ->
+    case MeshData.meshObject of
+        ( Ok mesh, webGlMesh ) ->
             let
                 surfacePoint =
-                    Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.2 1) mesh
+                    Mesh.nearestSurfacePoint (Point3d.meters 0 0 0) mesh
             in
             ( SuccessModel
                 { keys = []
@@ -76,13 +78,15 @@ init flags =
                 , cameraNormal = cameraNormal mesh surfacePoint |> Maybe.withDefault Direction3d.z
                 , cameraUp = cameraUp mesh surfacePoint |> Maybe.withDefault Direction3d.y
                 , time = Quantity.zero
-                , mesh = mesh
-                , webGlMesh = MeshData.renderCube
+                , a = \_ -> 5
+
+                --, mesh = mesh
+                --, webGlMesh = webGlMesh
                 }
             , Cmd.none
             )
 
-        Err _ ->
+        ( Err _, _ ) ->
             ( FailureModel { message = "" }
             , Cmd.none
             )
@@ -142,7 +146,7 @@ step model =
                 Just direction ->
                     case
                         Mesh.move
-                            model.mesh
+                            MeshData.surfaceMesh
                             (Direction2d.angleFrom Direction2d.y direction)
                             (Length.meters 0.01)
                             model.surfacePoint
@@ -156,7 +160,7 @@ step model =
                 Nothing ->
                     model.surfacePoint
         , cameraNormal =
-            case cameraNormal model.mesh model.surfacePoint of
+            case cameraNormal MeshData.surfaceMesh model.surfacePoint of
                 Just newCameraNormal ->
                     if Direction3d.angleFrom newCameraNormal model.cameraNormal |> Quantity.lessThan (Angle.degrees 1) then
                         newCameraNormal
@@ -170,7 +174,7 @@ step model =
                 Nothing ->
                     model.cameraNormal
         , cameraUp =
-            case cameraUp model.mesh model.surfacePoint of
+            case cameraUp MeshData.surfaceMesh model.surfacePoint of
                 Just newCameraUp ->
                     if Direction3d.angleFrom newCameraUp model.cameraUp |> Quantity.lessThan (Angle.degrees 1) then
                         newCameraUp
@@ -283,7 +287,7 @@ viewSuccessModel : SuccessModel_ -> Element Msg
 viewSuccessModel model =
     Element.el
         [ Element.inFront <| Element.text "Move with arrow keys" ]
-        (View.view model)
+        (View.view model MeshData.webGlMesh MeshData.surfaceMesh)
 
 
 subscriptions : Model -> Sub Msg
