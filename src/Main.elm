@@ -252,21 +252,19 @@ twoTriangleMesh =
             )
 
 
-twoTriangleSurface : Mesh.Mesh Meters coordinates
-twoTriangleSurface =
-    let
-        ( verts, indices ) =
-            MeshBuilder.toVerticesAndIndices twoTriangleMesh
-    in
-    case Mesh.fromVerticesAndIndices verts indices of
-        Ok mesh ->
-            mesh
 
-        Err error ->
-            error |> Debug.toString |> Debug.todo
-
-
-
+--twoTriangleSurface : Mesh.Mesh Meters coordinates
+--twoTriangleSurface =
+--    let
+--        ( verts, indices ) =
+--            MeshBuilder.toVerticesAndIndices twoTriangleMesh
+--    in
+--    case Mesh.fromVerticesAndIndices verts indices of
+--        Ok mesh ->
+--            mesh
+--
+--        Err error ->
+--            error |> Debug.toString |> Debug.todo
 ---- VIEW ----
 
 
