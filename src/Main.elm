@@ -283,7 +283,9 @@ view model =
 
 viewSuccessModel : SuccessModel_ -> Element Msg
 viewSuccessModel model =
-    View.view model
+    Element.el
+        [ Element.inFront <| Element.text "Move with arrow keys" ]
+        (View.view model)
 
 
 subscriptions : Model -> Sub Msg

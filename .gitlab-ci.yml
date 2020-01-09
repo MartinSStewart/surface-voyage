@@ -1,0 +1,20 @@
+image: node:10.16.0
+
+pages:
+  cache:
+    paths:
+      - node_modules/
+      - .yarn
+
+  stage: deploy
+  script:
+    - yarn config set cache-folder .yarn
+    - yarn install
+    - yarn run elm-app build
+    - mv ./public ./public2
+    - mv ./build ./public
+  artifacts:
+    paths:
+      - public
+  only:
+    - master
