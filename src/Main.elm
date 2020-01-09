@@ -1,14 +1,17 @@
 module Main exposing (Model, Msg(..), init, main, update, view)
 
+import Angle
 import Browser
 import Browser.Events
 import Direction2d
+import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
 import Element exposing (Element)
 import Html exposing (Html)
 import Keyboard exposing (Key)
 import KeyboardHelper as Keyboard
 import Length exposing (Meters)
+import LineSegment3d
 import MeshBuilder exposing (Vertex)
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Pixels exposing (Pixels)
@@ -17,9 +20,10 @@ import Point3d
 import Quantity exposing (Quantity)
 import SurfaceMesh.Mesh as Mesh exposing (Mesh)
 import SurfaceMesh.Path as Path
-import SurfaceMesh.SurfacePoint exposing (SurfacePoint)
+import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
 import Vector2d
 import Vector2i exposing (Vector2i)
+import Vector3d
 import View
 import WebGL
 
@@ -33,6 +37,8 @@ type alias SuccessModel_ =
     , previousKeys : List Key
     , windowSize : Vector2i Pixels ScreenCoordinate
     , surfacePoint : SurfacePoint Meters
+    , cameraNormal : Direction3d WorldCoordinate
+    , cameraUp : Direction3d WorldCoordinate
     , time : Duration
     , mesh : Mesh Meters WorldCoordinate
     , webGlMesh : WebGL.Mesh Vertex
@@ -58,12 +64,17 @@ init : Flags -> ( Model, Cmd Msg )
 init flags =
     case MeshData.surfaceCube of
         Ok mesh ->
+            let
+                surfacePoint =
+                    Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.2 1) mesh
+            in
             ( SuccessModel
                 { keys = []
                 , previousKeys = []
                 , windowSize = Vector2i.pixels flags.windowWidth flags.windowHeight
-                , surfacePoint =
-                    Mesh.nearestSurfacePoint (Point3d.meters 0.2 0.2 1) mesh
+                , surfacePoint = surfacePoint
+                , cameraNormal = cameraNormal mesh surfacePoint |> Maybe.withDefault Direction3d.z
+                , cameraUp = cameraUp mesh surfacePoint |> Maybe.withDefault Direction3d.y
                 , time = Quantity.zero
                 , mesh = mesh
                 , webGlMesh = MeshData.renderCube
@@ -144,7 +155,80 @@ step model =
 
                 Nothing ->
                     model.surfacePoint
+        , cameraNormal =
+            case cameraNormal model.mesh model.surfacePoint of
+                Just newCameraNormal ->
+                    if Direction3d.angleFrom newCameraNormal model.cameraNormal |> Quantity.lessThan (Angle.degrees 1) then
+                        newCameraNormal
+
+                    else
+                        Vector3d.withLength (Length.meters 1) newCameraNormal
+                            |> Vector3d.plus (Vector3d.withLength (Length.meters 5) model.cameraNormal)
+                            |> Vector3d.direction
+                            |> Maybe.withDefault model.cameraNormal
+
+                Nothing ->
+                    model.cameraNormal
+        , cameraUp =
+            case cameraUp model.mesh model.surfacePoint of
+                Just newCameraUp ->
+                    if Direction3d.angleFrom newCameraUp model.cameraUp |> Quantity.lessThan (Angle.degrees 1) then
+                        newCameraUp
+
+                    else
+                        Vector3d.withLength (Length.meters 1) newCameraUp
+                            |> Vector3d.plus (Vector3d.withLength (Length.meters 5) model.cameraUp)
+                            |> Vector3d.direction
+                            |> Maybe.withDefault model.cameraUp
+
+                Nothing ->
+                    model.cameraUp
     }
+
+
+cameraUp : Mesh units coordinates -> SurfacePoint units -> Maybe (Direction3d coordinates)
+cameraUp mesh surfacePoint =
+    SurfacePoint.worldDirection mesh surfacePoint
+
+
+cameraNormal : Mesh Meters WorldCoordinate -> SurfacePoint Meters -> Maybe (Direction3d WorldCoordinate)
+cameraNormal mesh surfacePoint =
+    let
+        a angleOffset =
+            case Mesh.move mesh angleOffset (Length.meters 0.3) surfacePoint of
+                Just path ->
+                    case Path.edgeNormals mesh path of
+                        Just edges ->
+                            edges
+                                |> List.map
+                                    (\( line, normal ) ->
+                                        let
+                                            length =
+                                                LineSegment3d.length line
+                                        in
+                                        Vector3d.withLength length normal
+                                    )
+
+                        Nothing ->
+                            []
+
+                Nothing ->
+                    []
+
+        detail =
+            4
+
+        b =
+            List.range 0 (detail - 1)
+                |> List.map (\value -> Angle.radians (pi * 2 * toFloat value / detail))
+                --[ Angle.radians 0, Angle.radians (pi / 2), Angle.radians pi, Angle.radians (-pi / 2) ]
+                |> List.concatMap a
+    in
+    b |> vectorSum |> Vector3d.direction
+
+
+vectorSum =
+    List.foldl Vector3d.plus Vector3d.zero
 
 
 addCmdNone : a -> ( a, Cmd msg )
