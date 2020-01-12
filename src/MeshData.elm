@@ -6,6 +6,7 @@ import Color
 import Dict
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Length exposing (Meters)
+import List.Extra as List
 import List.Nonempty
 import Math.Vector3 as Vec3
 import Math.Vector4 as Vec4
@@ -176,6 +177,38 @@ getVerticesAndIndices mesh =
             { vertices = List.map .position vertices, indices = convertIndices indices }
 
 
+mergeVertices : { vertices : List Vec3.Vec3, indices : List (Triangle.Triangle Int) } -> { vertices : List Vec3.Vec3, indices : List (Triangle.Triangle Int) }
+mergeVertices { vertices, indices } =
+    let
+        vertices_ =
+            Array.fromList vertices
+
+        vec3ToTuple v =
+            ( Vec3.getX v, Vec3.getY v, Vec3.getZ v )
+
+        uniqueVertices =
+            vertices
+                |> List.map vec3ToTuple
+                |> List.unique
+
+        uniqueVerticesDict =
+            uniqueVertices
+                |> List.indexedMap (\index v -> ( v, index ))
+                |> Dict.fromList
+
+        mapIndex index =
+            case Array.get index vertices_ of
+                Just vertex ->
+                    Dict.get (vec3ToTuple vertex) uniqueVerticesDict
+
+                Nothing ->
+                    Nothing
+    in
+    { vertices = uniqueVertices |> List.map (\( x, y, z ) -> Vec3.vec3 x y z)
+    , indices = indices |> List.filterMap (Triangle.andThen mapIndex)
+    }
+
+
 parsedObj : Result Error ( Mesh.Mesh units coordinates, WebGL.Mesh Vertex )
 parsedObj =
     case OBJ.parseObjStringWith OBJ.defaultSettings ObjData.objData of
@@ -185,14 +218,17 @@ parsedObj =
                     case mesh |> Dict.toList |> List.head |> Maybe.map Tuple.second of
                         Just mesh_ ->
                             let
-                                { vertices, indices } =
+                                ({ vertices, indices } as a) =
                                     getVerticesAndIndices mesh_
+
+                                b =
+                                    mergeVertices a
                             in
-                            case Mesh.fromVerticesAndIndices (convertVertices vertices) indices of
+                            case Mesh.fromVerticesAndIndices (convertVertices b.vertices) b.indices of
                                 Ok surfaceMesh_ ->
                                     Ok
                                         ( surfaceMesh_
-                                        , MeshBuilder.VerticesAndIndices (convertWebGlVertices vertices) indices |> MeshBuilder.toWebGlMesh
+                                        , MeshBuilder.VerticesAndIndices (convertWebGlVertices b.vertices) b.indices |> MeshBuilder.toWebGlMesh
                                         )
 
                                 Err error ->
