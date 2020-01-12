@@ -12,6 +12,7 @@ import Math.Vector4 as Vec4
 import MeshBuilder exposing (MeshPart, Vertex)
 import OBJ
 import OBJ.Types exposing (Mesh(..))
+import ObjData
 import Point3d
 import Random
 import SurfaceMesh.Mesh as Mesh
@@ -135,85 +136,16 @@ surfaceCube =
     Mesh.fromVerticesAndIndices verts indices
 
 
-triangleTube =
-    """# Blender v2.81 (sub 16) OBJ File: ''
-       # www.blender.org
-       o Plane_Plane.001
-       v 1.000000 -0.078415 0.921585
-       v 1.000000 -0.078415 -0.600024
-       v 1.000000 -0.698886 0.921585
-       v 1.000000 0.000000 1.000000
-       v 1.000000 0.000000 -1.000000
-       v 1.000000 -0.815546 1.000000
-       v -1.000000 -0.082097 0.917903
-       v -1.000000 -0.082097 -0.581244
-       v -1.000000 -0.693409 0.917903
-       v -1.000000 0.000000 -1.000000
-       v -1.000000 0.000000 1.000000
-       v -1.000000 -0.815546 1.000000
-       vt 1.000000 0.000000
-       vt 0.000000 1.000000
-       vt 0.000000 0.000000
-       vt 1.000000 0.000000
-       vt 1.000000 1.000000
-       vt 0.000000 0.041049
-       vt 1.000000 0.039208
-       vt 1.000000 0.039208
-       vt 1.000000 0.800012
-       vt 0.000000 0.790622
-       vt 0.000000 0.041049
-       vt 0.000000 0.000000
-       vn 0.5773 0.5773 0.5773
-       vn -0.5394 0.1620 -0.8263
-       vn -0.5773 0.5773 0.5773
-       vn 0.5596 -0.6878 0.4623
-       vn 0.5394 0.1620 -0.8263
-       vn -0.9454 0.2704 -0.1818
-       vn 0.9049 -0.3009 -0.3009
-       vn 0.9460 0.2690 -0.1808
-       vn 0.9948 -0.0195 0.0994
-       vn -0.9947 -0.0197 0.1007
-       vn -0.9041 -0.3021 -0.3021
-       vn -0.5596 -0.6878 0.4623
-       s 1
-       f 4/1/1 10/2/2 11/3/3
-       f 11/3/3 6/4/4 4/1/1
-       f 6/4/4 10/2/2 5/5/5
-       f 9/6/6 1/7/7 3/8/8
-       f 2/9/9 4/1/1 1/7/7
-       f 3/8/8 4/1/1 6/4/4
-       f 2/9/9 6/4/4 5/5/5
-       f 8/10/10 3/8/8 2/9/9
-       f 8/10/10 11/3/3 10/2/2
-       f 9/6/6 11/3/3 7/11/11
-       f 8/10/10 12/12/12 9/6/6
-       f 8/10/10 1/7/7 7/11/11
-       f 4/1/1 5/5/5 10/2/2
-       f 11/3/3 12/12/12 6/4/4
-       f 6/4/4 12/12/12 10/2/2
-       f 9/6/6 7/11/11 1/7/7
-       f 2/9/9 5/5/5 4/1/1
-       f 3/8/8 1/7/7 4/1/1
-       f 2/9/9 3/8/8 6/4/4
-       f 8/10/10 9/6/6 3/8/8
-       f 8/10/10 7/11/11 11/3/3
-       f 9/6/6 12/12/12 11/3/3
-       f 8/10/10 10/2/2 12/12/12
-       f 8/10/10 2/9/9 1/7/7
-
-
-"""
-
-
+convertVertices : List Vec3.Vec3 -> Array.Array (Point3d.Point3d units coordinates)
 convertVertices vertices =
-    vertices |> List.map (.position >> Point3d.fromVec3) |> Array.fromList
+    vertices |> List.map Point3d.fromVec3 |> Array.fromList
 
 
-convertWebGlVertices : List { a | position : Vec3.Vec3 } -> List { color : Vec4.Vec4, position : Vec3.Vec3, normal : Vec3.Vec3 }
+convertWebGlVertices : List Vec3.Vec3 -> List { color : Vec4.Vec4, position : Vec3.Vec3, normal : Vec3.Vec3 }
 convertWebGlVertices vertices =
     vertices
         |> List.indexedMap
-            (\index { position } ->
+            (\index position ->
                 { color = Random.initialSeed index |> Random.step randomColor |> Tuple.first |> colorToVec4
                 , position = position
                 , normal = Vec3.vec3 0 0 0
@@ -221,50 +153,78 @@ convertWebGlVertices vertices =
             )
 
 
+convertIndices : List (Triangle.Triangle a) -> List (Triangle.Triangle a)
 convertIndices indices =
     indices |> List.map Triangle.reverse
 
 
-meshObject : ( Result Mesh.Error (Mesh.Mesh units coordinates), WebGL.Mesh { color : Vec4.Vec4, position : Vec3.Vec3, normal : Vec3.Vec3 } )
-meshObject =
-    case OBJ.parseObjStringWith OBJ.defaultSettings triangleTube of
+type Error
+    = ParseError
+    | MeshError Mesh.Error
+
+
+getVerticesAndIndices : Mesh -> { vertices : List Vec3.Vec3, indices : List (Triangle.Triangle Int) }
+getVerticesAndIndices mesh =
+    case mesh of
+        WithTexture { vertices, indices } ->
+            { vertices = List.map .position vertices, indices = convertIndices indices }
+
+        WithoutTexture { vertices, indices } ->
+            { vertices = List.map .position vertices, indices = convertIndices indices }
+
+        WithTextureAndTangent { vertices, indices } ->
+            { vertices = List.map .position vertices, indices = convertIndices indices }
+
+
+parsedObj : Result Error ( Mesh.Mesh units coordinates, WebGL.Mesh Vertex )
+parsedObj =
+    case OBJ.parseObjStringWith OBJ.defaultSettings ObjData.objData of
         Ok objFile ->
             case objFile |> Dict.toList |> List.head |> Maybe.map Tuple.second of
                 Just mesh ->
                     case mesh |> Dict.toList |> List.head |> Maybe.map Tuple.second of
-                        Just (WithTexture { vertices, indices }) ->
-                            ( Mesh.fromVerticesAndIndices (convertVertices vertices) (convertIndices indices)
-                            , MeshBuilder.VerticesAndIndices (convertWebGlVertices vertices) (convertIndices indices) |> MeshBuilder.toWebGlMesh
-                            )
+                        Just mesh_ ->
+                            let
+                                { vertices, indices } =
+                                    getVerticesAndIndices mesh_
+                            in
+                            case Mesh.fromVerticesAndIndices (convertVertices vertices) indices of
+                                Ok surfaceMesh_ ->
+                                    Ok
+                                        ( surfaceMesh_
+                                        , MeshBuilder.VerticesAndIndices (convertWebGlVertices vertices) indices |> MeshBuilder.toWebGlMesh
+                                        )
 
-                        Just (WithoutTexture { vertices, indices }) ->
-                            ( Mesh.fromVerticesAndIndices (convertVertices vertices) (convertIndices indices)
-                            , MeshBuilder.VerticesAndIndices (convertWebGlVertices vertices) (convertIndices indices) |> MeshBuilder.toWebGlMesh
-                            )
-
-                        Just (WithTextureAndTangent { vertices, indices }) ->
-                            ( Mesh.fromVerticesAndIndices (convertVertices vertices) (convertIndices indices)
-                            , MeshBuilder.VerticesAndIndices (convertWebGlVertices vertices) (convertIndices indices) |> MeshBuilder.toWebGlMesh
-                            )
+                                Err error ->
+                                    MeshError error |> Err
 
                         Nothing ->
-                            ( Err Mesh.TriangleIsDegenerate, WebGL.triangles [] )
+                            Err ParseError
 
                 Nothing ->
-                    ( Err Mesh.TriangleIsDegenerate, WebGL.triangles [] )
+                    Err ParseError
 
         Err error ->
-            ( Err Mesh.TriangleIsDegenerate, WebGL.triangles [] )
+            Err ParseError
 
 
 webGlMesh =
-    Tuple.second meshObject
+    case parsedObj of
+        Ok ( _, a ) ->
+            a
+
+        Err _ ->
+            WebGL.triangles []
+
+
+
+--Tuple.second meshObject
 
 
 surfaceMesh =
-    case meshObject of
-        ( Ok a, _ ) ->
+    case parsedObj of
+        Ok ( a, _ ) ->
             a
 
-        ( Err a, _ ) ->
+        Err _ ->
             Mesh.defaultMesh

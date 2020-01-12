@@ -25,7 +25,6 @@ import Vector2d
 import Vector2i exposing (Vector2i)
 import Vector3d
 import View
-import WebGL
 
 
 
@@ -40,10 +39,6 @@ type alias SuccessModel_ =
     , cameraNormal : Direction3d WorldCoordinate
     , cameraUp : Direction3d WorldCoordinate
     , time : Duration
-    , a : () -> Int
-
-    --, mesh : Mesh Meters WorldCoordinate
-    --, webGlMesh : WebGL.Mesh Vertex
     }
 
 
@@ -64,32 +59,24 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    case MeshData.meshObject of
-        ( Ok mesh, webGlMesh ) ->
-            let
-                surfacePoint =
-                    Mesh.nearestSurfacePoint (Point3d.meters 0 0 0) mesh
-            in
-            ( SuccessModel
-                { keys = []
-                , previousKeys = []
-                , windowSize = Vector2i.pixels flags.windowWidth flags.windowHeight
-                , surfacePoint = surfacePoint
-                , cameraNormal = cameraNormal mesh surfacePoint |> Maybe.withDefault Direction3d.z
-                , cameraUp = cameraUp mesh surfacePoint |> Maybe.withDefault Direction3d.y
-                , time = Quantity.zero
-                , a = \_ -> 5
+    let
+        surfacePoint =
+            Mesh.nearestSurfacePoint (Point3d.meters 0 0 0) MeshData.surfaceMesh
+    in
+    ( SuccessModel
+        { keys = []
+        , previousKeys = []
+        , windowSize = Vector2i.pixels flags.windowWidth flags.windowHeight
+        , surfacePoint = surfacePoint
+        , cameraNormal = cameraNormal MeshData.surfaceMesh surfacePoint |> Maybe.withDefault Direction3d.z
+        , cameraUp = cameraUp MeshData.surfaceMesh surfacePoint |> Maybe.withDefault Direction3d.y
+        , time = Quantity.zero
 
-                --, mesh = mesh
-                --, webGlMesh = webGlMesh
-                }
-            , Cmd.none
-            )
-
-        ( Err _, _ ) ->
-            ( FailureModel { message = "" }
-            , Cmd.none
-            )
+        --, mesh = mesh
+        --, webGlMesh = webGlMesh
+        }
+    , Cmd.none
+    )
 
 
 
