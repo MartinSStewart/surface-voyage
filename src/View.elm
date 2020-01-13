@@ -1,4 +1,4 @@
-module View exposing (camera, view)
+module View exposing (camera, cameraFocalPoint, view)
 
 import Angle
 import Camera3d exposing (Camera3d)
@@ -122,17 +122,19 @@ perspective windowSize =
         100
 
 
+cameraFocalPoint : Config a -> Mesh Meters WorldCoordinate -> Maybe (Point3d Meters WorldCoordinate)
+cameraFocalPoint config mesh =
+    SurfacePoint.worldPosition config.surfacePoint mesh
+
+
 camera : Config a -> Mesh Meters WorldCoordinate -> Camera3d Meters WorldCoordinate
 camera config mesh =
     let
         distance =
             Length.meters 2
 
-        playerPosition =
-            SurfacePoint.worldPosition config.surfacePoint mesh
-
         viewpoint =
-            case playerPosition of
+            case cameraFocalPoint config mesh of
                 Just playerPosition_ ->
                     Viewpoint3d.lookAt
                         { eyePoint = Point3d.translateIn config.cameraNormal distance playerPosition_

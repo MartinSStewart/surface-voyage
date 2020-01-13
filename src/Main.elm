@@ -1,8 +1,12 @@
 module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Angle
+import Axis2d
+import Axis3d exposing (Axis3d)
+import Axis3dEx as Axis3d
 import Browser
 import Browser.Events
+import Camera3d
 import Direction2d exposing (Direction2d)
 import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
@@ -15,7 +19,6 @@ import Keyboard exposing (Key)
 import KeyboardHelper as Keyboard
 import Length exposing (Meters)
 import LineSegment3d
-import MeshBuilder exposing (Vertex)
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import ObjData
 import Pixels exposing (Pixels)
@@ -23,6 +26,8 @@ import Point2d exposing (Point2d)
 import Point3d
 import Point3dEx as Point3d
 import Quantity exposing (Quantity)
+import Rectangle2d exposing (Rectangle2d)
+import SketchPlane3d
 import SurfaceMesh.Mesh as Mesh exposing (Mesh)
 import SurfaceMesh.Path as Path
 import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
@@ -31,6 +36,7 @@ import Vector2d exposing (Vector2d)
 import Vector2i exposing (Vector2i)
 import Vector3d
 import View
+import Viewpoint3d
 import WebGL.Texture as Texture exposing (Texture)
 
 
@@ -187,22 +193,43 @@ updateLoadedModel msg model =
                         centerPoint =
                             Point2d.translateBy (Vector2i.toVector2d model.windowSize |> Vector2d.scaleBy 0.5) Point2d.origin
 
-                        rate : Quantity Float (Quantity.Rate Meters Pixels)
-                        rate =
-                            Length.meters 0.01 |> Quantity.per (Pixels.pixels 1)
+                        sketchPlane =
+                            View.camera model MeshData.surfaceMesh
+                                |> Camera3d.viewpoint
+                                |> Viewpoint3d.viewPlane
+                                |> SketchPlane3d.translateAlongOwn SketchPlane3d.normalAxis (Length.meters -1.15)
 
-                        endTime : Duration
-                        endTime =
-                            Point2d.distanceFrom centerPoint event.position
-                                |> Quantity.at rate
-                                |> Quantity.at_ playerSpeed
-                                |> Quantity.plus model.time
+                        --Maybe.map2
+                        --    SketchPlane3d.withNormalDirection
+                        --    (model.surfacePoint |> SurfacePoint.getNormal MeshData.surfaceMesh)
+                        --    (SurfacePoint.worldPosition model.surfacePoint MeshData.surfaceMesh)
                     in
                     { model
                         | mouseLastDown = Just { position = event.position, time = model.time }
                         , moveAction =
-                            Direction2d.from centerPoint event.position
-                                |> Maybe.map (\dir -> { direction = dir, endTime = endTime })
+                            let
+                                --startPoint : Maybe (Point2d Meters coordinates2d)
+                                startPoint =
+                                    Point2d.origin
+
+                                --cameraRay model centerPoint |> Axis3d.intersectionWithSketchPlane sketchPlane_
+                                --endPoint : Maybe (Point2d Meters coordinates2d)
+                                endPoint =
+                                    cameraRay model event.position |> Axis3d.intersectionWithSketchPlane sketchPlane
+                            in
+                            case ( startPoint, endPoint ) of
+                                ( start, Just end ) ->
+                                    let
+                                        endTime =
+                                            Point2d.distanceFrom start end |> Quantity.at_ playerSpeed
+
+                                        direction =
+                                            Direction2d.from start end |> Maybe.withDefault Direction2d.y
+                                    in
+                                    Just { direction = direction |> Direction2d.mirrorAcross Axis2d.x, endTime = Quantity.plus model.time endTime }
+
+                                _ ->
+                                    Nothing
                     }
                         |> addCmdNone
 
@@ -247,6 +274,15 @@ step model =
 
 frameDuration =
     Duration.seconds (1 / 60)
+
+
+cameraRay : LoadedModel_ -> Point2d Pixels ScreenCoordinate -> Axis3d Meters WorldCoordinate
+cameraRay model point =
+    let
+        screenRect =
+            Rectangle2d.from Point2d.origin (Point2d.translateBy (Vector2i.toVector2d model.windowSize) Point2d.origin)
+    in
+    Camera3d.ray (View.camera model MeshData.surfaceMesh) screenRect point
 
 
 stepMovement model =
@@ -367,14 +403,12 @@ cameraNormal mesh surfacePoint =
 
         detail =
             4
-
-        b =
-            List.range 0 (detail - 1)
-                |> List.map (\value -> Angle.radians (pi * 2 * toFloat value / detail))
-                --[ Angle.radians 0, Angle.radians (pi / 2), Angle.radians pi, Angle.radians (-pi / 2) ]
-                |> List.concatMap a
     in
-    b |> vectorSum |> Vector3d.direction
+    List.range 0 (detail - 1)
+        |> List.map (\value -> Angle.radians (pi * 2 * toFloat value / detail))
+        |> List.concatMap a
+        |> vectorSum
+        |> Vector3d.direction
 
 
 vectorSum =
@@ -428,16 +462,12 @@ viewSuccessModel model =
         (Element.html (View.view model MeshData.webGlMesh MeshData.surfaceMesh))
 
 
-
---mouseDecoder : MouseEventType -> Json.Decode.Decoder LoadedMsg_
-
-
 mouseDecoder : MouseEventType -> Json.Decode.Decoder LoadedMsg_
 mouseDecoder eventType =
     Json.Decode.map
-        (\{ screenPos } ->
+        (\{ pagePos } ->
             MouseEvent
-                { position = Point2d.pixels (Tuple.first screenPos) (Tuple.second screenPos)
+                { position = Point2d.pixels (Tuple.first pagePos) (Tuple.second pagePos)
                 , eventType = eventType
                 }
         )
