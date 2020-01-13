@@ -18,6 +18,7 @@ import ObjData
 import Pixels exposing (Pixels)
 import Point2d
 import Point3d
+import Point3dEx as Point3d
 import Quantity exposing (Quantity)
 import SurfaceMesh.Mesh as Mesh exposing (Mesh)
 import SurfaceMesh.Path as Path
@@ -71,7 +72,8 @@ initLoadedModel : Vector2i Pixels ScreenCoordinate -> Texture -> LoadedModel_
 initLoadedModel windowSize texture =
     let
         surfacePoint =
-            Mesh.nearestSurfacePoint (Point3d.meters 0 0 0) MeshData.surfaceMesh
+            Mesh.nearestSurfacePoint (Point3d.meters 1.688355538015691 0.598373 -1.4172405276507476) MeshData.surfaceMesh
+                |> SurfacePoint.pointTowards (Point3d.meters 1.6587441968454457 0.598373 -1.0518184469830478) MeshData.surfaceMesh
     in
     { keys = []
     , previousKeys = []
@@ -327,8 +329,17 @@ view model =
 viewSuccessModel : LoadedModel_ -> Element Msg
 viewSuccessModel model =
     Element.el
-        [ Element.inFront <| Element.text "Move with arrow keys" ]
-        (View.view model MeshData.webGlMesh MeshData.surfaceMesh)
+        [ Element.inFront <|
+            Element.column [ Element.spacing 6, Element.padding 4 ]
+                [ Element.text "Move with arrow keys"
+
+                --, SurfacePoint.worldPosition model.surfacePoint MeshData.surfaceMesh
+                --    |> Maybe.map Point3d.pointToString
+                --    |> Maybe.withDefault ""
+                --    |> Element.text
+                ]
+        ]
+        (Element.html (View.view model MeshData.webGlMesh MeshData.surfaceMesh))
 
 
 subscriptions : Model -> Sub Msg

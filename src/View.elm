@@ -2,15 +2,14 @@ module View exposing (view)
 
 import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
-import Element exposing (Element)
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Geometry.Interop.LinearAlgebra.Vector3d as Vector3d
+import Html exposing (Html)
 import Html.Attributes
 import Length exposing (Meters)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector2 as Vec2 exposing (Vec2)
 import Math.Vector3 as Vec3 exposing (Vec3)
-import Math.Vector4 exposing (Vec4)
 import MeshBuilder exposing (Vertex)
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Pixels exposing (Pixels)
@@ -37,7 +36,7 @@ type alias Config a =
     }
 
 
-view : Config a -> WebGL.Mesh Vertex -> Mesh Meters WorldCoordinate -> Element msg
+view : Config a -> WebGL.Mesh Vertex -> Mesh Meters WorldCoordinate -> Html msg
 view config webGlMesh mesh =
     let
         ( windowWidth, windowHeight ) =
@@ -72,7 +71,6 @@ view config webGlMesh mesh =
                         []
                )
         )
-        |> Element.html
 
 
 entity : Shader attributes uniforms varyings -> Shader {} uniforms varyings -> WebGL.Mesh attributes -> uniforms -> WebGL.Entity

@@ -1,4 +1,4 @@
-module Point3dEx exposing (nearestPointOnLineSegment, nearestPointOnTriangle)
+module Point3dEx exposing (nearestPointOnLineSegment, nearestPointOnTriangle, pointToString)
 
 {-| Finds the nearest point within a triangle.
 -}
@@ -170,3 +170,12 @@ nearestPointOnTriangle triangle point =
 
         else
             offset ( temp, 1 - temp )
+
+
+pointToString : Point3d units coordinates -> String
+pointToString point =
+    let
+        ( x, y, z ) =
+            Point3d.toTuple rawQuantity point
+    in
+    "(" ++ String.fromFloat x ++ ", " ++ String.fromFloat y ++ ", " ++ String.fromFloat z ++ ")"
