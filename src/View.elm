@@ -5,6 +5,7 @@ import Camera3d exposing (Camera3d)
 import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
+import Geometry.Interop.LinearAlgebra.Vector2d as Vector2d
 import Html exposing (Html)
 import Html.Attributes
 import Length exposing (Meters)
@@ -15,6 +16,7 @@ import Math.Vector4 exposing (Vec4)
 import MeshBuilder exposing (Vertex)
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Pixels exposing (Pixels)
+import Point2d
 import Point3d exposing (Point3d)
 import SurfaceMesh.Mesh exposing (Mesh)
 import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
@@ -176,6 +178,43 @@ type alias MoveActionUniforms =
     , end : Vec2
     , camera : Mat4
     }
+
+
+
+--drawMoveAction : Config a -> unknown
+--drawMoveAction config =
+--    entity
+--        moveActionVS
+--        moveActionFS
+--        moveActionMesh
+--        { start = Vec2.vec2 0 0
+--        , end = config.windowSize |> Vector2i.toVector2d |> Vector2d.toVec2
+--        , camera = 0
+--        }
+
+
+moveActionMesh : WebGL.Mesh MoveActionVertex
+moveActionMesh =
+    let
+        count =
+            8
+    in
+    MeshBuilder.circle 8
+        |> List.repeat count
+        |> List.indexedMap
+            (\index circle ->
+                circle
+                    |> MeshBuilder.map
+                        (\p ->
+                            let
+                                { x, y } =
+                                    Point2d.unwrap p
+                            in
+                            { position = Vec3.vec3 x y 0, t = toFloat index / (count - 1) }
+                        )
+            )
+        |> MeshBuilder.Compound
+        |> MeshBuilder.toWebGlMesh
 
 
 moveActionVS : Shader MoveActionVertex MoveActionUniforms { vcolor : Vec4 }

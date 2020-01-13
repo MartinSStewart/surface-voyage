@@ -192,9 +192,6 @@ updateLoadedModel msg model =
             case event.eventType of
                 MouseEventDown ->
                     let
-                        centerPoint =
-                            Point2d.translateBy (Vector2i.toVector2d model.windowSize |> Vector2d.scaleBy 0.5) Point2d.origin
-
                         sketchPlane =
                             View.camera model MeshData.surfaceMesh
                                 |> Camera3d.viewpoint
