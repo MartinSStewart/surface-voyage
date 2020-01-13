@@ -8,6 +8,7 @@ import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Length exposing (Meters)
 import List.Extra as List
 import List.Nonempty
+import Math.Vector2 as Vec2
 import Math.Vector3 as Vec3
 import Math.Vector4 as Vec4
 import MeshBuilder exposing (MeshPart, Vertex)
@@ -40,29 +41,6 @@ colorToVec4 color =
             Color.toRgba color
     in
     Vec4.vec4 (red * alpha) (green * alpha) (blue * alpha) alpha
-
-
-cubeColors =
-    List.Nonempty.Nonempty (Color.rgb 0.9 0.1 0.1)
-        [ Color.rgb 0.1 0.9 0.1
-        , Color.rgb 0.1 0.1 0.9
-        , Color.rgb 0.9 0.9 0.1
-        , Color.rgb 0.9 0.1 0.9
-        , Color.rgb 0.1 0.9 0.9
-        ]
-
-
-renderCube : WebGL.Mesh Vertex
-renderCube =
-    MeshBuilder.splitFacesCube
-        |> MeshBuilder.map
-            (\{ position, cubeFaceIndex } ->
-                { color = cubeColors |> List.Nonempty.get cubeFaceIndex |> colorToVec4
-                , position = position |> Point3d.toVec3
-                , normal = Vec3.vec3 0 0 1
-                }
-            )
-        |> MeshBuilder.toWebGlMesh
 
 
 squareData =
@@ -105,22 +83,6 @@ squareSurface =
     Mesh.fromVerticesAndIndices squareData.vertices squareData.indices
 
 
-squareMesh : WebGL.Mesh Vertex
-squareMesh =
-    MeshBuilder.VerticesAndIndices
-        (Array.toList squareData.vertices)
-        squareData.indices
-        |> splitEdges
-        |> MeshBuilder.map
-            (\{ triangleIndex, vertex } ->
-                { position = Point3d.toVec3 vertex
-                , normal = Vec3.vec3 0 0 0
-                , color = Random.initialSeed triangleIndex |> Random.step randomColor |> Tuple.first |> colorToVec4
-                }
-            )
-        |> MeshBuilder.toWebGlMesh
-
-
 randomColor =
     Random.map3 Color.rgb
         (Random.float 0.1 0.9)
@@ -142,18 +104,6 @@ convertVertices vertices =
     vertices |> List.map Point3d.fromVec3 |> Array.fromList
 
 
-convertWebGlVertices : List Vec3.Vec3 -> List { color : Vec4.Vec4, position : Vec3.Vec3, normal : Vec3.Vec3 }
-convertWebGlVertices vertices =
-    vertices
-        |> List.indexedMap
-            (\index position ->
-                { color = Random.initialSeed index |> Random.step randomColor |> Tuple.first |> colorToVec4
-                , position = position
-                , normal = Vec3.vec3 0 0 0
-                }
-            )
-
-
 convertIndices : List (Triangle.Triangle a) -> List (Triangle.Triangle a)
 convertIndices indices =
     indices |> List.map Triangle.reverse
@@ -164,27 +114,39 @@ type Error
     | MeshError Mesh.Error
 
 
-getVerticesAndIndices : Mesh -> { vertices : List Vec3.Vec3, indices : List (Triangle.Triangle Int) }
+getVerticesAndIndices : Mesh -> { vertices : List Vertex, indices : List (Triangle.Triangle Int) }
 getVerticesAndIndices mesh =
     case mesh of
         WithTexture { vertices, indices } ->
-            { vertices = List.map .position vertices, indices = convertIndices indices }
+            { vertices =
+                vertices
+                    |> List.map (\v -> { position = v.position, normal = v.normal, uv = v.texCoord })
+            , indices = convertIndices indices
+            }
 
         WithoutTexture { vertices, indices } ->
-            { vertices = List.map .position vertices, indices = convertIndices indices }
+            { vertices =
+                vertices
+                    |> List.map (\v -> { position = v.position, normal = Vec3.vec3 0 0 0, uv = Vec2.vec2 0 0 })
+            , indices = convertIndices indices
+            }
 
         WithTextureAndTangent { vertices, indices } ->
-            { vertices = List.map .position vertices, indices = convertIndices indices }
+            { vertices =
+                vertices
+                    |> List.map (\v -> { position = v.position, normal = v.normal, uv = v.texCoord })
+            , indices = convertIndices indices
+            }
 
 
-mergeVertices : { vertices : List Vec3.Vec3, indices : List (Triangle.Triangle Int) } -> { vertices : List Vec3.Vec3, indices : List (Triangle.Triangle Int) }
+mergeVertices : { vertices : List Vertex, indices : List (Triangle.Triangle Int) } -> { vertices : List Vec3.Vec3, indices : List (Triangle.Triangle Int) }
 mergeVertices { vertices, indices } =
     let
         vertices_ =
             Array.fromList vertices
 
         vec3ToTuple v =
-            ( Vec3.getX v, Vec3.getY v, Vec3.getZ v )
+            ( Vec3.getX v.position, Vec3.getY v.position, Vec3.getZ v.position )
 
         uniqueVertices =
             vertices
@@ -228,7 +190,7 @@ parsedObj =
                                 Ok surfaceMesh_ ->
                                     Ok
                                         ( surfaceMesh_
-                                        , MeshBuilder.VerticesAndIndices (convertWebGlVertices b.vertices) b.indices |> MeshBuilder.toWebGlMesh
+                                        , MeshBuilder.VerticesAndIndices vertices indices |> MeshBuilder.toWebGlMesh
                                         )
 
                                 Err error ->

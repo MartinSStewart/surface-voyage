@@ -14,6 +14,7 @@ import Length exposing (Meters)
 import LineSegment3d
 import MeshBuilder exposing (Vertex)
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
+import ObjData
 import Pixels exposing (Pixels)
 import Point2d
 import Point3d
@@ -21,17 +22,19 @@ import Quantity exposing (Quantity)
 import SurfaceMesh.Mesh as Mesh exposing (Mesh)
 import SurfaceMesh.Path as Path
 import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
+import Task
 import Vector2d
 import Vector2i exposing (Vector2i)
 import Vector3d
 import View
+import WebGL.Texture as Texture exposing (Texture)
 
 
 
 ---- MODEL ----
 
 
-type alias SuccessModel_ =
+type alias LoadedModel_ =
     { keys : List Key
     , previousKeys : List Key
     , windowSize : Vector2i Pixels ScreenCoordinate
@@ -39,12 +42,19 @@ type alias SuccessModel_ =
     , cameraNormal : Direction3d WorldCoordinate
     , cameraUp : Direction3d WorldCoordinate
     , time : Duration
+    , assetId : Int
+    , texture : Texture
     }
 
 
 type Model
-    = SuccessModel SuccessModel_
+    = LoadingModel LoadingModel_
+    | LoadedModel LoadedModel_
     | FailureModel FailureModel_
+
+
+type alias LoadingModel_ =
+    { windowSize : Vector2i Pixels ScreenCoordinate }
 
 
 type alias FailureModel_ =
@@ -57,25 +67,39 @@ type alias Flags =
     }
 
 
-init : Flags -> ( Model, Cmd Msg )
-init flags =
+initLoadedModel : Vector2i Pixels ScreenCoordinate -> Texture -> LoadedModel_
+initLoadedModel windowSize texture =
     let
         surfacePoint =
             Mesh.nearestSurfacePoint (Point3d.meters 0 0 0) MeshData.surfaceMesh
     in
-    ( SuccessModel
-        { keys = []
-        , previousKeys = []
-        , windowSize = Vector2i.pixels flags.windowWidth flags.windowHeight
-        , surfacePoint = surfacePoint
-        , cameraNormal = cameraNormal MeshData.surfaceMesh surfacePoint |> Maybe.withDefault Direction3d.z
-        , cameraUp = cameraUp MeshData.surfaceMesh surfacePoint |> Maybe.withDefault Direction3d.y
-        , time = Quantity.zero
+    { keys = []
+    , previousKeys = []
+    , windowSize = windowSize
+    , surfacePoint = surfacePoint
+    , cameraNormal = cameraNormal MeshData.surfaceMesh surfacePoint |> Maybe.withDefault Direction3d.z
+    , cameraUp = cameraUp MeshData.surfaceMesh surfacePoint |> Maybe.withDefault Direction3d.y
+    , time = Quantity.zero
+    , assetId = ObjData.assetId
+    , texture = texture
+    }
 
-        --, mesh = mesh
-        --, webGlMesh = webGlMesh
+
+init : Flags -> ( Model, Cmd Msg )
+init flags =
+    ( { windowSize = Vector2i.pixels flags.windowWidth flags.windowHeight
+      }
+        |> LoadingModel
+    , Texture.loadWith
+        { magnify = Texture.nearest
+        , minify = Texture.linear
+        , horizontalWrap = Texture.clampToEdge
+        , verticalWrap = Texture.clampToEdge
+        , flipY = True
         }
-    , Cmd.none
+        "./world.png"
+        |> Task.attempt TextureLoaded
+        |> Cmd.map LoadingMsg
     )
 
 
@@ -83,25 +107,40 @@ init flags =
 ---- UPDATE ----
 
 
-type Msg
+type LoadingMsg_
+    = TextureLoaded (Result Texture.Error Texture)
+
+
+type LoadedMsg_
     = NoOp
     | KeyMsg Keyboard.Msg
     | WindowResize (Vector2i Pixels ScreenCoordinate)
     | AnimationFrameDelta Duration
 
 
+type Msg
+    = LoadingMsg LoadingMsg_
+    | LoadedMsg LoadedMsg_
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case model of
-        SuccessModel model_ ->
-            updateSuccessModel msg model_ |> Tuple.mapFirst SuccessModel
+    case ( model, msg ) of
+        ( LoadedModel model_, LoadedMsg msg_ ) ->
+            updateLoadedModel msg_ model_ |> Tuple.mapBoth LoadedModel (Cmd.map LoadedMsg)
 
-        FailureModel _ ->
+        ( LoadingModel model_, LoadingMsg msg_ ) ->
+            updateLoadingModel msg_ model_ |> Tuple.mapSecond (Cmd.map LoadingMsg)
+
+        ( FailureModel _, _ ) ->
+            ( model, Cmd.none )
+
+        ( _, _ ) ->
             ( model, Cmd.none )
 
 
-updateSuccessModel : Msg -> SuccessModel_ -> ( SuccessModel_, Cmd Msg )
-updateSuccessModel msg model =
+updateLoadedModel : LoadedMsg_ -> LoadedModel_ -> ( LoadedModel_, Cmd LoadedMsg_ )
+updateLoadedModel msg model =
     case msg of
         NoOp ->
             model |> addCmdNone
@@ -116,6 +155,18 @@ updateSuccessModel msg model =
             { model | time = Quantity.plus model.time delta } |> step |> addCmdNone
 
 
+updateLoadingModel : LoadingMsg_ -> LoadingModel_ -> ( Model, Cmd LoadingMsg_ )
+updateLoadingModel msg model =
+    case msg of
+        TextureLoaded result ->
+            case result of
+                Ok texture ->
+                    ( initLoadedModel model.windowSize texture |> LoadedModel, Cmd.none )
+
+                Err _ ->
+                    ( FailureModel { message = "Failed to load texture" }, Cmd.none )
+
+
 keyMsgUpdate keyMsg model =
     let
         newKeys =
@@ -125,7 +176,7 @@ keyMsgUpdate keyMsg model =
         |> addCmdNone
 
 
-step : SuccessModel_ -> SuccessModel_
+step : LoadedModel_ -> LoadedModel_
 step model =
     { model
         | surfacePoint =
@@ -263,14 +314,17 @@ view : Model -> Html Msg
 view model =
     Element.layout [] <|
         case model of
-            SuccessModel model_ ->
+            LoadedModel model_ ->
                 viewSuccessModel model_
 
             FailureModel model_ ->
                 Element.text model_.message
 
+            LoadingModel _ ->
+                Element.none
 
-viewSuccessModel : SuccessModel_ -> Element Msg
+
+viewSuccessModel : LoadedModel_ -> Element Msg
 viewSuccessModel model =
     Element.el
         [ Element.inFront <| Element.text "Move with arrow keys" ]
@@ -278,12 +332,21 @@ viewSuccessModel model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    Sub.batch
-        [ Sub.map KeyMsg Keyboard.subscriptions
-        , Browser.Events.onResize (\w h -> Vector2i.pixels w h |> WindowResize)
-        , Browser.Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameDelta)
-        ]
+subscriptions model =
+    case model of
+        LoadedModel _ ->
+            Sub.batch
+                [ Sub.map KeyMsg Keyboard.subscriptions
+                , Browser.Events.onResize (\w h -> Vector2i.pixels w h |> WindowResize)
+                , Browser.Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameDelta)
+                ]
+                |> Sub.map LoadedMsg
+
+        LoadingModel _ ->
+            Sub.none
+
+        FailureModel _ ->
+            Sub.none
 
 
 

@@ -5,15 +5,14 @@ import Basics.Extra exposing (flip)
 import Color exposing (Color)
 import LineSegment2d exposing (LineSegment2d)
 import ListHelper as List
-import Math.Vector3 as Vec3 exposing (Vec3)
+import Math.Vector2 exposing (Vec2)
+import Math.Vector3 exposing (Vec3)
 import Math.Vector4 as Vec4 exposing (Vec4)
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Quantity
-import SurfaceMesh.Mesh
 import SurfaceMesh.Triangle exposing (Triangle)
 import Vector2d exposing (Vector2d)
-import Vector3d exposing (Vector3d)
 import WebGL exposing (Mesh)
 
 
@@ -30,7 +29,7 @@ triangleStrip first second third rest =
 
 
 type alias Vertex =
-    { color : Vec4
+    { uv : Vec2
     , position : Vec3
     , normal : Vec3
     }

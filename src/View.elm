@@ -1,6 +1,5 @@
 module View exposing (view)
 
-import Angle
 import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
 import Element exposing (Element)
@@ -8,18 +7,15 @@ import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Geometry.Interop.LinearAlgebra.Vector3d as Vector3d
 import Html.Attributes
 import Length exposing (Meters)
-import LineSegment3d
 import Math.Matrix4 as Mat4 exposing (Mat4)
+import Math.Vector2 as Vec2 exposing (Vec2)
 import Math.Vector3 as Vec3 exposing (Vec3)
-import Math.Vector4 as Vec4 exposing (Vec4)
-import MeshBuilder
+import Math.Vector4 exposing (Vec4)
+import MeshBuilder exposing (Vertex)
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Pixels exposing (Pixels)
 import Point3d exposing (Point3d)
-import Polyline3d
-import Quantity
-import SurfaceMesh.Mesh as Mesh exposing (Mesh)
-import SurfaceMesh.Path as Path
+import SurfaceMesh.Mesh exposing (Mesh)
 import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
 import Vector2i exposing (Vector2i)
 import Vector3d
@@ -27,6 +23,7 @@ import WebGL exposing (Shader)
 import WebGL.Settings
 import WebGL.Settings.Blend as Blend
 import WebGL.Settings.DepthTest
+import WebGL.Texture exposing (Texture)
 
 
 type alias Config a =
@@ -35,10 +32,8 @@ type alias Config a =
         , surfacePoint : SurfacePoint Meters
         , cameraNormal : Direction3d WorldCoordinate
         , cameraUp : Direction3d WorldCoordinate
-
-        --, mesh : Mesh Meters WorldCoordinate
-        --, webGlMesh : WebGL.Mesh Vertex
         , windowSize : Vector2i Pixels ScreenCoordinate
+        , texture : Texture
     }
 
 
@@ -80,6 +75,7 @@ view config webGlMesh mesh =
         |> Element.html
 
 
+entity : Shader attributes uniforms varyings -> Shader {} uniforms varyings -> WebGL.Mesh attributes -> uniforms -> WebGL.Entity
 entity =
     WebGL.entityWith
         [ WebGL.Settings.cullFace WebGL.Settings.back
@@ -88,11 +84,12 @@ entity =
         ]
 
 
+playerMesh : WebGL.Mesh { uv : Vec2.Vec2, position : Vec3, normal : Vec3 }
 playerMesh =
     MeshBuilder.cube
         |> MeshBuilder.map
             (\a ->
-                { color = Vec4.vec4 0 0 0 1
+                { uv = Vec2.vec2 1 1
                 , position =
                     Point3d.translateBy (Vector3d.meters -0.5 -0.5 -0.5) a
                         |> Point3d.scaleAbout Point3d.origin 0.1
@@ -104,10 +101,11 @@ playerMesh =
 
 
 uniforms : Config a -> Mat4 -> Mat4 -> Uniforms
-uniforms confg cameraMatrix_ local =
+uniforms config cameraMatrix_ local =
     { local = local
-    , perspective = perspective confg.windowSize
+    , perspective = perspective config.windowSize
     , camera = cameraMatrix_
+    , texture = config.texture
     }
 
 
@@ -128,7 +126,7 @@ cameraMatrix : Config a -> Mesh Meters WorldCoordinate -> Mat4
 cameraMatrix config mesh =
     let
         distance =
-            2
+            Length.meters 2
 
         playerPosition =
             SurfacePoint.worldPosition config.surfacePoint mesh
@@ -137,7 +135,7 @@ cameraMatrix config mesh =
         Just playerPosition_ ->
             let
                 cameraPosition =
-                    Point3d.translateIn config.cameraNormal (Length.meters 2) playerPosition_ |> Point3d.toVec3
+                    Point3d.translateIn config.cameraNormal distance playerPosition_ |> Point3d.toVec3
 
                 up =
                     Vector3d.withLength (Length.meters 1) config.cameraUp |> Vector3d.toVec3
@@ -158,39 +156,35 @@ type alias Uniforms =
     { local : Mat4
     , perspective : Mat4
     , camera : Mat4
+    , texture : Texture
     }
 
 
-type alias Vertex =
-    { color : Vec4
-    , position : Vec3
-    , normal : Vec3
-    }
-
-
-vertexShader : Shader Vertex Uniforms { vcolor : Vec4 }
+vertexShader : Shader Vertex Uniforms { uv_ : Vec2 }
 vertexShader =
     [glsl|
         attribute vec3 position;
-        attribute vec4 color;
+        attribute vec2 uv;
         attribute vec3 normal;
         uniform mat4 perspective;
         uniform mat4 camera;
         uniform mat4 local;
-        varying vec4 vcolor;
+        varying vec2 uv_;
         void main () {
             gl_Position = perspective * camera * local * vec4(position, 1.0);
-            vcolor = color;
+            uv_ = uv;
         }
     |]
 
 
-fragmentShader : Shader {} Uniforms { vcolor : Vec4 }
+fragmentShader : Shader {} Uniforms { uv_ : Vec2 }
 fragmentShader =
     [glsl|
         precision mediump float;
-        varying vec4 vcolor;
+        uniform sampler2D texture;
+        varying vec2 uv_;
         void main () {
-            gl_FragColor = vcolor;
+            gl_FragColor = texture2D(texture, uv_);
+            //gl_FragColor = texture2D(texture, vec2((floor(uv_.x * 1024.0) + 0.5) / 1024.0, (floor(uv_.y * 1024.0) + 0.5) / 1024.0));
         }
     |]
