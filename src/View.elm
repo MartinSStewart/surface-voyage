@@ -1,9 +1,10 @@
-module View exposing (view)
+module View exposing (camera, view)
 
+import Angle
+import Camera3d exposing (Camera3d)
 import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
-import Geometry.Interop.LinearAlgebra.Vector3d as Vector3d
 import Html exposing (Html)
 import Html.Attributes
 import Length exposing (Meters)
@@ -18,6 +19,7 @@ import SurfaceMesh.Mesh exposing (Mesh)
 import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
 import Vector2i exposing (Vector2i)
 import Vector3d
+import Viewpoint3d exposing (Viewpoint3d)
 import WebGL exposing (Shader)
 import WebGL.Settings
 import WebGL.Settings.Blend as Blend
@@ -46,7 +48,7 @@ view config webGlMesh mesh =
             SurfacePoint.worldPosition config.surfacePoint mesh
 
         cameraMatrix_ =
-            cameraMatrix config mesh
+            camera config mesh |> Camera3d.viewMatrix
     in
     WebGL.toHtml
         [ Html.Attributes.width windowWidth
@@ -120,34 +122,32 @@ perspective windowSize =
         100
 
 
-cameraMatrix : Config a -> Mesh Meters WorldCoordinate -> Mat4
-cameraMatrix config mesh =
+camera : Config a -> Mesh Meters WorldCoordinate -> Camera3d Meters WorldCoordinate
+camera config mesh =
     let
         distance =
             Length.meters 2
 
         playerPosition =
             SurfacePoint.worldPosition config.surfacePoint mesh
+
+        viewpoint =
+            case playerPosition of
+                Just playerPosition_ ->
+                    Viewpoint3d.lookAt
+                        { eyePoint = Point3d.translateIn config.cameraNormal distance playerPosition_
+                        , focalPoint = playerPosition_
+                        , upDirection = config.cameraUp
+                        }
+
+                _ ->
+                    Viewpoint3d.lookAt
+                        { eyePoint = Point3d.meters 0 0 2
+                        , focalPoint = Point3d.origin
+                        , upDirection = Direction3d.y
+                        }
     in
-    case playerPosition of
-        Just playerPosition_ ->
-            let
-                cameraPosition =
-                    Point3d.translateIn config.cameraNormal distance playerPosition_ |> Point3d.toVec3
-
-                up =
-                    Vector3d.withLength (Length.meters 1) config.cameraUp |> Vector3d.toVec3
-            in
-            Mat4.makeLookAt
-                cameraPosition
-                (Point3d.toVec3 playerPosition_)
-                up
-
-        _ ->
-            Mat4.makeLookAt
-                (Vec3.vec3 0 0 2)
-                (Vec3.vec3 0.5 0.5 0.5)
-                (Vec3.vec3 0 0 1)
+    Camera3d.perspective { viewpoint = viewpoint, clipDepth = Length.meters 0.01, verticalFieldOfView = Angle.degrees 90 }
 
 
 type alias Uniforms =

@@ -3,12 +3,14 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 import Angle
 import Browser
 import Browser.Events
-import Direction2d
+import Direction2d exposing (Direction2d)
 import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
 import Element exposing (Element)
 import Environment
 import Html exposing (Html)
+import Html.Events.Extra.Mouse
+import Json.Decode
 import Keyboard exposing (Key)
 import KeyboardHelper as Keyboard
 import Length exposing (Meters)
@@ -17,7 +19,7 @@ import MeshBuilder exposing (Vertex)
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import ObjData
 import Pixels exposing (Pixels)
-import Point2d
+import Point2d exposing (Point2d)
 import Point3d
 import Point3dEx as Point3d
 import Quantity exposing (Quantity)
@@ -25,7 +27,7 @@ import SurfaceMesh.Mesh as Mesh exposing (Mesh)
 import SurfaceMesh.Path as Path
 import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
 import Task
-import Vector2d
+import Vector2d exposing (Vector2d)
 import Vector2i exposing (Vector2i)
 import Vector3d
 import View
@@ -39,6 +41,10 @@ import WebGL.Texture as Texture exposing (Texture)
 type alias LoadedModel_ =
     { keys : List Key
     , previousKeys : List Key
+    , mouseLastDown : Maybe { position : Point2d Pixels ScreenCoordinate, time : Duration }
+    , mouseLastUp : Maybe { position : Point2d Pixels ScreenCoordinate, time : Duration }
+    , mousePosition : Maybe (Point2d Pixels ScreenCoordinate)
+    , moveAction : Maybe { direction : Direction2d ScreenCoordinate, endTime : Duration }
     , windowSize : Vector2i Pixels ScreenCoordinate
     , surfacePoint : SurfacePoint Meters
     , cameraNormal : Direction3d WorldCoordinate
@@ -78,6 +84,10 @@ initLoadedModel windowSize texture =
     in
     { keys = []
     , previousKeys = []
+    , mouseLastDown = Nothing
+    , mousePosition = Nothing
+    , mouseLastUp = Nothing
+    , moveAction = Nothing
     , windowSize = windowSize
     , surfacePoint = surfacePoint
     , cameraNormal = cameraNormal MeshData.surfaceMesh surfacePoint |> Maybe.withDefault Direction3d.z
@@ -119,6 +129,19 @@ type LoadedMsg_
     | KeyMsg Keyboard.Msg
     | WindowResize (Vector2i Pixels ScreenCoordinate)
     | AnimationFrameDelta Duration
+    | MouseEvent MouseEvent_
+
+
+type MouseEventType
+    = MouseEventDown
+    | MouseEventMove
+    | MouseEventUp
+
+
+type alias MouseEvent_ =
+    { position : Point2d Pixels ScreenCoordinate
+    , eventType : MouseEventType
+    }
 
 
 type Msg
@@ -157,6 +180,42 @@ updateLoadedModel msg model =
         AnimationFrameDelta delta ->
             { model | time = Quantity.plus model.time delta } |> step |> addCmdNone
 
+        MouseEvent event ->
+            case event.eventType of
+                MouseEventDown ->
+                    let
+                        centerPoint =
+                            Point2d.translateBy (Vector2i.toVector2d model.windowSize |> Vector2d.scaleBy 0.5) Point2d.origin
+
+                        rate : Quantity Float (Quantity.Rate Meters Pixels)
+                        rate =
+                            Length.meters 0.01 |> Quantity.per (Pixels.pixels 1)
+
+                        endTime : Duration
+                        endTime =
+                            Point2d.distanceFrom centerPoint event.position
+                                |> Quantity.at rate
+                                |> Quantity.at_ playerSpeed
+                                |> Quantity.plus model.time
+                    in
+                    { model
+                        | mouseLastDown = Just { position = event.position, time = model.time }
+                        , moveAction =
+                            Direction2d.from centerPoint event.position
+                                |> Maybe.map (\dir -> { direction = dir, endTime = endTime })
+                    }
+                        |> addCmdNone
+
+                MouseEventMove ->
+                    { model | mousePosition = Just event.position } |> addCmdNone
+
+                MouseEventUp ->
+                    { model | mouseLastUp = Just { position = event.position, time = model.time } } |> addCmdNone
+
+
+playerSpeed =
+    Length.meters 0.6 |> Quantity.per (Duration.seconds 1)
+
 
 updateLoadingModel : LoadingMsg_ -> LoadingModel_ -> ( Model, Cmd LoadingMsg_ )
 updateLoadingModel msg model =
@@ -181,15 +240,29 @@ keyMsgUpdate keyMsg model =
 
 step : LoadedModel_ -> LoadedModel_
 step model =
+    model
+        |> stepMovement
+        |> stepCamera
+
+
+frameDuration =
+    Duration.seconds (1 / 60)
+
+
+stepMovement model =
+    let
+        movement =
+            Keyboard.arrowDown model |> Vector2d.direction
+    in
     { model
         | surfacePoint =
-            case Keyboard.arrowDown model |> Vector2d.direction of
+            case movement of
                 Just direction ->
                     case
                         Mesh.move
                             MeshData.surfaceMesh
                             (Direction2d.angleFrom Direction2d.y direction)
-                            (Length.meters 0.01)
+                            (playerSpeed |> Quantity.for frameDuration)
                             model.surfacePoint
                     of
                         Just path ->
@@ -199,8 +272,40 @@ step model =
                             model.surfacePoint
 
                 Nothing ->
-                    model.surfacePoint
-        , cameraNormal =
+                    case model.moveAction of
+                        Just { direction, endTime } ->
+                            if endTime |> Quantity.greaterThan model.time then
+                                case
+                                    Mesh.move
+                                        MeshData.surfaceMesh
+                                        (Direction2d.angleFrom Direction2d.y direction)
+                                        (playerSpeed |> Quantity.for frameDuration)
+                                        model.surfacePoint
+                                of
+                                    Just path ->
+                                        Path.endPoint path
+
+                                    Nothing ->
+                                        model.surfacePoint
+
+                            else
+                                model.surfacePoint
+
+                        Nothing ->
+                            model.surfacePoint
+        , moveAction =
+            case movement of
+                Just _ ->
+                    Nothing
+
+                Nothing ->
+                    model.moveAction
+    }
+
+
+stepCamera model =
+    { model
+        | cameraNormal =
             case cameraNormal MeshData.surfaceMesh model.surfacePoint of
                 Just newCameraNormal ->
                     if Direction3d.angleFrom newCameraNormal model.cameraNormal |> Quantity.lessThan (Angle.degrees 1) then
@@ -286,30 +391,7 @@ addCmd cmd a =
     ( a, cmd )
 
 
-twoTriangleMesh =
-    MeshBuilder.square
-        |> MeshBuilder.map
-            (\point ->
-                Point3d.xyz
-                    (Point2d.xCoordinate point)
-                    (Point2d.yCoordinate point)
-                    Quantity.zero
-            )
 
-
-
---twoTriangleSurface : Mesh.Mesh Meters coordinates
---twoTriangleSurface =
---    let
---        ( verts, indices ) =
---            MeshBuilder.toVerticesAndIndices twoTriangleMesh
---    in
---    case Mesh.fromVerticesAndIndices verts indices of
---        Ok mesh ->
---            mesh
---
---        Err error ->
---            error |> Debug.toString |> Debug.todo
 ---- VIEW ----
 
 
@@ -346,12 +428,31 @@ viewSuccessModel model =
         (Element.html (View.view model MeshData.webGlMesh MeshData.surfaceMesh))
 
 
+
+--mouseDecoder : MouseEventType -> Json.Decode.Decoder LoadedMsg_
+
+
+mouseDecoder : MouseEventType -> Json.Decode.Decoder LoadedMsg_
+mouseDecoder eventType =
+    Json.Decode.map
+        (\{ screenPos } ->
+            MouseEvent
+                { position = Point2d.pixels (Tuple.first screenPos) (Tuple.second screenPos)
+                , eventType = eventType
+                }
+        )
+        Html.Events.Extra.Mouse.eventDecoder
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
         LoadedModel _ ->
             Sub.batch
                 [ Sub.map KeyMsg Keyboard.subscriptions
+                , Browser.Events.onMouseDown (mouseDecoder MouseEventDown)
+                , Browser.Events.onMouseUp (mouseDecoder MouseEventUp)
+                , Browser.Events.onMouseMove (mouseDecoder MouseEventMove)
                 , Browser.Events.onResize (\w h -> Vector2i.pixels w h |> WindowResize)
                 , Browser.Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameDelta)
                 ]
