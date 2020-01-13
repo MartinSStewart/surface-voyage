@@ -7,6 +7,7 @@ import Direction2d
 import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
 import Element exposing (Element)
+import Environment
 import Html exposing (Html)
 import Keyboard exposing (Key)
 import KeyboardHelper as Keyboard
@@ -332,11 +333,14 @@ viewSuccessModel model =
         [ Element.inFront <|
             Element.column [ Element.spacing 6, Element.padding 4 ]
                 [ Element.text "Move with arrow keys"
+                , if Environment.isDebug then
+                    SurfacePoint.worldPosition model.surfacePoint MeshData.surfaceMesh
+                        |> Maybe.map Point3d.pointToString
+                        |> Maybe.withDefault ""
+                        |> Element.text
 
-                --, SurfacePoint.worldPosition model.surfacePoint MeshData.surfaceMesh
-                --    |> Maybe.map Point3d.pointToString
-                --    |> Maybe.withDefault ""
-                --    |> Element.text
+                  else
+                    Element.none
                 ]
         ]
         (Element.html (View.view model MeshData.webGlMesh MeshData.surfaceMesh))

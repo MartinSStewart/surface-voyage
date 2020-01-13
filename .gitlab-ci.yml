@@ -10,6 +10,8 @@ pages:
   script:
     - yarn config set cache-folder .yarn
     - yarn install
+    - rm ./src/Environment.elm
+    - mv ./Environment.elm ./src/Environment.elm
     - yarn run elm-app build
     - mv ./public ./public2
     - mv ./build ./public
