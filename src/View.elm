@@ -11,6 +11,7 @@ import Length exposing (Meters)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector2 as Vec2 exposing (Vec2)
 import Math.Vector3 as Vec3 exposing (Vec3)
+import Math.Vector4 exposing (Vec4)
 import MeshBuilder exposing (Vertex)
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Pixels exposing (Pixels)
@@ -109,6 +110,10 @@ uniforms config cameraMatrix_ local =
     }
 
 
+fieldOfView =
+    Angle.degrees 60
+
+
 perspective : Vector2i Pixels ScreenCoordinate -> Mat4
 perspective windowSize =
     let
@@ -116,7 +121,7 @@ perspective windowSize =
             Vector2i.toTuple Pixels.inPixels windowSize
     in
     Mat4.makePerspective
-        60
+        (Angle.inDegrees fieldOfView)
         ((max 1 windowWidth |> toFloat) / (max 1 windowHeight |> toFloat))
         0.1
         100
@@ -149,7 +154,7 @@ camera config mesh =
                         , upDirection = Direction3d.y
                         }
     in
-    Camera3d.perspective { viewpoint = viewpoint, clipDepth = Length.meters 0.01, verticalFieldOfView = Angle.degrees 90 }
+    Camera3d.perspective { viewpoint = viewpoint, clipDepth = Length.meters 0.01, verticalFieldOfView = fieldOfView }
 
 
 type alias Uniforms =
@@ -158,6 +163,45 @@ type alias Uniforms =
     , camera : Mat4
     , texture : Texture
     }
+
+
+type alias MoveActionVertex =
+    { position : Vec3
+    , t : Float
+    }
+
+
+type alias MoveActionUniforms =
+    { start : Vec2
+    , end : Vec2
+    , camera : Mat4
+    }
+
+
+moveActionVS : Shader MoveActionVertex MoveActionUniforms { vcolor : Vec4 }
+moveActionVS =
+    [glsl|
+        attribute vec3 position;
+        attribute float t;
+        uniform vec2 start;
+        uniform vec2 end;
+        varying vec4 vcolor;
+        void main () {
+            gl_Position = perspective * camera * local * vec4(position, 1.0);
+            vcolor = uv;
+        }
+    |]
+
+
+moveActionFS : Shader {} MoveActionUniforms { vcolor : Vec4 }
+moveActionFS =
+    [glsl|
+        precision mediump float;
+        varying vec4 vcolor;
+        void main () {
+            gl_FragColor = vcolor;
+        }
+    |]
 
 
 vertexShader : Shader Vertex Uniforms { uv_ : Vec2 }
@@ -185,6 +229,5 @@ fragmentShader =
         varying vec2 uv_;
         void main () {
             gl_FragColor = texture2D(texture, uv_);
-            //gl_FragColor = texture2D(texture, vec2((floor(uv_.x * 1024.0) + 0.5) / 1024.0, (floor(uv_.y * 1024.0) + 0.5) / 1024.0));
         }
     |]

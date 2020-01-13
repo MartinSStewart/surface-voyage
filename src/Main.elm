@@ -199,38 +199,27 @@ updateLoadedModel msg model =
                             View.camera model MeshData.surfaceMesh
                                 |> Camera3d.viewpoint
                                 |> Viewpoint3d.viewPlane
-                                |> SketchPlane3d.translateAlongOwn SketchPlane3d.normalAxis (Length.meters -1.15)
-
-                        --Maybe.map2
-                        --    SketchPlane3d.withNormalDirection
-                        --    (model.surfacePoint |> SurfacePoint.getNormal MeshData.surfaceMesh)
-                        --    (SurfacePoint.worldPosition model.surfacePoint MeshData.surfaceMesh)
+                                |> SketchPlane3d.translateAlongOwn SketchPlane3d.normalAxis (Length.meters -2)
                     in
                     { model
                         | mouseLastDown = Just { position = event.position, time = model.time }
                         , moveAction =
                             let
-                                --startPoint : Maybe (Point2d Meters coordinates2d)
-                                startPoint =
-                                    Point2d.origin
-
-                                --cameraRay model centerPoint |> Axis3d.intersectionWithSketchPlane sketchPlane_
-                                --endPoint : Maybe (Point2d Meters coordinates2d)
                                 endPoint =
                                     cameraRay model event.position |> Axis3d.intersectionWithSketchPlane sketchPlane
                             in
-                            case ( startPoint, endPoint ) of
-                                ( start, Just end ) ->
+                            case endPoint of
+                                Just end ->
                                     let
                                         endTime =
-                                            Point2d.distanceFrom start end |> Quantity.at_ playerSpeed
+                                            Point2d.distanceFrom Point2d.origin end |> Quantity.at_ playerSpeed
 
                                         direction =
-                                            Direction2d.from start end |> Maybe.withDefault Direction2d.y
+                                            Direction2d.from Point2d.origin end |> Maybe.withDefault Direction2d.y
                                     in
                                     Just { direction = direction |> Direction2d.mirrorAcross Axis2d.x, endTime = Quantity.plus model.time endTime }
 
-                                _ ->
+                                Nothing ->
                                     Nothing
                     }
                         |> addCmdNone
