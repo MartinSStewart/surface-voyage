@@ -13,7 +13,9 @@ import Duration exposing (Duration)
 import Element exposing (Element)
 import Environment
 import Html exposing (Html)
+import Html.Events
 import Html.Events.Extra.Mouse
+import Html.Events.Extra.Touch
 import Json.Decode
 import Keyboard exposing (Key)
 import KeyboardHelper as Keyboard
@@ -434,7 +436,7 @@ view model =
     Element.layout [] <|
         case model of
             LoadedModel model_ ->
-                viewSuccessModel model_
+                viewSuccessModel model_ |> Element.map LoadedMsg
 
             FailureModel model_ ->
                 Element.text model_.message
@@ -443,10 +445,11 @@ view model =
                 Element.none
 
 
-viewSuccessModel : LoadedModel_ -> Element Msg
+viewSuccessModel : LoadedModel_ -> Element LoadedMsg_
 viewSuccessModel model =
     Element.el
-        [ Element.inFront <|
+        [ Element.htmlAttribute <| Html.Events.Extra.Touch.onStart touchHandler
+        , Element.inFront <|
             Element.column [ Element.spacing 6, Element.padding 4 ]
                 [ Element.text "Move with arrow keys"
                 , if Environment.isDebug then
@@ -474,6 +477,20 @@ mouseDecoder eventType =
         Html.Events.Extra.Mouse.eventDecoder
 
 
+touchHandler : Html.Events.Extra.Touch.Event -> LoadedMsg_
+touchHandler event =
+    event.touches
+        |> List.head
+        |> Maybe.map
+            (\{ pagePos } ->
+                { position = Point2d.pixels (Tuple.first pagePos) (Tuple.second pagePos)
+                , eventType = MouseEventDown
+                }
+                    |> MouseEvent
+            )
+        |> Maybe.withDefault NoOp
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
@@ -482,6 +499,8 @@ subscriptions model =
                 [ Sub.map KeyMsg Keyboard.subscriptions
                 , Browser.Events.onMouseDown (mouseDecoder MouseEventDown)
                 , Browser.Events.onMouseUp (mouseDecoder MouseEventUp)
+                , Browser.Events.onMouseMove (mouseDecoder MouseEventMove)
+                , Browser.Events.onMouseDown (mouseDecoder MouseEventDown)
                 , Browser.Events.onMouseMove (mouseDecoder MouseEventMove)
                 , Browser.Events.onResize (\w h -> Vector2i.pixels w h |> WindowResize)
                 , Browser.Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameDelta)
