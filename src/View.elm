@@ -75,16 +75,16 @@ view config webGlMesh mesh =
         , Html.Attributes.height windowHeight
         ]
         ([ entity
-            vertexShader
-            fragmentShader
+            worldVS
+            worldFS
             webGlMesh
             (uniforms config cameraMatrix_ Mat4.identity)
          ]
             ++ (case playerPosition of
                     Just playerPosition_ ->
                         [ entity
-                            vertexShader
-                            fragmentShader
+                            worldVS
+                            worldFS
                             playerMesh
                             (uniforms config cameraMatrix_ (playerPosition_ |> Point3d.toVec3 |> Mat4.makeTranslate))
                         ]
@@ -334,8 +334,8 @@ moveActionFS =
     |]
 
 
-vertexShader : Shader Vertex Uniforms { uv_ : Vec2 }
-vertexShader =
+worldVS : Shader Vertex Uniforms { uv_ : Vec2 }
+worldVS =
     [glsl|
         attribute vec3 position;
         attribute vec2 uv;
@@ -351,8 +351,8 @@ vertexShader =
     |]
 
 
-fragmentShader : Shader {} Uniforms { uv_ : Vec2 }
-fragmentShader =
+worldFS : Shader {} Uniforms { uv_ : Vec2 }
+worldFS =
     [glsl|
         precision mediump float;
         uniform sampler2D texture;
