@@ -419,7 +419,7 @@ viewSuccessModel model =
         [ Element.htmlAttribute <| Html.Events.Extra.Touch.onStart touchHandler
         , Element.inFront <|
             Element.column [ Element.spacing 6, Element.padding 4 ]
-                [ Element.text "Move with arrow keys"
+                [ Element.text "Move with arrow keys or mouse click"
                 , if Environment.isDebug then
                     SurfacePoint.worldPosition model.surfacePoint MeshData.surfaceMesh
                         |> Maybe.map Point3d.pointToString
