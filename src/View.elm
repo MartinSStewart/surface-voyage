@@ -1,25 +1,38 @@
-module View exposing (camera, cameraFocalPoint, view)
+module View exposing (camera, cameraFocalPoint, cameraRay, cameraSketchPlane, view)
 
 import Angle
+import Axis2d
+import Axis3d exposing (Axis3d)
+import Basics.Extra exposing (flip)
 import Camera3d exposing (Camera3d)
+import Color
+import Direction2d exposing (Direction2d)
 import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
+import GameLogic
+import Geometry.Interop.LinearAlgebra.Point2d as Point2d
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Geometry.Interop.LinearAlgebra.Vector2d as Vector2d
 import Html exposing (Html)
 import Html.Attributes
-import Length exposing (Meters)
+import Length exposing (Length, Meters)
 import Math.Matrix4 as Mat4 exposing (Mat4)
 import Math.Vector2 as Vec2 exposing (Vec2)
 import Math.Vector3 as Vec3 exposing (Vec3)
-import Math.Vector4 exposing (Vec4)
+import Math.Vector4 as Vec4 exposing (Vec4)
+import Maybe.Extra as Maybe
 import MeshBuilder exposing (Vertex)
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Pixels exposing (Pixels)
-import Point2d
+import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
+import Point3d.Projection
+import Quantity
+import Rectangle2dEx as Rectangle2d
+import SketchPlane3d
 import SurfaceMesh.Mesh exposing (Mesh)
 import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
+import Vector2d
 import Vector2i exposing (Vector2i)
 import Vector3d
 import Viewpoint3d exposing (Viewpoint3d)
@@ -38,6 +51,7 @@ type alias Config a =
         , cameraUp : Direction3d WorldCoordinate
         , windowSize : Vector2i Pixels ScreenCoordinate
         , texture : Texture
+        , moveAction : Maybe { direction : Direction2d ScreenCoordinate, endTime : Duration }
     }
 
 
@@ -50,8 +64,11 @@ view config webGlMesh mesh =
         playerPosition =
             SurfacePoint.worldPosition config.surfacePoint mesh
 
+        camera_ =
+            camera config mesh
+
         cameraMatrix_ =
-            camera config mesh |> Camera3d.viewMatrix
+            camera_ |> Camera3d.viewMatrix
     in
     WebGL.toHtml
         [ Html.Attributes.width windowWidth
@@ -75,6 +92,7 @@ view config webGlMesh mesh =
                     Nothing ->
                         []
                )
+            ++ Maybe.toList (drawMoveAction config camera_)
         )
 
 
@@ -84,6 +102,13 @@ entity =
         [ WebGL.Settings.cullFace WebGL.Settings.back
         , Blend.add Blend.one Blend.oneMinusSrcAlpha
         , WebGL.Settings.DepthTest.less { write = True, near = 0.001, far = 10000 }
+        ]
+
+
+uiEntity =
+    WebGL.entityWith
+        [ Blend.add Blend.one Blend.oneMinusSrcAlpha
+        , WebGL.Settings.DepthTest.always { write = False, near = 0.001, far = 10000 }
         ]
 
 
@@ -101,6 +126,24 @@ playerMesh =
                 }
             )
         |> MeshBuilder.toWebGlMesh
+
+
+cameraRay : Config a -> Point2d Pixels ScreenCoordinate -> Axis3d Meters WorldCoordinate
+cameraRay config point =
+    Camera3d.ray
+        (camera config MeshData.surfaceMesh)
+        (Rectangle2d.positionAndSize Point2d.origin (Vector2i.toVector2d config.windowSize))
+        point
+
+
+{-| A plane in front of the camera in world coordinates that's the same distance from the camera as the player
+-}
+cameraSketchPlane : Config a -> SketchPlane3d.SketchPlane3d Meters WorldCoordinate defines2
+cameraSketchPlane config =
+    camera config MeshData.surfaceMesh
+        |> Camera3d.viewpoint
+        |> Viewpoint3d.viewPlane
+        |> SketchPlane3d.translateAlongOwn SketchPlane3d.normalAxis (Length.meters -2)
 
 
 uniforms : Config a -> Mat4 -> Mat4 -> Uniforms
@@ -159,6 +202,14 @@ camera config mesh =
     Camera3d.perspective { viewpoint = viewpoint, clipDepth = Length.meters 0.01, verticalFieldOfView = fieldOfView }
 
 
+colorToVec4 color =
+    let
+        { red, green, blue, alpha } =
+            Color.toRgba color
+    in
+    Vec4.vec4 (red * alpha) (green * alpha) (blue * alpha) alpha
+
+
 type alias Uniforms =
     { local : Mat4
     , perspective : Mat4
@@ -168,7 +219,7 @@ type alias Uniforms =
 
 
 type alias MoveActionVertex =
-    { position : Vec3
+    { position : Vec2
     , t : Float
     }
 
@@ -177,42 +228,79 @@ type alias MoveActionUniforms =
     { start : Vec2
     , end : Vec2
     , camera : Mat4
+    , perspective : Mat4
+    , color : Vec4
     }
 
 
+drawMoveAction : Config a -> Camera3d Meters WorldCoordinate -> Maybe WebGL.Entity
+drawMoveAction config camera_ =
+    let
+        { x, y } =
+            Vector2i.toPixels config.windowSize
+    in
+    case config.moveAction of
+        Just moveAction ->
+            let
+                distance : Length
+                distance =
+                    moveAction.endTime |> Quantity.minus config.time |> Quantity.at GameLogic.playerSpeed |> Quantity.max Quantity.zero
 
---drawMoveAction : Config a -> unknown
---drawMoveAction config =
---    entity
---        moveActionVS
---        moveActionFS
---        moveActionMesh
---        { start = Vec2.vec2 0 0
---        , end = config.windowSize |> Vector2i.toVector2d |> Vector2d.toVec2
---        , camera = 0
---        }
+                fadeStart : Length
+                fadeStart =
+                    Length.meters 0.1
+
+                endPoint =
+                    Point2d.origin
+                        |> Point2d.translateIn (moveAction.direction |> Direction2d.mirrorAcross Axis2d.x) distance
+                        |> Point3d.on (cameraSketchPlane config)
+                        |> Point3d.Projection.toScreenSpace camera_ (Rectangle2d.positionAndSize Point2d.origin (Vector2i.toVector2d config.windowSize))
+                        |> Maybe.withDefault Point2d.origin
+                        |> Point2d.toVec2
+            in
+            uiEntity
+                moveActionVS
+                moveActionFS
+                moveActionMesh
+                { start = Vec2.vec2 (x // 2 |> toFloat) (y // 2 |> toFloat)
+                , end = endPoint
+                , camera =
+                    Viewpoint3d.lookAt
+                        { eyePoint = Point3d.meters 0 0 1
+                        , focalPoint = Point3d.origin
+                        , upDirection = Direction3d.y
+                        }
+                        |> Viewpoint3d.viewMatrix
+                , color = Color.rgba 1 0 0 (Quantity.ratio distance fadeStart |> min 1) |> colorToVec4
+                , perspective = Mat4.makeOrtho2D 0 (toFloat x) (toFloat y) 0
+                }
+                |> Just
+
+        Nothing ->
+            Nothing
 
 
 moveActionMesh : WebGL.Mesh MoveActionVertex
 moveActionMesh =
     let
         count =
-            8
+            6
+
+        mapCircle scale index circle =
+            circle
+                |> MeshBuilder.map
+                    (\p ->
+                        let
+                            { x, y } =
+                                Point2d.unwrap p
+                        in
+                        { position = Vec2.vec2 (x * scale) (y * scale), t = toFloat index / (count - 1) }
+                    )
     in
-    MeshBuilder.circle 8
-        |> List.repeat count
-        |> List.indexedMap
-            (\index circle ->
-                circle
-                    |> MeshBuilder.map
-                        (\p ->
-                            let
-                                { x, y } =
-                                    Point2d.unwrap p
-                            in
-                            { position = Vec3.vec3 x y 0, t = toFloat index / (count - 1) }
-                        )
-            )
+    MeshBuilder.hollowCircle 12 0.5
+        |> List.repeat (count - 1)
+        |> List.indexedMap (mapCircle 5)
+        |> (::) (MeshBuilder.hollowCircle 16 0.7 |> mapCircle 10 (count - 1))
         |> MeshBuilder.Compound
         |> MeshBuilder.toWebGlMesh
 
@@ -220,14 +308,17 @@ moveActionMesh =
 moveActionVS : Shader MoveActionVertex MoveActionUniforms { vcolor : Vec4 }
 moveActionVS =
     [glsl|
-        attribute vec3 position;
+        attribute vec2 position;
         attribute float t;
         uniform vec2 start;
         uniform vec2 end;
+        uniform mat4 camera;
+        uniform mat4 perspective;
+        uniform vec4 color;
         varying vec4 vcolor;
         void main () {
-            gl_Position = perspective * camera * local * vec4(position, 1.0);
-            vcolor = uv;
+            gl_Position = perspective * camera * vec4(((end - start) * t) + position + start, 0.0, 1.0);
+            vcolor = color;
         }
     |]
 

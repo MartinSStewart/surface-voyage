@@ -12,6 +12,7 @@ import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
 import Element exposing (Element)
 import Environment
+import GameLogic
 import Html exposing (Html)
 import Html.Events
 import Html.Events.Extra.Mouse
@@ -29,6 +30,7 @@ import Point3d
 import Point3dEx as Point3d
 import Quantity exposing (Quantity)
 import Rectangle2d exposing (Rectangle2d)
+import Rectangle2dEx as Rectangle2d
 import SketchPlane3d
 import SurfaceMesh.Mesh as Mesh exposing (Mesh)
 import SurfaceMesh.Path as Path
@@ -191,25 +193,18 @@ updateLoadedModel msg model =
         MouseEvent event ->
             case event.eventType of
                 MouseEventDown ->
-                    let
-                        sketchPlane =
-                            View.camera model MeshData.surfaceMesh
-                                |> Camera3d.viewpoint
-                                |> Viewpoint3d.viewPlane
-                                |> SketchPlane3d.translateAlongOwn SketchPlane3d.normalAxis (Length.meters -2)
-                    in
                     { model
                         | mouseLastDown = Just { position = event.position, time = model.time }
                         , moveAction =
                             let
                                 endPoint =
-                                    cameraRay model event.position |> Axis3d.intersectionWithSketchPlane sketchPlane
+                                    View.cameraRay model event.position |> Axis3d.intersectionWithSketchPlane (View.cameraSketchPlane model)
                             in
                             case endPoint of
                                 Just end ->
                                     let
                                         endTime =
-                                            Point2d.distanceFrom Point2d.origin end |> Quantity.at_ playerSpeed
+                                            Point2d.distanceFrom Point2d.origin end |> Quantity.at_ GameLogic.playerSpeed
 
                                         direction =
                                             Direction2d.from Point2d.origin end |> Maybe.withDefault Direction2d.y
@@ -226,10 +221,6 @@ updateLoadedModel msg model =
 
                 MouseEventUp ->
                     { model | mouseLastUp = Just { position = event.position, time = model.time } } |> addCmdNone
-
-
-playerSpeed =
-    Length.meters 0.6 |> Quantity.per (Duration.seconds 1)
 
 
 updateLoadingModel : LoadingMsg_ -> LoadingModel_ -> ( Model, Cmd LoadingMsg_ )
@@ -264,15 +255,6 @@ frameDuration =
     Duration.seconds (1 / 60)
 
 
-cameraRay : LoadedModel_ -> Point2d Pixels ScreenCoordinate -> Axis3d Meters WorldCoordinate
-cameraRay model point =
-    let
-        screenRect =
-            Rectangle2d.from Point2d.origin (Point2d.translateBy (Vector2i.toVector2d model.windowSize) Point2d.origin)
-    in
-    Camera3d.ray (View.camera model MeshData.surfaceMesh) screenRect point
-
-
 stepMovement model =
     let
         movement =
@@ -286,7 +268,7 @@ stepMovement model =
                         Mesh.move
                             MeshData.surfaceMesh
                             (Direction2d.angleFrom Direction2d.y direction)
-                            (playerSpeed |> Quantity.for frameDuration)
+                            (GameLogic.playerSpeed |> Quantity.for frameDuration)
                             model.surfacePoint
                     of
                         Just path ->
@@ -303,7 +285,7 @@ stepMovement model =
                                     Mesh.move
                                         MeshData.surfaceMesh
                                         (Direction2d.angleFrom Direction2d.y direction)
-                                        (playerSpeed |> Quantity.for frameDuration)
+                                        (GameLogic.playerSpeed |> Quantity.for frameDuration)
                                         model.surfacePoint
                                 of
                                     Just path ->

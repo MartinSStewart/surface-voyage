@@ -1,4 +1,4 @@
-module MeshBuilder exposing (MeshPart(..), Vertex, circle, colorToVec4, cube, line, map, splitFacesCube, square, square2, toVerticesAndIndices, toWebGlMesh)
+module MeshBuilder exposing (MeshPart(..), Vertex, circle, colorToVec4, cube, hollowCircle, line, map, splitFacesCube, square, square2, toVerticesAndIndices, toWebGlMesh)
 
 import Array exposing (Array)
 import Basics.Extra exposing (flip)
@@ -8,6 +8,7 @@ import ListHelper as List
 import Math.Vector2 exposing (Vec2)
 import Math.Vector3 exposing (Vec3)
 import Math.Vector4 as Vec4 exposing (Vec4)
+import Maybe.Extra as Maybe
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Quantity
@@ -236,6 +237,49 @@ circle detail =
     in
     TriangleFan 0 1 2 (List.range 3 (detail - 1))
         |> map (toFloat >> getPoint)
+
+
+hollowCircle : Int -> Float -> MeshPart (Point2d units coordinates)
+hollowCircle detail innerRatio =
+    let
+        tau =
+            pi * 2
+
+        getPoint index =
+            Point2d.xy
+                (Quantity.Quantity (sin (tau * index / toFloat detail)))
+                (Quantity.Quantity (cos (tau * index / toFloat detail)))
+
+        detail_ =
+            max detail 3
+
+        points =
+            List.range 0 (detail_ - 1)
+                |> List.concatMap
+                    (\index ->
+                        let
+                            outerPoint =
+                                toFloat index |> getPoint
+                        in
+                        [ Point2d.scaleAbout Point2d.origin innerRatio outerPoint, outerPoint ]
+                    )
+
+        indices =
+            List.range 0 (detail_ - 1)
+                |> List.map ((*) 2)
+                |> List.concatMap
+                    (\index ->
+                        let
+                            index2 =
+                                modBy (detail_ * 2) (index + 2)
+
+                            index3 =
+                                modBy (detail_ * 2) (index + 3)
+                        in
+                        [ ( index, index + 1, index2 ), ( index + 1, index2, index3 ) ]
+                    )
+    in
+    VerticesAndIndices points indices
 
 
 square : MeshPart (Point2d u c)
