@@ -1,34 +1,46 @@
 module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Angle
+import Axis2d
+import Axis3d exposing (Axis3d)
+import Axis3dEx as Axis3d
 import Browser
 import Browser.Events
-import Direction2d
+import Camera3d
+import Direction2d exposing (Direction2d)
 import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
 import Element exposing (Element)
 import Environment
+import GameLogic
 import Html exposing (Html)
+import Html.Events
+import Html.Events.Extra.Mouse
+import Html.Events.Extra.Touch
+import Json.Decode
 import Keyboard exposing (Key)
 import KeyboardHelper as Keyboard
 import Length exposing (Meters)
 import LineSegment3d
-import MeshBuilder exposing (Vertex)
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import ObjData
 import Pixels exposing (Pixels)
-import Point2d
+import Point2d exposing (Point2d)
 import Point3d
 import Point3dEx as Point3d
 import Quantity exposing (Quantity)
+import Rectangle2d exposing (Rectangle2d)
+import Rectangle2dEx as Rectangle2d
+import SketchPlane3d
 import SurfaceMesh.Mesh as Mesh exposing (Mesh)
 import SurfaceMesh.Path as Path
 import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
 import Task
-import Vector2d
+import Vector2d exposing (Vector2d)
 import Vector2i exposing (Vector2i)
 import Vector3d
 import View
+import Viewpoint3d
 import WebGL.Texture as Texture exposing (Texture)
 
 
@@ -39,6 +51,10 @@ import WebGL.Texture as Texture exposing (Texture)
 type alias LoadedModel_ =
     { keys : List Key
     , previousKeys : List Key
+    , mouseLastDown : Maybe { position : Point2d Pixels ScreenCoordinate, time : Duration }
+    , mouseLastUp : Maybe { position : Point2d Pixels ScreenCoordinate, time : Duration }
+    , mousePosition : Maybe (Point2d Pixels ScreenCoordinate)
+    , moveAction : Maybe { direction : Direction2d ScreenCoordinate, endTime : Duration }
     , windowSize : Vector2i Pixels ScreenCoordinate
     , surfacePoint : SurfacePoint Meters
     , cameraNormal : Direction3d WorldCoordinate
@@ -78,6 +94,10 @@ initLoadedModel windowSize texture =
     in
     { keys = []
     , previousKeys = []
+    , mouseLastDown = Nothing
+    , mousePosition = Nothing
+    , mouseLastUp = Nothing
+    , moveAction = Nothing
     , windowSize = windowSize
     , surfacePoint = surfacePoint
     , cameraNormal = cameraNormal MeshData.surfaceMesh surfacePoint |> Maybe.withDefault Direction3d.z
@@ -119,6 +139,19 @@ type LoadedMsg_
     | KeyMsg Keyboard.Msg
     | WindowResize (Vector2i Pixels ScreenCoordinate)
     | AnimationFrameDelta Duration
+    | MouseEvent MouseEvent_
+
+
+type MouseEventType
+    = MouseEventDown
+    | MouseEventMove
+    | MouseEventUp
+
+
+type alias MouseEvent_ =
+    { position : Point2d Pixels ScreenCoordinate
+    , eventType : MouseEventType
+    }
 
 
 type Msg
@@ -157,6 +190,38 @@ updateLoadedModel msg model =
         AnimationFrameDelta delta ->
             { model | time = Quantity.plus model.time delta } |> step |> addCmdNone
 
+        MouseEvent event ->
+            case event.eventType of
+                MouseEventDown ->
+                    { model
+                        | mouseLastDown = Just { position = event.position, time = model.time }
+                        , moveAction =
+                            let
+                                endPoint =
+                                    View.cameraRay model event.position |> Axis3d.intersectionWithSketchPlane (View.cameraSketchPlane model)
+                            in
+                            case endPoint of
+                                Just end ->
+                                    let
+                                        endTime =
+                                            Point2d.distanceFrom Point2d.origin end |> Quantity.at_ GameLogic.playerSpeed
+
+                                        direction =
+                                            Direction2d.from Point2d.origin end |> Maybe.withDefault Direction2d.y
+                                    in
+                                    Just { direction = direction |> Direction2d.mirrorAcross Axis2d.x, endTime = Quantity.plus model.time endTime }
+
+                                Nothing ->
+                                    Nothing
+                    }
+                        |> addCmdNone
+
+                MouseEventMove ->
+                    { model | mousePosition = Just event.position } |> addCmdNone
+
+                MouseEventUp ->
+                    { model | mouseLastUp = Just { position = event.position, time = model.time } } |> addCmdNone
+
 
 updateLoadingModel : LoadingMsg_ -> LoadingModel_ -> ( Model, Cmd LoadingMsg_ )
 updateLoadingModel msg model =
@@ -181,15 +246,29 @@ keyMsgUpdate keyMsg model =
 
 step : LoadedModel_ -> LoadedModel_
 step model =
+    model
+        |> stepMovement
+        |> stepCamera
+
+
+frameDuration =
+    Duration.seconds (1 / 60)
+
+
+stepMovement model =
+    let
+        movement =
+            Keyboard.arrowDown model |> Vector2d.direction
+    in
     { model
         | surfacePoint =
-            case Keyboard.arrowDown model |> Vector2d.direction of
+            case movement of
                 Just direction ->
                     case
                         Mesh.move
                             MeshData.surfaceMesh
                             (Direction2d.angleFrom Direction2d.y direction)
-                            (Length.meters 0.01)
+                            (GameLogic.playerSpeed |> Quantity.for frameDuration)
                             model.surfacePoint
                     of
                         Just path ->
@@ -199,8 +278,40 @@ step model =
                             model.surfacePoint
 
                 Nothing ->
-                    model.surfacePoint
-        , cameraNormal =
+                    case model.moveAction of
+                        Just { direction, endTime } ->
+                            if endTime |> Quantity.greaterThan model.time then
+                                case
+                                    Mesh.move
+                                        MeshData.surfaceMesh
+                                        (Direction2d.angleFrom Direction2d.y direction)
+                                        (GameLogic.playerSpeed |> Quantity.for frameDuration)
+                                        model.surfacePoint
+                                of
+                                    Just path ->
+                                        Path.endPoint path
+
+                                    Nothing ->
+                                        model.surfacePoint
+
+                            else
+                                model.surfacePoint
+
+                        Nothing ->
+                            model.surfacePoint
+        , moveAction =
+            case movement of
+                Just _ ->
+                    Nothing
+
+                Nothing ->
+                    model.moveAction
+    }
+
+
+stepCamera model =
+    { model
+        | cameraNormal =
             case cameraNormal MeshData.surfaceMesh model.surfacePoint of
                 Just newCameraNormal ->
                     if Direction3d.angleFrom newCameraNormal model.cameraNormal |> Quantity.lessThan (Angle.degrees 1) then
@@ -262,14 +373,12 @@ cameraNormal mesh surfacePoint =
 
         detail =
             4
-
-        b =
-            List.range 0 (detail - 1)
-                |> List.map (\value -> Angle.radians (pi * 2 * toFloat value / detail))
-                --[ Angle.radians 0, Angle.radians (pi / 2), Angle.radians pi, Angle.radians (-pi / 2) ]
-                |> List.concatMap a
     in
-    b |> vectorSum |> Vector3d.direction
+    List.range 0 (detail - 1)
+        |> List.map (\value -> Angle.radians (pi * 2 * toFloat value / detail))
+        |> List.concatMap a
+        |> vectorSum
+        |> Vector3d.direction
 
 
 vectorSum =
@@ -286,30 +395,7 @@ addCmd cmd a =
     ( a, cmd )
 
 
-twoTriangleMesh =
-    MeshBuilder.square
-        |> MeshBuilder.map
-            (\point ->
-                Point3d.xyz
-                    (Point2d.xCoordinate point)
-                    (Point2d.yCoordinate point)
-                    Quantity.zero
-            )
 
-
-
---twoTriangleSurface : Mesh.Mesh Meters coordinates
---twoTriangleSurface =
---    let
---        ( verts, indices ) =
---            MeshBuilder.toVerticesAndIndices twoTriangleMesh
---    in
---    case Mesh.fromVerticesAndIndices verts indices of
---        Ok mesh ->
---            mesh
---
---        Err error ->
---            error |> Debug.toString |> Debug.todo
 ---- VIEW ----
 
 
@@ -318,7 +404,7 @@ view model =
     Element.layout [] <|
         case model of
             LoadedModel model_ ->
-                viewSuccessModel model_
+                viewSuccessModel model_ |> Element.map LoadedMsg
 
             FailureModel model_ ->
                 Element.text model_.message
@@ -327,10 +413,11 @@ view model =
                 Element.none
 
 
-viewSuccessModel : LoadedModel_ -> Element Msg
+viewSuccessModel : LoadedModel_ -> Element LoadedMsg_
 viewSuccessModel model =
     Element.el
-        [ Element.inFront <|
+        [ Element.htmlAttribute <| Html.Events.Extra.Touch.onStart touchHandler
+        , Element.inFront <|
             Element.column [ Element.spacing 6, Element.padding 4 ]
                 [ Element.text "Move with arrow keys"
                 , if Environment.isDebug then
@@ -346,12 +433,43 @@ viewSuccessModel model =
         (Element.html (View.view model MeshData.webGlMesh MeshData.surfaceMesh))
 
 
+mouseDecoder : MouseEventType -> Json.Decode.Decoder LoadedMsg_
+mouseDecoder eventType =
+    Json.Decode.map
+        (\{ pagePos } ->
+            MouseEvent
+                { position = Point2d.pixels (Tuple.first pagePos) (Tuple.second pagePos)
+                , eventType = eventType
+                }
+        )
+        Html.Events.Extra.Mouse.eventDecoder
+
+
+touchHandler : Html.Events.Extra.Touch.Event -> LoadedMsg_
+touchHandler event =
+    event.touches
+        |> List.head
+        |> Maybe.map
+            (\{ pagePos } ->
+                { position = Point2d.pixels (Tuple.first pagePos) (Tuple.second pagePos)
+                , eventType = MouseEventDown
+                }
+                    |> MouseEvent
+            )
+        |> Maybe.withDefault NoOp
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model of
         LoadedModel _ ->
             Sub.batch
                 [ Sub.map KeyMsg Keyboard.subscriptions
+                , Browser.Events.onMouseDown (mouseDecoder MouseEventDown)
+                , Browser.Events.onMouseUp (mouseDecoder MouseEventUp)
+                , Browser.Events.onMouseMove (mouseDecoder MouseEventMove)
+                , Browser.Events.onMouseDown (mouseDecoder MouseEventDown)
+                , Browser.Events.onMouseMove (mouseDecoder MouseEventMove)
                 , Browser.Events.onResize (\w h -> Vector2i.pixels w h |> WindowResize)
                 , Browser.Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameDelta)
                 ]
