@@ -1,10 +1,10 @@
-module Main exposing (Model, Msg(..), init, main, update, view)
+module Main exposing (Model, Msg(..), init, subscriptions, update, view)
 
 import Angle
 import Axis2d
 import Axis3d exposing (Axis3d)
 import Axis3dEx as Axis3d
-import Browser
+import Browser.Dom
 import Browser.Events
 import Camera3d
 import Direction2d exposing (Direction2d)
@@ -79,12 +79,6 @@ type alias FailureModel_ =
     { message : String }
 
 
-type alias Flags =
-    { windowWidth : Int
-    , windowHeight : Int
-    }
-
-
 initLoadedModel : Vector2i Pixels ScreenCoordinate -> Texture -> LoadedModel_
 initLoadedModel windowSize texture =
     let
@@ -108,20 +102,25 @@ initLoadedModel windowSize texture =
     }
 
 
-init : Flags -> ( Model, Cmd Msg )
-init flags =
-    ( { windowSize = Vector2i.pixels flags.windowWidth flags.windowHeight
+init : ( Model, Cmd Msg )
+init =
+    ( { windowSize = Vector2i.pixels 0 0
       }
         |> LoadingModel
-    , Texture.loadWith
-        { magnify = Texture.nearest
-        , minify = Texture.linear
-        , horizontalWrap = Texture.clampToEdge
-        , verticalWrap = Texture.clampToEdge
-        , flipY = True
-        }
-        "./world.png"
-        |> Task.attempt TextureLoaded
+    , Cmd.batch
+        [ Browser.Dom.getViewport
+            |> Task.perform
+                (\{ viewport } -> Vector2i.pixels (round viewport.width) (round viewport.height) |> GotWindowSize)
+        , Texture.loadWith
+            { magnify = Texture.nearest
+            , minify = Texture.linear
+            , horizontalWrap = Texture.clampToEdge
+            , verticalWrap = Texture.clampToEdge
+            , flipY = True
+            }
+            "/world.png"
+            |> Task.attempt TextureLoaded
+        ]
         |> Cmd.map LoadingMsg
     )
 
@@ -131,7 +130,8 @@ init flags =
 
 
 type LoadingMsg_
-    = TextureLoaded (Result Texture.Error Texture)
+    = GotWindowSize (Vector2i Pixels ScreenCoordinate)
+    | TextureLoaded (Result Texture.Error Texture)
 
 
 type LoadedMsg_
@@ -226,6 +226,9 @@ updateLoadedModel msg model =
 updateLoadingModel : LoadingMsg_ -> LoadingModel_ -> ( Model, Cmd LoadingMsg_ )
 updateLoadingModel msg model =
     case msg of
+        GotWindowSize windowSize ->
+            ( LoadingModel { model | windowSize = windowSize }, Cmd.none )
+
         TextureLoaded result ->
             case result of
                 Ok texture ->
@@ -480,17 +483,3 @@ subscriptions model =
 
         FailureModel _ ->
             Sub.none
-
-
-
----- PROGRAM ----
-
-
-main : Program Flags Model Msg
-main =
-    Browser.element
-        { view = view
-        , init = init
-        , update = update
-        , subscriptions = subscriptions
-        }
