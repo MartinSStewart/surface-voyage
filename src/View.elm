@@ -4,6 +4,7 @@ import Angle
 import Axis2d
 import Axis3d exposing (Axis3d)
 import Basics.Extra exposing (flip)
+import Buildings
 import Camera3d exposing (Camera3d)
 import Color
 import Direction2d exposing (Direction2d)
@@ -51,11 +52,12 @@ type alias Config a =
         , cameraUp : Direction3d WorldCoordinate
         , windowSize : Vector2i Pixels ScreenCoordinate
         , moveAction : Maybe { direction : Direction2d ScreenCoordinate, endTime : Duration }
+        , height : Float
     }
 
 
-view : Config a -> WebGL.Mesh Vertex -> WebGL.Mesh WallVertex -> Html msg
-view config webGlMesh wallMesh =
+view : Config a -> { world : WebGL.Mesh Vertex, walls : WebGL.Mesh WallVertex, roofs : WebGL.Mesh WallVertex } -> Html msg
+view config meshes =
     let
         ( windowWidth, windowHeight ) =
             Vector2i.toTuple Pixels.inPixels config.windowSize
@@ -76,26 +78,43 @@ view config webGlMesh wallMesh =
         ([ entity
             worldVS
             worldFS
-            webGlMesh
+            meshes.world
             (uniforms config cameraMatrix_ Mat4.identity)
          ]
             ++ (case playerPosition of
                     Just playerPosition_ ->
-                        [ entity
-                            worldVS
-                            worldFS
-                            playerMesh
-                            (uniforms config cameraMatrix_ (playerPosition_ |> Point3d.toVec3 |> Mat4.makeTranslate))
-                        , entity
-                            wallVS
-                            worldFS
-                            wallMesh
-                            { perspective = perspective config.windowSize
-                            , camera = cameraMatrix_
-                            , player = Point3d.toVec3 playerPosition_
-                            , eyeHeight = Length.inMeters wallEyeHeight
-                            }
-                        ]
+                        let
+                            flatUniforms =
+                                { perspective = perspective config.windowSize
+                                , camera = cameraMatrix_
+                                , player = Point3d.toVec3 playerPosition_
+                                , eyeHeight = Length.inMeters wallEyeHeight + config.height
+                                }
+
+                            -- Things up high look bigger from the eye, the player too
+                            playerScale =
+                                (Length.inMeters wallEyeHeight + config.height) / Length.inMeters wallEyeHeight
+                        in
+                        [ entity wallVS worldFS meshes.walls flatUniforms ]
+                            ++ (if Buildings.underRoof config.height (Point3d.toMeters playerPosition_) then
+                                    -- So the player can see inside
+                                    []
+
+                                else
+                                    [ roofEntity wallVS worldFS meshes.roofs flatUniforms ]
+                               )
+                            ++ [ entity
+                                    worldVS
+                                    worldFS
+                                    playerMesh
+                                    (uniforms config
+                                        cameraMatrix_
+                                        (Mat4.mul
+                                            (playerPosition_ |> Point3d.toVec3 |> Mat4.makeTranslate)
+                                            (Mat4.makeScale3 playerScale playerScale playerScale)
+                                        )
+                                    )
+                               ]
 
                     Nothing ->
                         []
@@ -110,6 +129,17 @@ entity =
         [ WebGL.Settings.cullFace WebGL.Settings.back
         , Blend.add Blend.one Blend.oneMinusSrcAlpha
         , WebGL.Settings.DepthTest.less { write = True, near = 0.001, far = 10000 }
+        ]
+
+
+{-| Roofs cover whatever is drawn flat under them, so they're drawn over it regardless of depth.
+-}
+roofEntity : Shader attributes uniforms varyings -> Shader {} uniforms varyings -> WebGL.Mesh attributes -> uniforms -> WebGL.Entity
+roofEntity =
+    WebGL.entityWith
+        [ WebGL.Settings.cullFace WebGL.Settings.back
+        , Blend.add Blend.one Blend.oneMinusSrcAlpha
+        , WebGL.Settings.DepthTest.always { write = False, near = 0.001, far = 10000 }
         ]
 
 
@@ -375,8 +405,8 @@ worldFS =
     |]
 
 
-{-| How high above the player the eye is that the walls are drawn from. The lower it is, the further
-the walls' tops and sides spread out on the surface.
+{-| How high above the player the eye is that the walls are drawn from (more when the player is up
+on something). The lower it is, the further the walls' tops and sides spread out on the surface.
 -}
 wallEyeHeight : Length
 wallEyeHeight =

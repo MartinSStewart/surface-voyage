@@ -1,4 +1,4 @@
-module WorldMesh exposing (WallVertex, mesh, wallMesh)
+module WorldMesh exposing (WallVertex, mesh, roofMesh, wallMesh)
 
 {-| What the world looks like: the surface with the paving laid on it, and the walls (see
 `WorldShapes`).
@@ -10,6 +10,7 @@ also knows the point on the surface it stands on and the surface's normal there.
 -}
 
 import Array
+import Buildings
 import Direction3d
 import Math.Vector3 as Vec3 exposing (Vec3)
 import MeshBuilder exposing (Vertex)
@@ -68,6 +69,16 @@ pavingColor =
 wallColor : Vec3
 wallColor =
     Vec3.vec3 0.22 0.2 0.18
+
+
+roofColor : Vec3
+roofColor =
+    Vec3.vec3 0.62 0.3 0.24
+
+
+stairsColor : Vec3
+stairsColor =
+    Vec3.vec3 0.55 0.52 0.48
 
 
 {-| The surface is drawn with a point at least every this many radians round its curves. It divides
@@ -140,6 +151,8 @@ mesh surface pavings =
         |> WebGL.triangles
 
 
+{-| The walls and the stairs.
+-}
 wallMesh : Surface coordinates -> List (List ( Float, Float, Float )) -> WebGL.Mesh WallVertex
 wallMesh surface walls =
     let
@@ -147,7 +160,117 @@ wallMesh surface walls =
             Surface.flatReach wallImageTolerance (Point3d.fromMeters p) surface
     in
     List.concatMap (\wall -> List.map (\( x, y, z ) -> { x = x, y = y, z = z }) wall |> wallTriangles (snap surface) reach) walls
+        ++ List.concatMap (stairsTriangles (snap surface) reach) Buildings.stairs
         |> WebGL.triangles
+
+
+{-| The roofs. They're drawn over everything else that's flat, as nothing under a roof shows.
+-}
+roofMesh : Surface coordinates -> WebGL.Mesh WallVertex
+roofMesh surface =
+    let
+        reach p =
+            Surface.flatReach wallImageTolerance (Point3d.fromMeters p) surface
+    in
+    Buildings.roofs
+        |> List.concatMap (\roof -> block (snap surface) reach roofColor { sides = False } roof.height roof.corners)
+        |> WebGL.triangles
+
+
+{-| Each step is a block, as high as the step, from the step's front to the next step.
+-}
+stairsTriangles : (Vec -> OnSurface) -> (Vec -> Float) -> Buildings.Stairs -> List ( WallVertex, WallVertex, WallVertex )
+stairsTriangles onSurface reach flight =
+    let
+        run =
+            sub flight.top flight.bottom
+
+        across =
+            cross run (onSurface flight.bottom).normal |> normalize |> scale (flight.width / 2)
+
+        at t side =
+            flight.bottom |> along t run |> along side across
+
+        step i =
+            let
+                t0 =
+                    toFloat (i - 1) / toFloat flight.steps
+
+                t1 =
+                    toFloat i / toFloat flight.steps
+            in
+            [ at t0 -1, at t1 -1, at t1 1, at t0 1 ]
+                |> block onSurface reach stairsColor { sides = True } (flight.height * t1)
+    in
+    List.range 1 flight.steps |> List.concatMap step
+
+
+{-| A block standing on the surface: a top `height` above its corners, and sides down to them.
+-}
+block : (Vec -> OnSurface) -> (Vec -> Float) -> Vec3 -> { sides : Bool } -> Float -> List Vec -> List ( WallVertex, WallVertex, WallVertex )
+block onSurface reach color { sides } height corners =
+    let
+        bases =
+            List.map onSurface corners
+
+        corner base =
+            { base = base, reach = reach base.position, top = along height base.normal base.position }
+
+        withTops =
+            List.map corner bases
+
+        blockVertex normal position c =
+            { position = Vec3.fromRecord position
+            , normal = Vec3.fromRecord normal
+            , color = color
+            , base = Vec3.fromRecord c.base.position
+            , up = Vec3.fromRecord c.base.normal
+            , reach = c.reach
+            }
+
+        topTriangles =
+            case withTops of
+                first :: rest ->
+                    List.map2
+                        (\b c ->
+                            wallFacing (Vec3.fromRecord first.base.normal)
+                                (blockVertex first.base.normal first.top first)
+                                (blockVertex first.base.normal b.top b)
+                                (blockVertex first.base.normal c.top c)
+                        )
+                        rest
+                        (List.drop 1 rest)
+
+                [] ->
+                    []
+
+        center =
+            List.foldl (\c acc -> along (1 / toFloat (List.length withTops)) c.base.position acc) { x = 0, y = 0, z = 0 } withTops
+
+        side ( c, d ) =
+            let
+                outward =
+                    cross (sub d.base.position c.base.position) c.base.normal |> normalize
+
+                facingOut =
+                    if dot outward (sub c.base.position center) < 0 then
+                        scale -1 outward
+
+                    else
+                        outward
+            in
+            [ wallFacing (Vec3.fromRecord facingOut) (blockVertex facingOut c.base.position c) (blockVertex facingOut d.base.position d) (blockVertex facingOut d.top d)
+            , wallFacing (Vec3.fromRecord facingOut) (blockVertex facingOut c.base.position c) (blockVertex facingOut d.top d) (blockVertex facingOut c.top c)
+            ]
+
+        sideTriangles =
+            if sides then
+                List.map2 Tuple.pair withTops (List.drop 1 withTops ++ List.take 1 withTops) |> List.concatMap side
+
+            else
+                []
+    in
+    topTriangles ++ sideTriangles
 
 
 vertex : Vec3 -> Vec -> Vec -> Vertex

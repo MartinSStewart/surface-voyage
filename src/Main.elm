@@ -6,6 +6,7 @@ import Axis3d exposing (Axis3d)
 import Axis3dEx as Axis3d
 import Browser.Dom
 import Browser.Events
+import Buildings
 import Camera3d
 import Direction2d exposing (Direction2d)
 import Direction3d exposing (Direction3d)
@@ -58,6 +59,9 @@ type alias LoadedModel_ =
     , surface : Surface WorldCoordinate
     , surfacePoint : SurfacePoint
 
+    -- How high the player is above the surface: up stairs or on a roof (see `Buildings`)
+    , height : Float
+
     -- What the minimap shows and where it was laid out from, and where it's being laid out from now
     , minimap : Maybe { point : SurfacePoint, meshes : Minimap.Meshes }
     , minimapRequest : Maybe SurfacePoint
@@ -99,6 +103,7 @@ initLoadedModel windowSize =
                     , windowSize = windowSize
                     , surface = surface
                     , surfacePoint = surfacePoint
+                    , height = 0
                     , minimap = Nothing
                     , minimapRequest = Nothing
                     , cameraNormal = cameraNormal surface surfacePoint |> Maybe.withDefault Direction3d.z
@@ -261,6 +266,7 @@ step : LoadedModel_ -> LoadedModel_
 step model =
     model
         |> stepMovement
+        |> stepHeight
         |> stepCamera
 
 
@@ -404,6 +410,16 @@ minimapView model =
     Minimap.view (Maybe.map .meshes model.minimap) moved
 
 
+stepHeight : LoadedModel_ -> LoadedModel_
+stepHeight model =
+    case Surface.worldPosition model.surfacePoint model.surface of
+        Just position ->
+            { model | height = Buildings.heightAfter (Duration.inSeconds frameDuration) model.height (Point3d.toMeters position) }
+
+        Nothing ->
+            model
+
+
 stepCamera model =
     { model
         | cameraNormal =
@@ -534,7 +550,7 @@ viewSuccessModel model =
                 ]
                 (Element.html (minimapView model))
         ]
-        (Element.html (View.view model MeshData.webGlMesh MeshData.wallMesh))
+        (Element.html (View.view model { world = MeshData.webGlMesh, walls = MeshData.wallMesh, roofs = MeshData.roofMesh }))
 
 
 mouseDecoder : MouseEventType -> Json.Decode.Decoder LoadedMsg_
