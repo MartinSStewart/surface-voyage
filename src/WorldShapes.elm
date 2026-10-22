@@ -1,11 +1,11 @@
 module WorldShapes exposing (pavings, walls)
 
-{-| Shapes on the surface, drawn on the minimap in place of the texture: house walls as lines, and
-paths and house floors as filled areas. Points are in meters in world coordinates, on or very near
-the surface.
+{-| Shapes on the surface: house walls, and paths and house floors as filled areas. They're drawn in
+the world (see `WorldMesh`) and on the minimap. Points are in meters in world coordinates, on or very
+near the surface.
 
-Made by `trace_shapes.py` from the texture (`public/world.png`), so they're only as good as
-that tracing.
+These were traced from the texture the world used to be drawn with (`trace_shapes.py`, `world.png`
+and `ObjData.elm`, all in git history), so they're only as good as that tracing.
 
 -}
 

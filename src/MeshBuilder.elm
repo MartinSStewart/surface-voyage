@@ -29,9 +29,9 @@ triangleStrip first second third rest =
 
 
 type alias Vertex =
-    { uv : Vec2
-    , position : Vec3
+    { position : Vec3
     , normal : Vec3
+    , color : Vec3
     }
 
 

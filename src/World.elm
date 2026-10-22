@@ -3,8 +3,8 @@ module World exposing (features, flats, surface)
 {-| The game world as flats and features: a slab with rounded edges and corners, and a round hole
 through the middle.
 
-The numbers match the Blender model in ObjData so the textured mesh lines up with the surface. The
-box and its 0.199 m fillets are exact. The hole is fitted to the mesh: a 0.475 m waist with 0.304 m
+The numbers come from the Blender model (world.blend), which the world used to be drawn from: the box
+and its 0.199 m fillets are exact, and the hole was fitted to its mesh: a 0.475 m waist with 0.304 m
 fillets rounding out to a 0.780 m rim.
 
 -}

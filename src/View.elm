@@ -39,7 +39,6 @@ import WebGL exposing (Shader)
 import WebGL.Settings
 import WebGL.Settings.Blend as Blend
 import WebGL.Settings.DepthTest
-import WebGL.Texture exposing (Texture)
 
 
 type alias Config a =
@@ -50,7 +49,6 @@ type alias Config a =
         , cameraNormal : Direction3d WorldCoordinate
         , cameraUp : Direction3d WorldCoordinate
         , windowSize : Vector2i Pixels ScreenCoordinate
-        , texture : Texture
         , moveAction : Maybe { direction : Direction2d ScreenCoordinate, endTime : Duration }
     }
 
@@ -112,12 +110,12 @@ uiEntity =
         ]
 
 
-playerMesh : WebGL.Mesh { uv : Vec2.Vec2, position : Vec3, normal : Vec3 }
+playerMesh : WebGL.Mesh Vertex
 playerMesh =
     MeshBuilder.cube
         |> MeshBuilder.map
             (\a ->
-                { uv = Vec2.vec2 1 1
+                { color = Vec3.vec3 0.85 0.1 0.1
                 , position =
                     Point3d.translateBy (Vector3d.meters -0.5 -0.5 -0.5) a
                         |> Point3d.scaleAbout Point3d.origin 0.1
@@ -151,7 +149,6 @@ uniforms config cameraMatrix_ local =
     { local = local
     , perspective = perspective config.windowSize
     , camera = cameraMatrix_
-    , texture = config.texture
     }
 
 
@@ -214,7 +211,6 @@ type alias Uniforms =
     { local : Mat4
     , perspective : Mat4
     , camera : Mat4
-    , texture : Texture
     }
 
 
@@ -334,30 +330,36 @@ moveActionFS =
     |]
 
 
-worldVS : Shader Vertex Uniforms { uv_ : Vec2 }
+worldVS : Shader Vertex Uniforms { color_ : Vec3, normal_ : Vec3 }
 worldVS =
     [glsl|
         attribute vec3 position;
-        attribute vec2 uv;
         attribute vec3 normal;
+        attribute vec3 color;
         uniform mat4 perspective;
         uniform mat4 camera;
         uniform mat4 local;
-        varying vec2 uv_;
+        varying vec3 color_;
+        varying vec3 normal_;
         void main () {
             gl_Position = perspective * camera * local * vec4(position, 1.0);
-            uv_ = uv;
+            color_ = color;
+            normal_ = normal;
         }
     |]
 
 
-worldFS : Shader {} Uniforms { uv_ : Vec2 }
+{-| Lit from one side, softly, so that the shape of things shows without anything going dark.
+-}
+worldFS : Shader {} Uniforms { color_ : Vec3, normal_ : Vec3 }
 worldFS =
     [glsl|
         precision mediump float;
-        uniform sampler2D texture;
-        varying vec2 uv_;
+        varying vec3 color_;
+        varying vec3 normal_;
         void main () {
-            gl_FragColor = texture2D(texture, uv_);
+            vec3 light = normalize(vec3(0.4, 1.0, 0.3));
+            float shade = 0.75 + 0.25 * dot(normalize(normal_), light);
+            gl_FragColor = vec4(color_ * shade, 1.0);
         }
     |]

@@ -26,7 +26,6 @@ import LineSegment3d
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Minimap
 import MinimapPort
-import ObjData
 import Pixels exposing (Pixels)
 import Point2d exposing (Point2d)
 import Point3d
@@ -42,7 +41,6 @@ import Vector2i exposing (Vector2i)
 import Vector3d
 import View
 import Viewpoint3d
-import WebGL.Texture as Texture exposing (Texture)
 
 
 
@@ -66,8 +64,6 @@ type alias LoadedModel_ =
     , cameraNormal : Direction3d WorldCoordinate
     , cameraUp : Direction3d WorldCoordinate
     , time : Duration
-    , assetId : Int
-    , texture : Texture
     }
 
 
@@ -85,8 +81,8 @@ type alias FailureModel_ =
     { message : String }
 
 
-initLoadedModel : Vector2i Pixels ScreenCoordinate -> Texture -> Model
-initLoadedModel windowSize texture =
+initLoadedModel : Vector2i Pixels ScreenCoordinate -> Model
+initLoadedModel windowSize =
     case MeshData.surface of
         Ok surface ->
             case
@@ -108,8 +104,6 @@ initLoadedModel windowSize texture =
                     , cameraNormal = cameraNormal surface surfacePoint |> Maybe.withDefault Direction3d.z
                     , cameraUp = cameraUp surface surfacePoint |> Maybe.withDefault Direction3d.y
                     , time = Quantity.zero
-                    , assetId = ObjData.assetId
-                    , texture = texture
                     }
                         |> LoadedModel
 
@@ -125,20 +119,9 @@ init =
     ( { windowSize = Vector2i.pixels 0 0
       }
         |> LoadingModel
-    , Cmd.batch
-        [ Browser.Dom.getViewport
-            |> Task.perform
-                (\{ viewport } -> Vector2i.pixels (round viewport.width) (round viewport.height) |> GotWindowSize)
-        , Texture.loadWith
-            { magnify = Texture.nearest
-            , minify = Texture.linear
-            , horizontalWrap = Texture.clampToEdge
-            , verticalWrap = Texture.clampToEdge
-            , flipY = True
-            }
-            "/world.png"
-            |> Task.attempt TextureLoaded
-        ]
+    , Browser.Dom.getViewport
+        |> Task.perform
+            (\{ viewport } -> Vector2i.pixels (round viewport.width) (round viewport.height) |> GotWindowSize)
         |> Cmd.map LoadingMsg
     )
 
@@ -149,7 +132,6 @@ init =
 
 type LoadingMsg_
     = GotWindowSize (Vector2i Pixels ScreenCoordinate)
-    | TextureLoaded (Result Texture.Error Texture)
 
 
 type LoadedMsg_
@@ -263,15 +245,7 @@ updateLoadingModel : LoadingMsg_ -> LoadingModel_ -> ( Model, Cmd LoadingMsg_ )
 updateLoadingModel msg model =
     case msg of
         GotWindowSize windowSize ->
-            ( LoadingModel { model | windowSize = windowSize }, Cmd.none )
-
-        TextureLoaded result ->
-            case result of
-                Ok texture ->
-                    ( initLoadedModel model.windowSize texture, Cmd.none )
-
-                Err _ ->
-                    ( FailureModel { message = "Failed to load texture" }, Cmd.none )
+            ( initLoadedModel windowSize, Cmd.none )
 
 
 keyMsgUpdate keyMsg model =

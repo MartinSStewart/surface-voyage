@@ -6,6 +6,7 @@ module Surface exposing
     , encodeSurfacePoint, surfacePointDecoder
     , Path, move, pathEnd, pathSegments
     , pieceCount
+    , MeshVertex, tessellate
     , Complex, Layout, Placement, Window, FanRay, FanSample, mapAround, fanSpacing, chartCoordinate, nearestPiece, placeOnMap
     )
 
@@ -35,6 +36,7 @@ Conventions:
 @docs encodeSurfacePoint, surfacePointDecoder
 @docs Path, move, pathEnd, pathSegments
 @docs pieceCount
+@docs MeshVertex, tessellate
 @docs Complex, Layout, Placement, Window, FanRay, FanSample, mapAround, fanSpacing, chartCoordinate, nearestPiece, placeOnMap
 
 -}
@@ -116,7 +118,14 @@ type Surface coordinates
 
         -- For each piece, for each of its edges, the piece and edge on the other side
         , seams : Array (Array (Maybe ( Int, Int )))
+
+        -- For each piece, a box it's inside
+        , boxes : Array Box
         }
+
+
+type alias Box =
+    { min : Vec, max : Vec }
 
 
 type Piece
@@ -368,7 +377,7 @@ build flatSpecs featureSpecs =
                 pieces =
                     List.map FlatPiece flats ++ List.map FeaturePiece features |> Array.fromList
             in
-            findSeams pieces |> Result.map (\seams -> Surface { pieces = pieces, seams = seams })
+            findSeams pieces |> Result.map (\seams -> Surface { pieces = pieces, seams = seams, boxes = Array.map boxAround pieces })
 
         ( Err error, _ ) ->
             Err error
@@ -1302,36 +1311,88 @@ nearest point (Surface surface) =
     let
         p =
             fromPoint point
-    in
-    Array.foldl
-        (\piece ( index, best ) ->
+
+        closest piece index =
             let
                 ( a, b ) =
                     projectOntoPiece piece p
 
                 position =
                     piecePoint piece a b
-
-                distance =
-                    lengthOf (sub position p)
             in
+            ( { piece = index, a = a, b = b, position = position }, lengthOf (sub position p) )
+    in
+    Array.foldl
+        (\piece ( index, best ) ->
             ( index + 1
             , case best of
                 Just ( _, bestDistance ) ->
-                    if distance < bestDistance then
-                        Just ( { piece = index, a = a, b = b, position = position }, distance )
-
-                    else
+                    -- Pieces whose boxes are further away than the best so far can't be closer
+                    if (Array.get index surface.boxes |> Maybe.map (boxDistance p)) |> Maybe.withDefault 0 |> (\d -> d - bestDistance >= 0) then
                         best
 
+                    else
+                        let
+                            ( found, distance ) =
+                                closest piece index
+                        in
+                        if distance - bestDistance < 0 then
+                            Just ( found, distance )
+
+                        else
+                            best
+
                 Nothing ->
-                    Just ( { piece = index, a = a, b = b, position = position }, distance )
+                    Just (closest piece index)
             )
         )
         ( 0, Nothing )
         surface.pieces
         |> Tuple.second
         |> Maybe.map Tuple.first
+
+
+{-| A box around a piece, from its mesh with a little to spare for where the mesh cuts across curves.
+-}
+boxAround : Piece -> Box
+boxAround piece =
+    let
+        corners =
+            (case piece of
+                FlatPiece flat ->
+                    tessellateFlat boxStepAngle flat
+
+                FeaturePiece feature ->
+                    tessellateFeature boxStepAngle feature
+            )
+                |> List.concatMap (\( a, b, c ) -> [ a.position, b.position, c.position ])
+
+        spare =
+            0.01
+
+        bound pick get =
+            List.map get corners |> List.foldl pick (get (List.head corners |> Maybe.withDefault (vec 0 0 0)))
+    in
+    { min = vec (bound minFloat .x - spare) (bound minFloat .y - spare) (bound minFloat .z - spare)
+    , max = vec (bound maxFloat .x + spare) (bound maxFloat .y + spare) (bound maxFloat .z + spare)
+    }
+
+
+{-| Fine enough that a mesh made with it is within `boxAround`'s spare of the piece for the world's
+pieces, which have radii of a meter or less.
+-}
+boxStepAngle : Float
+boxStepAngle =
+    pi / 24
+
+
+boxDistance : Vec -> Box -> Float
+boxDistance p box =
+    let
+        outside low high x =
+            maxFloat 0 (maxFloat (low - x) (x - high))
+    in
+    lengthOf (vec (outside box.min.x box.max.x p.x) (outside box.min.y box.max.y p.y) (outside box.min.z box.max.z p.z))
 
 
 {-| The surface point closest to a point in space, facing along the first tangent direction.
@@ -2066,6 +2127,357 @@ walkFeatureStep feature pieceIndex state remaining segments =
                     wrapped
                     (remaining - h)
                     (segmentFrom start.p (featurePoint feature wrapped.theta wrapped.s) start.n segments)
+
+
+
+---- MESH ----
+
+
+{-| A corner of a triangle in a mesh of the surface: where it is and the surface's outward normal there.
+-}
+type alias MeshVertex =
+    { position : Vec, normal : Vec }
+
+
+{-| Triangles covering the surface, for drawing it. Curves are split into steps of at most
+`maxStepAngle` radians. Pieces that meet are split the same way where they meet, so there are no
+cracks between them as long as their curved edges start and end at whole steps (which is the case when
+`maxStepAngle` divides a quarter turn and edges start and end at quarter turns, as in `World`).
+Triangles go counterclockwise seen from outside.
+-}
+tessellate : Float -> Surface coordinates -> List ( MeshVertex, MeshVertex, MeshVertex )
+tessellate maxStepAngle (Surface { pieces }) =
+    Array.foldr
+        (\piece acc ->
+            case piece of
+                FlatPiece flat ->
+                    tessellateFlat maxStepAngle flat ++ acc
+
+                FeaturePiece feature ->
+                    tessellateFeature maxStepAngle feature ++ acc
+        )
+        []
+        pieces
+
+
+{-| How many equal steps to split an angle into so that none are bigger than `maxStepAngle`.
+-}
+stepsFor : Float -> Float -> Int
+stepsFor maxStepAngle angle =
+    max 1 (ceiling (abs angle / maxStepAngle - 1.0e-9))
+
+
+tessellateFeature : Float -> Feature -> List ( MeshVertex, MeshVertex, MeshVertex )
+tessellateFeature maxStepAngle feature =
+    let
+        ( from, to ) =
+            sweepRange feature
+
+        thetaSteps =
+            stepsFor maxStepAngle (to - from)
+
+        thetas =
+            List.range 0 thetaSteps |> List.map (\i -> from + (to - from) * toFloat i / toFloat thetaSteps)
+
+        -- Lines along the profile don't bend, so they need no points in between
+        profileSamples =
+            List.concatMap
+                (\segment ->
+                    case segment of
+                        LineSeg { s0 } ->
+                            [ s0 ]
+
+                        ArcSeg { s0, len, radius } ->
+                            let
+                                steps =
+                                    stepsFor maxStepAngle (len / radius)
+                            in
+                            List.range 0 (steps - 1) |> List.map (\j -> s0 + len * toFloat j / toFloat steps)
+                )
+                feature.segments
+                ++ [ feature.length ]
+
+        vertexAt theta s =
+            let
+                basis =
+                    featureBasis feature theta s
+            in
+            { position = basis.p, normal = basis.n }
+
+        rows =
+            List.map (\s -> List.map (\theta -> vertexAt theta s) thetas) profileSamples
+
+        between rowA rowB acc =
+            case ( rowA, rowB ) of
+                ( a0 :: ((a1 :: _) as restA), b0 :: ((b1 :: _) as restB) ) ->
+                    between restA restB (meshTriangle a0 a1 b1 (meshTriangle a0 b1 b0 acc))
+
+                _ ->
+                    acc
+
+        allBetween remaining acc =
+            case remaining of
+                rowA :: ((rowB :: _) as rest) ->
+                    allBetween rest (between rowA rowB acc)
+
+                _ ->
+                    acc
+    in
+    allBetween rows []
+
+
+{-| Add a triangle turned to go counterclockwise seen from outside, unless it has no area (as where
+a profile meets the axis).
+-}
+meshTriangle : MeshVertex -> MeshVertex -> MeshVertex -> List ( MeshVertex, MeshVertex, MeshVertex ) -> List ( MeshVertex, MeshVertex, MeshVertex )
+meshTriangle a b c acc =
+    let
+        facing =
+            cross (sub b.position a.position) (sub c.position a.position)
+
+        outward =
+            dot facing (add a.normal (add b.normal c.normal))
+    in
+    if lengthOf facing - 1.0e-12 < 0 then
+        acc
+
+    else if outward > 0 then
+        ( a, b, c ) :: acc
+
+    else
+        ( a, c, b ) :: acc
+
+
+type alias Point2 =
+    { x : Float, y : Float }
+
+
+tessellateFlat : Float -> Flat -> List ( MeshVertex, MeshVertex, MeshVertex )
+tessellateFlat maxStepAngle flat =
+    let
+        vertex p =
+            { position = flatPoint flat p.x p.y, normal = flat.n }
+    in
+    case flatLoops maxStepAngle flat of
+        outer :: holes ->
+            withHoles outer holes
+                |> earClip
+                |> List.foldl (\( a, b, c ) acc -> meshTriangle (vertex a) (vertex b) (vertex c) acc) []
+
+        [] ->
+            []
+
+
+{-| A flat's boundary loops as points, outer loop first. Arcs get a point every step.
+-}
+flatLoops : Float -> Flat -> List (List Point2)
+flatLoops maxStepAngle flat =
+    let
+        endOf edge =
+            case edge of
+                SegmentEdge { bx, by } ->
+                    { x = bx, y = by }
+
+                ArcEdge { cx, cy, r, a0, swept } ->
+                    { x = cx + r * cos (a0 + swept), y = cy + r * sin (a0 + swept) }
+
+        startOf edge =
+            case edge of
+                SegmentEdge { ax, ay } ->
+                    { x = ax, y = ay }
+
+                ArcEdge { cx, cy, r, a0 } ->
+                    { x = cx + r * cos a0, y = cy + r * sin a0 }
+
+        pointsOf edge =
+            case edge of
+                SegmentEdge { ax, ay } ->
+                    [ { x = ax, y = ay } ]
+
+                ArcEdge { cx, cy, r, a0, swept } ->
+                    let
+                        steps =
+                            stepsFor maxStepAngle swept
+                    in
+                    List.range 0 (steps - 1)
+                        |> List.map
+                            (\i ->
+                                let
+                                    angle =
+                                        a0 + swept * toFloat i / toFloat steps
+                                in
+                                { x = cx + r * cos angle, y = cy + r * sin angle }
+                            )
+
+        -- The edges of all the loops follow each other, and a loop ends where it started
+        go edges loopStart current loops =
+            case edges of
+                edge :: rest ->
+                    let
+                        start =
+                            Maybe.withDefault (startOf edge) loopStart
+
+                        withEdge =
+                            current ++ pointsOf edge
+                    in
+                    if distance2 (endOf edge) start - tolerance < 0 then
+                        go rest Nothing [] (withEdge :: loops)
+
+                    else
+                        go rest (Just start) withEdge loops
+
+                [] ->
+                    if List.isEmpty current then
+                        List.reverse loops
+
+                    else
+                        List.reverse (current :: loops)
+    in
+    go (Array.toList flat.edges) Nothing [] []
+
+
+distance2 : Point2 -> Point2 -> Float
+distance2 p q =
+    sqrt ((p.x - q.x) ^ 2 + (p.y - q.y) ^ 2)
+
+
+{-| Twice the signed area of a triangle: positive when counterclockwise.
+-}
+turn : Point2 -> Point2 -> Point2 -> Float
+turn a b c =
+    (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+
+
+{-| One loop going round a counterclockwise outer loop and its clockwise holes, by cutting from each
+hole to a point of the outer loop it can see.
+-}
+withHoles : List Point2 -> List (List Point2) -> List Point2
+withHoles outer holes =
+    let
+        rightmost hole =
+            List.foldl (\p best -> maxFloat best p.x) (-1 / 0) hole
+
+        edgesOf loop =
+            List.map2 Tuple.pair loop (List.drop 1 loop ++ List.take 1 loop)
+
+        crosses p q ( a, b ) =
+            let
+                touches =
+                    distance2 a p < 1.0e-9 || distance2 a q < 1.0e-9 || distance2 b p < 1.0e-9 || distance2 b q < 1.0e-9
+            in
+            not touches
+                && (turn p q a * turn p q b < 0)
+                && (turn a b p * turn a b q < 0)
+
+        addHole hole ( loop, otherHoles ) =
+            let
+                remaining =
+                    List.filter ((/=) hole) otherHoles
+
+                mostRight =
+                    List.foldl
+                        (\( i, p ) ( bestI, bestP ) ->
+                            if p.x - bestP.x > 0 then
+                                ( i, p )
+
+                            else
+                                ( bestI, bestP )
+                        )
+                        ( 0, List.head hole |> Maybe.withDefault { x = 0, y = 0 } )
+                        (List.indexedMap Tuple.pair hole)
+
+                ( holeIndex, m ) =
+                    mostRight
+
+                blockers =
+                    edgesOf loop ++ List.concatMap edgesOf (hole :: remaining)
+
+                bridge =
+                    List.indexedMap Tuple.pair loop
+                        |> List.sortBy (\( _, p ) -> distance2 p m)
+                        |> List.filter (\( _, p ) -> not (List.any (crosses p m) blockers))
+                        |> List.head
+            in
+            case bridge of
+                Just ( loopIndex, p ) ->
+                    ( List.take (loopIndex + 1) loop
+                        ++ List.drop holeIndex hole
+                        ++ List.take (holeIndex + 1) hole
+                        ++ p
+                        :: List.drop (loopIndex + 1) loop
+                    , remaining
+                    )
+
+                Nothing ->
+                    ( loop, remaining )
+    in
+    holes
+        |> List.sortBy (\hole -> -(rightmost hole))
+        |> (\sorted -> List.foldl addHole ( outer, sorted ) sorted)
+        |> Tuple.first
+
+
+{-| Triangles filling a counterclockwise loop, by cutting off corners with nothing else in them.
+-}
+earClip : List Point2 -> List ( Point2, Point2, Point2 )
+earClip loop =
+    earClipHelper (Array.fromList loop) 0 0 []
+
+
+earClipHelper : Array Point2 -> Int -> Int -> List ( Point2, Point2, Point2 ) -> List ( Point2, Point2, Point2 )
+earClipHelper points index failures acc =
+    let
+        count =
+            Array.length points
+
+        at i =
+            Array.get (modBy count i) points |> Maybe.withDefault { x = 0, y = 0 }
+    in
+    if count < 3 then
+        acc
+
+    else if failures > count then
+        -- Nothing left can be cut off cleanly (the loop is broken), so leave the rest out
+        acc
+
+    else
+        let
+            a =
+                at (index - 1)
+
+            b =
+                at index
+
+            c =
+                at (index + 1)
+
+            same p q =
+                distance2 p q < 1.0e-9
+
+            inside p =
+                not (same p a || same p b || same p c)
+                    && turn a b p
+                    >= 0
+                    && turn b c p
+                    >= 0
+                    && turn c a p
+                    >= 0
+
+            isEar =
+                turn a b c > 1.0e-12 && not (Array.foldl (\p found -> found || inside p) False points)
+
+            removeAt i =
+                Array.append (Array.slice 0 i points) (Array.slice (i + 1) count points)
+        in
+        if isEar then
+            earClipHelper (removeAt (modBy count index)) (modBy (count - 1) (modBy count index)) 0 (( a, b, c ) :: acc)
+
+        else if turn a b c > -1.0e-12 && turn a b c < 1.0e-12 && same a c then
+            -- A spike where the cut to a hole doubles back
+            earClipHelper (removeAt (modBy count index)) (modBy (count - 1) (modBy count index)) 0 acc
+
+        else
+            earClipHelper points (modBy count (index + 1)) (failures + 1) acc
 
 
 

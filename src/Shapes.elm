@@ -1,4 +1,4 @@
-module Shapes exposing (Paving, ShapePoint, Shapes, empty, foldWithin, prepare)
+module Shapes exposing (Paving, ShapePoint, Shapes, alongWall, empty, foldWithin, prepare, splitPavings)
 
 {-| Shapes drawn on the surface: walls as lines and paving (paths and floors) as filled areas.
 
@@ -201,30 +201,14 @@ prepare surface walls pavings =
                     )
 
         ( points, triangles ) =
-            pavings
-                |> List.foldl
-                    (\paving ( pointsSoFar, trianglesSoFar ) ->
-                        let
-                            offset =
-                                Array.length pointsSoFar
-
-                            withCorners =
-                                Array.append pointsSoFar (Array.fromList (List.map (fromTuple >> snap) paving.points))
-                        in
-                        paving.triangles
-                            |> List.foldl
-                                (\( i, j, k ) state -> split snap ( i + offset, j + offset, k + offset ) state)
-                                { points = withCorners, midpoints = Dict.empty, triangles = trianglesSoFar }
-                            |> (\state -> ( state.points, state.triangles ))
-                    )
-                    ( Array.empty, [] )
+            splitPavings (\p q -> distance p q - pavingEdge > 0) snap identity pavings
 
         ( allPoints, wallIndices ) =
             List.foldl
                 (\wall ( pointsSoFar, wallsSoFar ) ->
                     let
                         added =
-                            List.map fromTuple wall |> alongWall |> List.map snap
+                            List.map fromTuple wall |> alongWall wallStep |> List.map snap
                     in
                     ( Array.append pointsSoFar (Array.fromList added)
                     , List.range (Array.length pointsSoFar) (Array.length pointsSoFar + List.length added - 1) :: wallsSoFar
@@ -248,38 +232,71 @@ fromTuple ( x, y, z ) =
     { x = x, y = y, z = z }
 
 
-{-| The points of a wall with more added between them, so none are more than `wallStep` apart.
+{-| The points of a wall with more added between them, so none are more than `step` meters apart.
 -}
-alongWall : List Vec -> List Vec
-alongWall points =
+alongWall : Float -> List Vec -> List Vec
+alongWall step points =
     case points of
         first :: second :: rest ->
             let
                 steps =
-                    max 1 (ceiling (distance first second / wallStep))
+                    max 1 (ceiling (distance first second / step))
             in
             List.map (\i -> lerp (toFloat i / toFloat steps) first second) (List.range 0 (steps - 1))
-                ++ alongWall (second :: rest)
+                ++ alongWall step (second :: rest)
 
         _ ->
             points
 
 
-type alias SplitState =
-    { points : Array Vec
+{-| All the pavings' corners and triangles, with the triangles split until no edge is `tooLong`
+(which should be true of edges longer than some length).
+`toPoint` makes a point from where it is (moving it onto the surface, say) and `position` says where
+a point is.
+-}
+splitPavings : (point -> point -> Bool) -> (Vec -> point) -> (point -> Vec) -> List Paving -> ( Array point, List ( Int, Int, Int ) )
+splitPavings tooLong toPoint position pavings =
+    pavings
+        |> List.foldl
+            (\paving ( pointsSoFar, trianglesSoFar ) ->
+                let
+                    offset =
+                        Array.length pointsSoFar
+
+                    withCorners =
+                        Array.append pointsSoFar (Array.fromList (List.map (fromTuple >> toPoint) paving.points))
+                in
+                paving.triangles
+                    |> List.foldl
+                        (\( i, j, k ) state -> split tooLong toPoint position ( i + offset, j + offset, k + offset ) state)
+                        { points = withCorners, midpoints = Dict.empty, triangles = trianglesSoFar }
+                    |> (\state -> ( state.points, state.triangles ))
+            )
+            ( Array.empty, [] )
+
+
+type alias SplitState point =
+    { points : Array point
     , midpoints : Dict ( Int, Int ) Int
     , triangles : List ( Int, Int, Int )
     }
 
 
-{-| Halve a triangle across its longest edge until its edges are short enough. Neighbouring triangles
-share the points added on their shared edges.
+{-| Halve a triangle across its longest edge until none of its edges are too long. Halving the
+longest edge each time, rather than one that's too long, makes sure this ends. Neighbouring triangles
+share the points added on edges they both split.
 -}
-split : (Vec -> Vec) -> ( Int, Int, Int ) -> SplitState -> SplitState
-split snap ( i, j, k ) state =
+split : (point -> point -> Bool) -> (Vec -> point) -> (point -> Vec) -> ( Int, Int, Int ) -> SplitState point -> SplitState point
+split tooLong toPoint position ( i, j, k ) state =
     let
+        point index =
+            Array.get index state.points
+
         at index =
-            Array.get index state.points |> Maybe.withDefault { x = 0, y = 0, z = 0 }
+            point index |> Maybe.map position |> Maybe.withDefault { x = 0, y = 0, z = 0 }
+
+        isTooLong a b =
+            Maybe.map2 tooLong (point a) (point b) |> Maybe.withDefault False
 
         dij =
             distance (at i) (at j)
@@ -308,14 +325,14 @@ split snap ( i, j, k ) state =
                             in
                             ( index
                             , { state
-                                | points = Array.push (snap (lerp 0.5 (at a) (at b))) state.points
+                                | points = Array.push (toPoint (lerp 0.5 (at a) (at b))) state.points
                                 , midpoints = Dict.insert key index state.midpoints
                               }
                             )
             in
-            withMidpoint |> split snap ( a, m, c ) |> split snap ( m, b, c )
+            withMidpoint |> split tooLong toPoint position ( a, m, c ) |> split tooLong toPoint position ( m, b, c )
     in
-    if max dij (max djk dki) <= pavingEdge then
+    if not (isTooLong i j || isTooLong j k || isTooLong k i) then
         { state | triangles = ( i, j, k ) :: state.triangles }
 
     else if dij >= djk && dij >= dki then
