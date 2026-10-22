@@ -1,4 +1,4 @@
-module Shapes exposing (Paving, ShapePoint, Shapes, empty, pointsWithin, prepare)
+module Shapes exposing (Paving, ShapePoint, Shapes, empty, foldWithin, prepare)
 
 {-| Shapes drawn on the surface: walls as lines and paving (paths and floors) as filled areas.
 
@@ -37,26 +37,33 @@ type alias Vec =
 
 {-| Shapes moved onto the surface, with points added along the walls and the paving split into small
 triangles. Walls and triangles are indices into `points`, which can be looked up by where they are
-with `pointsWithin`.
+with `foldWithin`.
 -}
 type alias Shapes =
     { points : Array ShapePoint
     , walls : List (List Int)
     , pavingTriangles : List ( Int, Int, Int )
-    , grid : Dict Int (List Int)
+    , grid : Grid
     }
+
+
+{-| Which points are in each cube `cellSize` meters across, over the cubes from (x0, y0, z0) on, nx
+by ny by nz of them, x slowest.
+-}
+type alias Grid =
+    { x0 : Int, y0 : Int, z0 : Int, nx : Int, ny : Int, nz : Int, cells : Array (List Int) }
 
 
 empty : Shapes
 empty =
-    { points = Array.empty, walls = [], pavingTriangles = [], grid = Dict.empty }
+    { points = Array.empty, walls = [], pavingTriangles = [], grid = { x0 = 0, y0 = 0, z0 = 0, nx = 0, ny = 0, nz = 0, cells = Array.empty } }
 
 
 {-| Points are looked up by which cube of this size, in meters, they're in.
 -}
 cellSize : Float
 cellSize =
-    0.4
+    0.2
 
 
 cellOf : Float -> Int
@@ -64,30 +71,82 @@ cellOf coordinate =
     floor (coordinate / cellSize)
 
 
-cellKey : Int -> Int -> Int -> Int
-cellKey x y z =
-    ((x + 512) * 1024 + (y + 512)) * 1024 + (z + 512)
-
-
-{-| The points in the cubes that a box reaches into, and maybe a few more.
+{-| Go through the points in the cubes that a box reaches into, and maybe a few more.
 -}
-pointsWithin : { min : Vec, max : Vec } -> Shapes -> List Int
-pointsWithin box shapes =
+foldWithin : { min : Vec, max : Vec } -> (Int -> acc -> acc) -> acc -> Shapes -> acc
+foldWithin box step initial shapes =
     let
-        range get =
-            List.range (cellOf (get box.min)) (cellOf (get box.max))
+        grid =
+            shapes.grid
+
+        xTo =
+            min (grid.nx - 1) (cellOf box.max.x - grid.x0)
+
+        ( yFrom, yTo ) =
+            ( max 0 (cellOf box.min.y - grid.y0), min (grid.ny - 1) (cellOf box.max.y - grid.y0) )
+
+        ( zFrom, zTo ) =
+            ( max 0 (cellOf box.min.z - grid.z0), min (grid.nz - 1) (cellOf box.max.z - grid.z0) )
+
+        go x y z acc =
+            if x > xTo then
+                acc
+
+            else if y > yTo then
+                go (x + 1) yFrom zFrom acc
+
+            else if z > zTo then
+                go x (y + 1) zFrom acc
+
+            else
+                go x
+                    y
+                    (z + 1)
+                    (case Array.get ((x * grid.ny + y) * grid.nz + z) grid.cells of
+                        Just inCell ->
+                            List.foldl step acc inCell
+
+                        Nothing ->
+                            acc
+                    )
     in
-    List.concatMap
-        (\x ->
-            List.concatMap
-                (\y ->
-                    List.concatMap
-                        (\z -> Dict.get (cellKey x y z) shapes.grid |> Maybe.withDefault [])
-                        (range .z)
-                )
-                (range .y)
-        )
-        (range .x)
+    go (max 0 (cellOf box.min.x - grid.x0)) yFrom zFrom initial
+
+
+gridOf : Array ShapePoint -> Grid
+gridOf points =
+    let
+        cells =
+            Array.toList points |> List.map (\p -> ( cellOf p.position.x, cellOf p.position.y, cellOf p.position.z ))
+
+        bounds get =
+            ( List.map get cells |> List.minimum |> Maybe.withDefault 0, List.map get cells |> List.maximum |> Maybe.withDefault -1 )
+
+        ( ( x0, x1 ), ( y0, y1 ), ( z0, z1 ) ) =
+            ( bounds (\( x, _, _ ) -> x), bounds (\( _, y, _ ) -> y), bounds (\( _, _, z ) -> z) )
+
+        ( nx, ny, nz ) =
+            ( x1 - x0 + 1, y1 - y0 + 1, z1 - z0 + 1 )
+    in
+    { x0 = x0
+    , y0 = y0
+    , z0 = z0
+    , nx = nx
+    , ny = ny
+    , nz = nz
+    , cells =
+        List.foldl
+            (\( x, y, z ) ( index, grid ) ->
+                let
+                    at =
+                        ((x - x0) * ny + (y - y0)) * nz + (z - z0)
+                in
+                ( index + 1, Array.set at (index :: (Array.get at grid |> Maybe.withDefault [])) grid )
+            )
+            ( 0, Array.repeat (nx * ny * nz) [] )
+            cells
+            |> Tuple.second
+    }
 
 
 {-| Walls get a point at least this often, in meters.
@@ -168,19 +227,7 @@ prepare surface walls pavings =
     { points = shapePoints
     , walls = wallIndices
     , pavingTriangles = triangles
-    , grid =
-        Array.foldl
-            (\p ( index, grid ) ->
-                ( index + 1
-                , Dict.update
-                    (cellKey (cellOf p.position.x) (cellOf p.position.y) (cellOf p.position.z))
-                    (\existing -> Just (index :: Maybe.withDefault [] existing))
-                    grid
-                )
-            )
-            ( 0, Dict.empty )
-            shapePoints
-            |> Tuple.second
+    , grid = gridOf shapePoints
     }
 
 

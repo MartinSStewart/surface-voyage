@@ -1,4 +1,4 @@
-module Minimap exposing (size, view)
+module Minimap exposing (imagesAround, size, view)
 
 {-| A map of the surface around the player, with the player in the middle facing up. Distances from
 the player are kept: a circle round the middle is everything that far away to walk to, walking
@@ -60,32 +60,8 @@ view surface shapes surfacePoint =
         radius =
             Length.inMeters viewRadius
 
-        layout =
-            Surface.mapAround radius surfacePoint surface
-
         images =
-            case Surface.worldPosition surfacePoint surface of
-                Just position ->
-                    let
-                        player =
-                            Point3d.toMeters position
-
-                        throughPlacements =
-                            Array.map
-                                (\point ->
-                                    if distance point.position player <= radius + 0.05 then
-                                        List.filterMap (placementImage radius point) layout.placements
-                                            |> List.foldl addImage []
-
-                                    else
-                                        []
-                                )
-                                shapes.points
-                    in
-                    fanTriangles layout.fan |> List.foldl (addFanImages shapes) throughPlacements
-
-                Nothing ->
-                    Array.empty
+            imagesAround surface shapes surfacePoint
 
         withImages index =
             Maybe.map2 Tuple.pair (Array.get index shapes.points) (Array.get index images)
@@ -121,6 +97,42 @@ view surface shapes surfacePoint =
 
 
 ---- WHERE POINTS GO ----
+
+
+{-| Where each shape point goes on the map, in meters, in as many places as there are straight ways
+to walk to it within `viewRadius`.
+-}
+imagesAround : Surface coordinates -> Shapes -> SurfacePoint -> Array (List MapPoint)
+imagesAround surface shapes surfacePoint =
+    let
+        radius =
+            Length.inMeters viewRadius
+
+        layout =
+            Surface.mapAround radius surfacePoint surface
+    in
+    case Surface.worldPosition surfacePoint surface of
+        Just position ->
+            let
+                player =
+                    Point3d.toMeters position
+
+                throughPlacements =
+                    Array.map
+                        (\point ->
+                            if distance point.position player <= radius + 0.05 then
+                                List.filterMap (placementImage radius point) layout.placements
+                                    |> List.foldl addImage []
+
+                            else
+                                []
+                        )
+                        shapes.points
+            in
+            fanTriangles layout.fan |> List.foldl (addFanImages shapes) throughPlacements
+
+        Nothing ->
+            Array.empty
 
 
 {-| Where a point goes on the map through a placed piece, if that part of the piece is shown.
@@ -299,21 +311,36 @@ near p q =
     distance p q < maxFanEdge
 
 
+inBox : { a | min : Vec, max : Vec } -> Vec -> Bool
+inBox box p =
+    p.x >= box.min.x && p.x <= box.max.x && p.y >= box.min.y && p.y <= box.max.y && p.z >= box.min.z && p.z <= box.max.z
+
+
 {-| Add where the shape points in a fan triangle go on the map.
 -}
 addFanImages : Shapes -> FanTriangle -> Array (List MapPoint) -> Array (List MapPoint)
 addFanImages shapes triangle images =
-    Shapes.pointsWithin { min = triangle.min, max = triangle.max } shapes
-        |> List.foldl
-            (\index acc ->
-                case Array.get index shapes.points |> Maybe.andThen (fanImage triangle) of
-                    Just image ->
-                        Array.set index (addImage image (Array.get index acc |> Maybe.withDefault [])) acc
+    Shapes.foldWithin { min = triangle.min, max = triangle.max }
+        (\index acc ->
+            case Array.get index shapes.points of
+                Just point ->
+                    -- Most points looked at aren't near the triangle at all
+                    if inBox triangle point.position then
+                        case fanImage triangle point of
+                            Just image ->
+                                Array.set index (addImage image (Array.get index acc |> Maybe.withDefault [])) acc
 
-                    Nothing ->
+                            Nothing ->
+                                acc
+
+                    else
                         acc
-            )
-            images
+
+                Nothing ->
+                    acc
+        )
+        images
+        shapes
 
 
 {-| A point further than this from a fan triangle, in meters, is on some other part of the surface.
@@ -452,11 +479,33 @@ maxStretch =
 
 closestMatch : Float -> MapPoint -> List MapPoint -> Maybe MapPoint
 closestMatch surfaceDistance image candidates =
+    let
+        reach =
+            maxStretch * surfaceDistance + sameImage
+    in
     candidates
-        |> List.map (\candidate -> ( mapDistance image candidate, candidate ))
-        |> List.filter (\( d, _ ) -> d <= maxStretch * surfaceDistance + sameImage)
-        |> List.sortBy Tuple.first
-        |> List.head
+        |> List.foldl
+            (\candidate best ->
+                let
+                    d =
+                        mapDistance image candidate
+                in
+                case best of
+                    Just ( bestDistance, _ ) ->
+                        if d < bestDistance then
+                            Just ( d, candidate )
+
+                        else
+                            best
+
+                    Nothing ->
+                        if d <= reach then
+                            Just ( d, candidate )
+
+                        else
+                            Nothing
+            )
+            Nothing
         |> Maybe.map Tuple.second
 
 
