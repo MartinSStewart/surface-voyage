@@ -59,6 +59,9 @@ type alias LoadedModel_ =
     , windowSize : Vector2i Pixels ScreenCoordinate
     , surface : Surface WorldCoordinate
     , surfacePoint : SurfacePoint
+
+    -- Where the minimap was last laid out from
+    , minimapPoint : SurfacePoint
     , cameraNormal : Direction3d WorldCoordinate
     , cameraUp : Direction3d WorldCoordinate
     , time : Duration
@@ -99,6 +102,7 @@ initLoadedModel windowSize texture =
                     , windowSize = windowSize
                     , surface = surface
                     , surfacePoint = surfacePoint
+                    , minimapPoint = surfacePoint
                     , cameraNormal = cameraNormal surface surfacePoint |> Maybe.withDefault Direction3d.z
                     , cameraUp = cameraUp surface surfacePoint |> Maybe.withDefault Direction3d.y
                     , time = Quantity.zero
@@ -264,6 +268,7 @@ step model =
     model
         |> stepMovement
         |> stepCamera
+        |> stepMinimap
 
 
 frameDuration =
@@ -322,6 +327,37 @@ stepMovement model =
                 Nothing ->
                     model.moveAction
     }
+
+
+{-| Laying out the minimap takes a few milliseconds, so it's only redone once the player has moved
+or turned far enough for it to show.
+-}
+stepMinimap : LoadedModel_ -> LoadedModel_
+stepMinimap model =
+    let
+        distance =
+            Maybe.map2 Point3d.distanceFrom
+                (Surface.worldPosition model.surfacePoint model.surface)
+                (Surface.worldPosition model.minimapPoint model.surface)
+
+        turn =
+            Maybe.map2 Direction3d.angleFrom
+                (Surface.worldDirection model.surface model.surfacePoint)
+                (Surface.worldDirection model.surface model.minimapPoint)
+    in
+    case ( distance, turn ) of
+        ( Just distance_, Just turn_ ) ->
+            if
+                (distance_ |> Quantity.greaterThan (Length.centimeters 4))
+                    || ((distance_ |> Quantity.lessThan (Length.millimeters 1)) && (Quantity.abs turn_ |> Quantity.greaterThan (Angle.degrees 1)))
+            then
+                { model | minimapPoint = model.surfacePoint }
+
+            else
+                model
+
+        _ ->
+            { model | minimapPoint = model.surfacePoint }
 
 
 stepCamera model =
@@ -452,7 +488,7 @@ viewSuccessModel model =
                 , Element.Border.color (Element.rgb 0.95 0.95 0.95)
                 , Element.clip
                 ]
-                (Element.html (Html.Lazy.lazy4 Minimap.view model.surface MeshData.minimapMeshes model.texture model.surfacePoint))
+                (Element.html (Html.Lazy.lazy4 Minimap.view model.surface MeshData.minimapMeshes model.texture model.minimapPoint))
         ]
         (Element.html (View.view model MeshData.webGlMesh))
 

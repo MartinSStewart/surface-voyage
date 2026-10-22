@@ -110,7 +110,7 @@ webGlMesh =
 
 {-| The textured world model cut up by surface piece, for drawing the minimap.
 -}
-minimapMeshes : Array (WebGL.Mesh Minimap.Vertex)
+minimapMeshes : Minimap.Meshes
 minimapMeshes =
     case surface of
         Ok surface_ ->
@@ -129,4 +129,4 @@ minimapMeshes =
                 |> Minimap.meshes surface_
 
         Err _ ->
-            Array.empty
+            Minimap.emptyMeshes
