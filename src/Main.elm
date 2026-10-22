@@ -42,6 +42,7 @@ import Vector2i exposing (Vector2i)
 import Vector3d
 import View
 import Viewpoint3d
+import WallCollision
 
 
 
@@ -278,40 +279,34 @@ stepMovement model =
     let
         movement =
             Keyboard.arrowDown model |> Vector2d.direction
+
+        walk direction =
+            let
+                angle =
+                    Direction2d.angleFrom Direction2d.y direction
+
+                distance =
+                    GameLogic.playerSpeed |> Quantity.for frameDuration
+            in
+            if model.height < WallCollision.blocksBelow then
+                WallCollision.move model.surface MeshData.wallCollision angle distance model.surfacePoint
+
+            else
+                Surface.move model.surface angle distance model.surfacePoint
+                    |> Maybe.map Surface.pathEnd
+                    |> Maybe.withDefault model.surfacePoint
     in
     { model
         | surfacePoint =
             case movement of
                 Just direction ->
-                    case
-                        Surface.move
-                            model.surface
-                            (Direction2d.angleFrom Direction2d.y direction)
-                            (GameLogic.playerSpeed |> Quantity.for frameDuration)
-                            model.surfacePoint
-                    of
-                        Just path ->
-                            Surface.pathEnd path
-
-                        Nothing ->
-                            model.surfacePoint
+                    walk direction
 
                 Nothing ->
                     case model.moveAction of
                         Just { direction, endTime } ->
                             if endTime |> Quantity.greaterThan model.time then
-                                case
-                                    Surface.move
-                                        model.surface
-                                        (Direction2d.angleFrom Direction2d.y direction)
-                                        (GameLogic.playerSpeed |> Quantity.for frameDuration)
-                                        model.surfacePoint
-                                of
-                                    Just path ->
-                                        Surface.pathEnd path
-
-                                    Nothing ->
-                                        model.surfacePoint
+                                walk direction
 
                             else
                                 model.surfacePoint

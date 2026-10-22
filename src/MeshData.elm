@@ -1,8 +1,9 @@
-module MeshData exposing (ScreenCoordinate, WorldCoordinate, mapShapes, roofMesh, surface, wallMesh, webGlMesh)
+module MeshData exposing (ScreenCoordinate, WorldCoordinate, mapShapes, roofMesh, surface, wallCollision, wallMesh, webGlMesh)
 
 import MeshBuilder exposing (Vertex)
 import Shapes exposing (Shapes)
 import Surface exposing (Surface)
+import WallCollision
 import WebGL
 import World
 import WorldMesh
@@ -32,6 +33,18 @@ webGlMesh =
 
         Err _ ->
             WebGL.triangles []
+
+
+{-| The walls, for stopping the player.
+-}
+wallCollision : WallCollision.Walls
+wallCollision =
+    case surface of
+        Ok surface_ ->
+            WallCollision.fromShapes surface_ WorldShapes.walls
+
+        Err _ ->
+            WallCollision.none
 
 
 {-| The roofs, drawn flat on the surface (see `WorldMesh`).
