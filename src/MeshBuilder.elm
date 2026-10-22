@@ -12,7 +12,6 @@ import Maybe.Extra as Maybe
 import Point2d exposing (Point2d)
 import Point3d exposing (Point3d)
 import Quantity
-import SurfaceMesh.Triangle exposing (Triangle)
 import Vector2d exposing (Vector2d)
 import WebGL exposing (Mesh)
 
@@ -105,12 +104,12 @@ addTriangle vertices indices first second third =
     ( newVertices, newIndices )
 
 
-toVerticesAndIndices : MeshPart a -> ( Array a, List (Triangle Int) )
+toVerticesAndIndices : MeshPart a -> ( Array a, List ( Int, Int, Int ) )
 toVerticesAndIndices meshPart =
     toMesh_ Array.empty [] [ meshPart ]
 
 
-toMesh_ : Array a -> List (Triangle Int) -> List (MeshPart a) -> ( Array a, List (Triangle Int) )
+toMesh_ : Array a -> List ( Int, Int, Int ) -> List (MeshPart a) -> ( Array a, List ( Int, Int, Int ) )
 toMesh_ vertices indices meshPartsLeft =
     case meshPartsLeft of
         head :: rest ->

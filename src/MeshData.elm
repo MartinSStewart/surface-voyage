@@ -1,26 +1,17 @@
-module MeshData exposing (..)
+module MeshData exposing (ScreenCoordinate, WorldCoordinate, surface, webGlMesh)
 
-import Array
-import Basics.Extra exposing (flip)
-import Color
 import Dict
+import Geometry.Interop.LinearAlgebra.Direction3d as Direction3d
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
-import Length exposing (Meters)
-import List.Extra as List
-import List.Nonempty
 import Math.Vector2 as Vec2
 import Math.Vector3 as Vec3
-import Math.Vector4 as Vec4
-import MeshBuilder exposing (MeshPart, Vertex)
+import MeshBuilder exposing (Vertex)
 import OBJ
 import OBJ.Types exposing (Mesh(..))
 import ObjData
-import Point3d
-import Random
-import SurfaceMesh.Mesh as Mesh
-import SurfaceMesh.Triangle as Triangle
-import SurfaceMesh.TriangleVertex as TriangleVertex
+import Surface exposing (Surface)
 import WebGL
+import World
 
 
 type WorldCoordinate
@@ -31,198 +22,78 @@ type ScreenCoordinate
     = ScreenCoordinate Never
 
 
-baseCube =
-    MeshBuilder.cube
+surface : Result Surface.Error (Surface WorldCoordinate)
+surface =
+    World.surface
 
 
-colorToVec4 color =
-    let
-        { red, green, blue, alpha } =
-            Color.toRgba color
-    in
-    Vec4.vec4 (red * alpha) (green * alpha) (blue * alpha) alpha
-
-
-squareData =
-    { vertices = Array.fromList [ Point3d.meters 0 0 0, Point3d.meters 1 0 0, Point3d.meters 0 1 0, Point3d.meters 0.5 0.5 0.707, Point3d.meters 1 1 1 ]
-    , indices = [ ( 0, 1, 2 ), ( 3, 2, 1 ), ( 4, 3, 1 ) ]
-    }
-
-
-splitEdges : MeshPart a -> MeshPart { triangleIndex : Int, vertex : a }
-splitEdges meshPart =
-    let
-        ( vertices, indices ) =
-            MeshBuilder.toVerticesAndIndices meshPart
-
-        newVertices =
-            indices
-                |> List.indexedMap Tuple.pair
-                |> List.concatMap
-                    (\( index, triangle ) ->
-                        case Triangle.andThen (flip Array.get vertices) triangle of
-                            Just triangle_ ->
-                                [ { triangleIndex = index, vertex = Triangle.getVertex TriangleVertex.VertexZero triangle_ }
-                                , { triangleIndex = index, vertex = Triangle.getVertex TriangleVertex.VertexOne triangle_ }
-                                , { triangleIndex = index, vertex = Triangle.getVertex TriangleVertex.VertexTwo triangle_ }
-                                ]
-
-                            Nothing ->
-                                []
-                    )
-
-        newIndices =
-            List.range 0 (List.length newVertices // 3 - 1)
-                |> List.map (\index -> ( index * 3, index * 3 + 1, index * 3 + 2 ))
-    in
-    MeshBuilder.VerticesAndIndices newVertices newIndices
-
-
-squareSurface : Result Mesh.Error (Mesh.Mesh Meters coordinates)
-squareSurface =
-    Mesh.fromVerticesAndIndices squareData.vertices squareData.indices
-
-
-randomColor =
-    Random.map3 Color.rgb
-        (Random.float 0.1 0.9)
-        (Random.float 0.1 0.9)
-        (Random.float 0.1 0.9)
-
-
-surfaceCube : Result Mesh.Error (Mesh.Mesh Meters WorldCoordinate)
-surfaceCube =
-    let
-        ( verts, indices ) =
-            MeshBuilder.toVerticesAndIndices baseCube
-    in
-    Mesh.fromVerticesAndIndices verts indices
-
-
-convertVertices : List Vec3.Vec3 -> Array.Array (Point3d.Point3d units coordinates)
-convertVertices vertices =
-    vertices |> List.map Point3d.fromVec3 |> Array.fromList
-
-
-convertIndices : List (Triangle.Triangle a) -> List (Triangle.Triangle a)
-convertIndices indices =
-    indices |> List.map Triangle.reverse
-
-
-type Error
-    = ParseError
-    | MeshError Mesh.Error
-
-
-getVerticesAndIndices : Mesh -> { vertices : List Vertex, indices : List (Triangle.Triangle Int) }
+getVerticesAndIndices : Mesh -> { vertices : List Vertex, indices : List ( Int, Int, Int ) }
 getVerticesAndIndices mesh =
     case mesh of
         WithTexture { vertices, indices } ->
             { vertices =
                 vertices
                     |> List.map (\v -> { position = v.position, normal = v.normal, uv = v.texCoord })
-            , indices = convertIndices indices
+            , indices = reverseIndices indices
             }
 
         WithoutTexture { vertices, indices } ->
             { vertices =
                 vertices
                     |> List.map (\v -> { position = v.position, normal = Vec3.vec3 0 0 0, uv = Vec2.vec2 0 0 })
-            , indices = convertIndices indices
+            , indices = reverseIndices indices
             }
 
         WithTextureAndTangent { vertices, indices } ->
             { vertices =
                 vertices
                     |> List.map (\v -> { position = v.position, normal = v.normal, uv = v.texCoord })
-            , indices = convertIndices indices
+            , indices = reverseIndices indices
             }
 
 
-mergeVertices : { vertices : List Vertex, indices : List (Triangle.Triangle Int) } -> { vertices : List Vec3.Vec3, indices : List (Triangle.Triangle Int) }
-mergeVertices { vertices, indices } =
-    let
-        vertices_ =
-            Array.fromList vertices
-
-        vec3ToTuple v =
-            ( Vec3.getX v.position, Vec3.getY v.position, Vec3.getZ v.position )
-
-        uniqueVertices =
-            vertices
-                |> List.map vec3ToTuple
-                |> List.unique
-
-        uniqueVerticesDict =
-            uniqueVertices
-                |> List.indexedMap (\index v -> ( v, index ))
-                |> Dict.fromList
-
-        mapIndex index =
-            case Array.get index vertices_ of
-                Just vertex ->
-                    Dict.get (vec3ToTuple vertex) uniqueVerticesDict
-
-                Nothing ->
-                    Nothing
-    in
-    { vertices = uniqueVertices |> List.map (\( x, y, z ) -> Vec3.vec3 x y z)
-    , indices = indices |> List.filterMap (Triangle.andThen mapIndex)
-    }
+reverseIndices : List ( Int, Int, Int ) -> List ( Int, Int, Int )
+reverseIndices indices =
+    List.map (\( v0, v1, v2 ) -> ( v2, v1, v0 )) indices
 
 
-parsedObj : Result Error ( Mesh.Mesh units coordinates, WebGL.Mesh Vertex )
-parsedObj =
+{-| Move a vertex of the Blender model onto the surface, so that what you see is where you walk.
+The model keeps its triangles and texture coordinates.
+-}
+snapToSurface : Surface WorldCoordinate -> Vertex -> Vertex
+snapToSurface surface_ vertex =
+    case Surface.nearestPoint (Point3d.fromVec3 vertex.position) surface_ of
+        Just { position, normal } ->
+            { vertex | position = Point3d.toVec3 position, normal = Direction3d.toVec3 normal }
+
+        Nothing ->
+            vertex
+
+
+{-| The textured world model, with its vertices moved onto the surface.
+-}
+webGlMesh : WebGL.Mesh Vertex
+webGlMesh =
     case OBJ.parseObjStringWith OBJ.defaultSettings ObjData.objData of
         Ok objFile ->
-            case objFile |> Dict.toList |> List.head |> Maybe.map Tuple.second of
+            case objFile |> Dict.values |> List.head |> Maybe.andThen (Dict.values >> List.head) of
                 Just mesh ->
-                    case mesh |> Dict.toList |> List.head |> Maybe.map Tuple.second of
-                        Just mesh_ ->
-                            let
-                                ({ vertices, indices } as a) =
-                                    getVerticesAndIndices mesh_
+                    let
+                        { vertices, indices } =
+                            getVerticesAndIndices mesh
 
-                                b =
-                                    mergeVertices a
-                            in
-                            case Mesh.fromVerticesAndIndices (convertVertices b.vertices) b.indices of
-                                Ok surfaceMesh_ ->
-                                    Ok
-                                        ( surfaceMesh_
-                                        , MeshBuilder.VerticesAndIndices vertices indices |> MeshBuilder.toWebGlMesh
-                                        )
+                        snapped =
+                            case surface of
+                                Ok surface_ ->
+                                    List.map (snapToSurface surface_) vertices
 
-                                Err error ->
-                                    MeshError error |> Err
-
-                        Nothing ->
-                            Err ParseError
+                                Err _ ->
+                                    vertices
+                    in
+                    MeshBuilder.VerticesAndIndices snapped indices |> MeshBuilder.toWebGlMesh
 
                 Nothing ->
-                    Err ParseError
-
-        Err error ->
-            Err ParseError
-
-
-webGlMesh =
-    case parsedObj of
-        Ok ( _, a ) ->
-            a
+                    WebGL.triangles []
 
         Err _ ->
             WebGL.triangles []
-
-
-
---Tuple.second meshObject
-
-
-surfaceMesh =
-    case parsedObj of
-        Ok ( a, _ ) ->
-            a
-
-        Err _ ->
-            Mesh.defaultMesh

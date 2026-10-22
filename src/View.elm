@@ -30,8 +30,7 @@ import Point3d.Projection
 import Quantity
 import Rectangle2dEx as Rectangle2d
 import SketchPlane3d
-import SurfaceMesh.Mesh exposing (Mesh)
-import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
+import Surface exposing (Surface, SurfacePoint)
 import Vector2d
 import Vector2i exposing (Vector2i)
 import Vector3d
@@ -46,7 +45,8 @@ import WebGL.Texture exposing (Texture)
 type alias Config a =
     { a
         | time : Duration
-        , surfacePoint : SurfacePoint Meters
+        , surface : Surface WorldCoordinate
+        , surfacePoint : SurfacePoint
         , cameraNormal : Direction3d WorldCoordinate
         , cameraUp : Direction3d WorldCoordinate
         , windowSize : Vector2i Pixels ScreenCoordinate
@@ -55,17 +55,17 @@ type alias Config a =
     }
 
 
-view : Config a -> WebGL.Mesh Vertex -> Mesh Meters WorldCoordinate -> Html msg
-view config webGlMesh mesh =
+view : Config a -> WebGL.Mesh Vertex -> Html msg
+view config webGlMesh =
     let
         ( windowWidth, windowHeight ) =
             Vector2i.toTuple Pixels.inPixels config.windowSize
 
         playerPosition =
-            SurfacePoint.worldPosition config.surfacePoint mesh
+            Surface.worldPosition config.surfacePoint config.surface
 
         camera_ =
-            camera config mesh
+            camera config
 
         cameraMatrix_ =
             camera_ |> Camera3d.viewMatrix
@@ -131,7 +131,7 @@ playerMesh =
 cameraRay : Config a -> Point2d Pixels ScreenCoordinate -> Axis3d Meters WorldCoordinate
 cameraRay config point =
     Camera3d.ray
-        (camera config MeshData.surfaceMesh)
+        (camera config)
         (Rectangle2d.positionAndSize Point2d.origin (Vector2i.toVector2d config.windowSize))
         point
 
@@ -140,7 +140,7 @@ cameraRay config point =
 -}
 cameraSketchPlane : Config a -> SketchPlane3d.SketchPlane3d Meters WorldCoordinate defines2
 cameraSketchPlane config =
-    camera config MeshData.surfaceMesh
+    camera config
         |> Camera3d.viewpoint
         |> Viewpoint3d.viewPlane
         |> SketchPlane3d.translateAlongOwn SketchPlane3d.normalAxis (Length.meters -2)
@@ -172,19 +172,19 @@ perspective windowSize =
         100
 
 
-cameraFocalPoint : Config a -> Mesh Meters WorldCoordinate -> Maybe (Point3d Meters WorldCoordinate)
-cameraFocalPoint config mesh =
-    SurfacePoint.worldPosition config.surfacePoint mesh
+cameraFocalPoint : Config a -> Maybe (Point3d Meters WorldCoordinate)
+cameraFocalPoint config =
+    Surface.worldPosition config.surfacePoint config.surface
 
 
-camera : Config a -> Mesh Meters WorldCoordinate -> Camera3d Meters WorldCoordinate
-camera config mesh =
+camera : Config a -> Camera3d Meters WorldCoordinate
+camera config =
     let
         distance =
             Length.meters 2
 
         viewpoint =
-            case cameraFocalPoint config mesh of
+            case cameraFocalPoint config of
                 Just playerPosition_ ->
                     Viewpoint3d.lookAt
                         { eyePoint = Point3d.translateIn config.cameraNormal distance playerPosition_

@@ -32,9 +32,7 @@ import Quantity exposing (Quantity)
 import Rectangle2d exposing (Rectangle2d)
 import Rectangle2dEx as Rectangle2d
 import SketchPlane3d
-import SurfaceMesh.Mesh as Mesh exposing (Mesh)
-import SurfaceMesh.Path as Path
-import SurfaceMesh.SurfacePoint as SurfacePoint exposing (SurfacePoint)
+import Surface exposing (Surface, SurfacePoint)
 import Task
 import Vector2d exposing (Vector2d)
 import Vector2i exposing (Vector2i)
@@ -56,7 +54,8 @@ type alias LoadedModel_ =
     , mousePosition : Maybe (Point2d Pixels ScreenCoordinate)
     , moveAction : Maybe { direction : Direction2d ScreenCoordinate, endTime : Duration }
     , windowSize : Vector2i Pixels ScreenCoordinate
-    , surfacePoint : SurfacePoint Meters
+    , surface : Surface WorldCoordinate
+    , surfacePoint : SurfacePoint
     , cameraNormal : Direction3d WorldCoordinate
     , cameraUp : Direction3d WorldCoordinate
     , time : Duration
@@ -79,27 +78,37 @@ type alias FailureModel_ =
     { message : String }
 
 
-initLoadedModel : Vector2i Pixels ScreenCoordinate -> Texture -> LoadedModel_
+initLoadedModel : Vector2i Pixels ScreenCoordinate -> Texture -> Model
 initLoadedModel windowSize texture =
-    let
-        surfacePoint =
-            Mesh.nearestSurfacePoint (Point3d.meters 1.688355538015691 0.598373 -1.4172405276507476) MeshData.surfaceMesh
-                |> SurfacePoint.pointTowards (Point3d.meters 1.6587441968454457 0.598373 -1.0518184469830478) MeshData.surfaceMesh
-    in
-    { keys = []
-    , previousKeys = []
-    , mouseLastDown = Nothing
-    , mousePosition = Nothing
-    , mouseLastUp = Nothing
-    , moveAction = Nothing
-    , windowSize = windowSize
-    , surfacePoint = surfacePoint
-    , cameraNormal = cameraNormal MeshData.surfaceMesh surfacePoint |> Maybe.withDefault Direction3d.z
-    , cameraUp = cameraUp MeshData.surfaceMesh surfacePoint |> Maybe.withDefault Direction3d.y
-    , time = Quantity.zero
-    , assetId = ObjData.assetId
-    , texture = texture
-    }
+    case MeshData.surface of
+        Ok surface ->
+            case
+                Surface.nearestSurfacePoint (Point3d.meters 1.688355538015691 0.598373 -1.4172405276507476) surface
+                    |> Maybe.map (Surface.pointTowards (Point3d.meters 1.6587441968454457 0.598373 -1.0518184469830478) surface)
+            of
+                Just surfacePoint ->
+                    { keys = []
+                    , previousKeys = []
+                    , mouseLastDown = Nothing
+                    , mousePosition = Nothing
+                    , mouseLastUp = Nothing
+                    , moveAction = Nothing
+                    , windowSize = windowSize
+                    , surface = surface
+                    , surfacePoint = surfacePoint
+                    , cameraNormal = cameraNormal surface surfacePoint |> Maybe.withDefault Direction3d.z
+                    , cameraUp = cameraUp surface surfacePoint |> Maybe.withDefault Direction3d.y
+                    , time = Quantity.zero
+                    , assetId = ObjData.assetId
+                    , texture = texture
+                    }
+                        |> LoadedModel
+
+                Nothing ->
+                    FailureModel { message = "The world has no surface to stand on" }
+
+        Err error ->
+            FailureModel { message = Surface.errorToString error }
 
 
 init : ( Model, Cmd Msg )
@@ -232,7 +241,7 @@ updateLoadingModel msg model =
         TextureLoaded result ->
             case result of
                 Ok texture ->
-                    ( initLoadedModel model.windowSize texture |> LoadedModel, Cmd.none )
+                    ( initLoadedModel model.windowSize texture, Cmd.none )
 
                 Err _ ->
                     ( FailureModel { message = "Failed to load texture" }, Cmd.none )
@@ -268,14 +277,14 @@ stepMovement model =
             case movement of
                 Just direction ->
                     case
-                        Mesh.move
-                            MeshData.surfaceMesh
+                        Surface.move
+                            model.surface
                             (Direction2d.angleFrom Direction2d.y direction)
                             (GameLogic.playerSpeed |> Quantity.for frameDuration)
                             model.surfacePoint
                     of
                         Just path ->
-                            Path.endPoint path
+                            Surface.pathEnd path
 
                         Nothing ->
                             model.surfacePoint
@@ -285,14 +294,14 @@ stepMovement model =
                         Just { direction, endTime } ->
                             if endTime |> Quantity.greaterThan model.time then
                                 case
-                                    Mesh.move
-                                        MeshData.surfaceMesh
+                                    Surface.move
+                                        model.surface
                                         (Direction2d.angleFrom Direction2d.y direction)
                                         (GameLogic.playerSpeed |> Quantity.for frameDuration)
                                         model.surfacePoint
                                 of
                                     Just path ->
-                                        Path.endPoint path
+                                        Surface.pathEnd path
 
                                     Nothing ->
                                         model.surfacePoint
@@ -315,7 +324,7 @@ stepMovement model =
 stepCamera model =
     { model
         | cameraNormal =
-            case cameraNormal MeshData.surfaceMesh model.surfacePoint of
+            case cameraNormal model.surface model.surfacePoint of
                 Just newCameraNormal ->
                     if Direction3d.angleFrom newCameraNormal model.cameraNormal |> Quantity.lessThan (Angle.degrees 1) then
                         newCameraNormal
@@ -329,7 +338,7 @@ stepCamera model =
                 Nothing ->
                     model.cameraNormal
         , cameraUp =
-            case cameraUp MeshData.surfaceMesh model.surfacePoint of
+            case cameraUp model.surface model.surfacePoint of
                 Just newCameraUp ->
                     if Direction3d.angleFrom newCameraUp model.cameraUp |> Quantity.lessThan (Angle.degrees 1) then
                         newCameraUp
@@ -345,31 +354,26 @@ stepCamera model =
     }
 
 
-cameraUp : Mesh units coordinates -> SurfacePoint units -> Maybe (Direction3d coordinates)
-cameraUp mesh surfacePoint =
-    SurfacePoint.worldDirection mesh surfacePoint
+cameraUp : Surface WorldCoordinate -> SurfacePoint -> Maybe (Direction3d WorldCoordinate)
+cameraUp surface surfacePoint =
+    Surface.worldDirection surface surfacePoint
 
 
-cameraNormal : Mesh Meters WorldCoordinate -> SurfacePoint Meters -> Maybe (Direction3d WorldCoordinate)
-cameraNormal mesh surfacePoint =
+cameraNormal : Surface WorldCoordinate -> SurfacePoint -> Maybe (Direction3d WorldCoordinate)
+cameraNormal surface surfacePoint =
     let
         a angleOffset =
-            case Mesh.move mesh angleOffset (Length.meters 0.3) surfacePoint of
+            case Surface.move surface angleOffset (Length.meters 0.3) surfacePoint of
                 Just path ->
-                    case Path.edgeNormals mesh path of
-                        Just edges ->
-                            edges
-                                |> List.map
-                                    (\( line, normal ) ->
-                                        let
-                                            length =
-                                                LineSegment3d.length line
-                                        in
-                                        Vector3d.withLength length normal
-                                    )
-
-                        Nothing ->
-                            []
+                    Surface.pathSegments path
+                        |> List.map
+                            (\( line, normal ) ->
+                                let
+                                    length =
+                                        LineSegment3d.length line
+                                in
+                                Vector3d.withLength length normal
+                            )
 
                 Nothing ->
                     []
@@ -424,7 +428,7 @@ viewSuccessModel model =
             Element.column [ Element.spacing 6, Element.padding 4 ]
                 [ Element.text "Move with arrow keys or mouse click"
                 , if Environment.isDebug then
-                    SurfacePoint.worldPosition model.surfacePoint MeshData.surfaceMesh
+                    Surface.worldPosition model.surfacePoint model.surface
                         |> Maybe.map Point3d.pointToString
                         |> Maybe.withDefault ""
                         |> Element.text
@@ -433,7 +437,7 @@ viewSuccessModel model =
                     Element.none
                 ]
         ]
-        (Element.html (View.view model MeshData.webGlMesh MeshData.surfaceMesh))
+        (Element.html (View.view model MeshData.webGlMesh))
 
 
 mouseDecoder : MouseEventType -> Json.Decode.Decoder LoadedMsg_
