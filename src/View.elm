@@ -92,10 +92,8 @@ view config webGlMesh wallMesh =
                             wallMesh
                             { perspective = perspective config.windowSize
                             , camera = cameraMatrix_
-                            , eye =
-                                playerPosition_
-                                    |> Point3d.translateIn config.cameraNormal wallEyeHeight
-                                    |> Point3d.toVec3
+                            , player = Point3d.toVec3 playerPosition_
+                            , eyeHeight = Length.inMeters wallEyeHeight
                             }
                         ]
 
@@ -385,19 +383,23 @@ wallEyeHeight =
     Length.meters 0.4
 
 
-{-| The walls are drawn flat on the surface, each corner where the line from the eye through it meets
-the surface (taken as flat round the point the wall stands on), like a picture painted on the ground
-that looks 3D from one spot. Corners are kept below 80% of the eye's height, so tall walls don't
-stretch away forever, and walls on parts of the surface the eye is barely above or below lie down flat
-instead. Corners are moved no further from where they stand than the surface stays flat (`reach`),
-so that they don't hang off edges or float over curves.
+{-| The walls are drawn flat on the surface, like a picture painted on the ground that looks 3D from
+one spot: an eye `wallEyeHeight` above the player.
+
+The surface curves, so each wall is drawn as if the ground were flat between the player and it: the
+player stands `distance` back from where the wall stands, in the direction away from the player along
+the surface there, and the eye is above that. Each corner is drawn where the line from that eye
+through it meets the ground, so walls lean straight away from the player, more the further away they
+are. Corners are kept below 80% of the eye's height, so tall walls don't stretch away forever, and
+are moved no further from where they stand than the surface stays flat (`reach`), so that they don't
+hang off edges or float over curves.
 
 Walls overlap on the surface, so their depth is set by how far from the eye they are rather than
 where they're drawn: nearer is on top. All of it is a few millimeters above the surface, so it's
 drawn over the paving.
 
 -}
-wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, eye : Vec3 } { color_ : Vec3, normal_ : Vec3 }
+wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float } { color_ : Vec3, normal_ : Vec3 }
 wallVS =
     [glsl|
         attribute vec3 position;
@@ -408,16 +410,20 @@ wallVS =
         attribute float reach;
         uniform mat4 perspective;
         uniform mat4 camera;
-        uniform vec3 eye;
+        uniform vec3 player;
+        uniform float eyeHeight;
         varying vec3 color_;
         varying vec3 normal_;
         void main () {
+            vec3 fromPlayer = base - player;
+            vec3 away = fromPlayer - dot(fromPlayer, up) * up;
+            float awayLength = length(away);
+            vec3 foot = awayLength > 0.0 ? base - away * (length(fromPlayer) / awayLength) : base;
+            vec3 eye = foot + eyeHeight * up;
             float height = dot(position - base, up);
-            float eyeHeight = dot(eye - base, up);
-            float k = eyeHeight > 0.0 ? clamp(height / eyeHeight, 0.0, 0.8) * smoothstep(0.0, 0.1, eyeHeight) : 0.0;
+            float k = clamp(height / eyeHeight, 0.0, 0.8);
             vec3 onSurface = position - height * up;
-            vec3 eyeOnSurface = eye - eyeHeight * up;
-            vec3 shift = (onSurface - eyeOnSurface) * k / (1.0 - k);
+            vec3 shift = (onSurface - foot) * k / (1.0 - k);
             float shiftLength = length(shift);
             if (shiftLength > reach) {
                 shift *= reach / shiftLength;
