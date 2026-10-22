@@ -3,6 +3,7 @@ module Surface exposing
     , FlatSpec, FlatEdge(..), FeatureSpec, ProfileSegment(..), Sweep(..)
     , FlatCoordinate, FeatureCoordinate, ProfileCoordinate
     , SurfacePoint, nearestSurfacePoint, nearestPoint, worldPosition, normal, worldDirection, pointTowards, rotateBy
+    , encodeSurfacePoint, surfacePointDecoder
     , Path, move, pathEnd, pathSegments
     , pieceCount
     , Complex, Layout, Placement, Window, FanRay, FanSample, mapAround, fanSpacing, chartCoordinate, nearestPiece, placeOnMap
@@ -31,6 +32,7 @@ Conventions:
 @docs FlatSpec, FlatEdge, FeatureSpec, ProfileSegment, Sweep
 @docs FlatCoordinate, FeatureCoordinate, ProfileCoordinate
 @docs SurfacePoint, nearestSurfacePoint, nearestPoint, worldPosition, normal, worldDirection, pointTowards, rotateBy
+@docs encodeSurfacePoint, surfacePointDecoder
 @docs Path, move, pathEnd, pathSegments
 @docs pieceCount
 @docs Complex, Layout, Placement, Window, FanRay, FanSample, mapAround, fanSpacing, chartCoordinate, nearestPiece, placeOnMap
@@ -41,6 +43,8 @@ import Angle exposing (Angle)
 import Array exposing (Array)
 import Direction3d exposing (Direction3d)
 import Frame3d exposing (Frame3d)
+import Json.Decode
+import Json.Encode
 import Length exposing (Length, Meters)
 import LineSegment3d exposing (LineSegment3d)
 import Point2d exposing (Point2d)
@@ -168,6 +172,25 @@ type SurfacePoint
 
 type alias SurfacePoint_ =
     { piece : Int, a : Float, b : Float, heading : Float }
+
+
+encodeSurfacePoint : SurfacePoint -> Json.Encode.Value
+encodeSurfacePoint (SurfacePoint point) =
+    Json.Encode.object
+        [ ( "piece", Json.Encode.int point.piece )
+        , ( "a", Json.Encode.float point.a )
+        , ( "b", Json.Encode.float point.b )
+        , ( "heading", Json.Encode.float point.heading )
+        ]
+
+
+surfacePointDecoder : Json.Decode.Decoder SurfacePoint
+surfacePointDecoder =
+    Json.Decode.map4 (\piece a b heading -> SurfacePoint { piece = piece, a = a, b = b, heading = heading })
+        (Json.Decode.field "piece" Json.Decode.int)
+        (Json.Decode.field "a" Json.Decode.float)
+        (Json.Decode.field "b" Json.Decode.float)
+        (Json.Decode.field "heading" Json.Decode.float)
 
 
 type Path coordinates

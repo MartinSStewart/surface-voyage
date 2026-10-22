@@ -1,4 +1,4 @@
-module Minimap exposing (imagesAround, size, view)
+module Minimap exposing (Drawing, Meshes, drawingAround, encodeDrawing, imagesAround, meshesDecoder, size, view)
 
 {-| A map of the surface around the player, with the player in the middle facing up. Distances from
 the player are kept: a circle round the middle is everything that far away to walk to, walking
@@ -16,6 +16,8 @@ player.
 import Array exposing (Array)
 import Html exposing (Html)
 import Html.Attributes
+import Json.Decode
+import Json.Encode
 import Length exposing (Length)
 import Math.Vector2 as Vec2 exposing (Vec2)
 import Math.Vector3 as Vec3 exposing (Vec3)
@@ -51,8 +53,22 @@ type alias MapPoint =
     { x : Float, y : Float }
 
 
-view : Surface coordinates -> Shapes -> SurfacePoint -> Html msg
-view surface shapes surfacePoint =
+{-| What the minimap shows around a point: triangles in meters, with the player at the origin and
+facing up the y axis. Working this out takes a while, so the game has a web worker do it (see
+`MinimapWorker`).
+-}
+type alias Drawing =
+    { paving : List Triangle
+    , walls : List Triangle
+    }
+
+
+type alias Triangle =
+    ( MapPoint, MapPoint, MapPoint )
+
+
+drawingAround : Surface coordinates -> Shapes -> SurfacePoint -> Drawing
+drawingAround surface shapes surfacePoint =
     let
         sizeInPixels =
             Pixels.inPixels size
@@ -65,18 +81,93 @@ view surface shapes surfacePoint =
 
         withImages index =
             Maybe.map2 Tuple.pair (Array.get index shapes.points) (Array.get index images)
+    in
+    { paving =
+        shapes.pavingTriangles
+            |> List.concatMap
+                (\( i, j, k ) ->
+                    Maybe.map3 pavingTriangles (withImages i) (withImages j) (withImages k)
+                        |> Maybe.withDefault []
+                )
+    , walls =
+        shapes.walls
+            |> List.concatMap (\wall -> wallQuads (wallWidth / toFloat sizeInPixels * 2 * radius) (List.filterMap withImages wall))
+    }
 
-        walls =
-            shapes.walls
-                |> List.concatMap (\wall -> wallQuads (wallWidth / toFloat sizeInPixels * 2 * radius) (List.filterMap withImages wall))
 
-        paving =
-            shapes.pavingTriangles
-                |> List.concatMap
-                    (\( i, j, k ) ->
-                        Maybe.map3 pavingTriangles (withImages i) (withImages j) (withImages k)
-                            |> Maybe.withDefault []
-                    )
+{-| A drawing as JSON, for sending between the game and the worker: each list of triangles as a
+flat list of numbers, x then y for each corner, in millimeters.
+-}
+encodeDrawing : Drawing -> Json.Encode.Value
+encodeDrawing drawing =
+    let
+        encodeTriangles triangles =
+            List.foldr
+                (\( a, b, c ) acc -> millimeters a.x :: millimeters a.y :: millimeters b.x :: millimeters b.y :: millimeters c.x :: millimeters c.y :: acc)
+                []
+                triangles
+                |> Json.Encode.list Json.Encode.int
+
+        millimeters meters =
+            round (meters * 1000)
+    in
+    Json.Encode.object
+        [ ( "paving", encodeTriangles drawing.paving )
+        , ( "walls", encodeTriangles drawing.walls )
+        ]
+
+
+{-| A drawing decoded and turned into meshes ready to draw.
+-}
+type alias Meshes =
+    { paving : WebGL.Mesh { position : Vec2 }
+    , walls : WebGL.Mesh { position : Vec2 }
+    }
+
+
+meshesDecoder : Json.Decode.Decoder Meshes
+meshesDecoder =
+    let
+        triangles =
+            Json.Decode.list Json.Decode.float |> Json.Decode.map (\numbers -> toTriangles numbers [] |> WebGL.triangles)
+
+        toTriangles numbers acc =
+            case numbers of
+                ax :: ay :: bx :: by :: cx :: cy :: rest ->
+                    toTriangles rest (( vertex ax ay, vertex bx by, vertex cx cy ) :: acc)
+
+                _ ->
+                    acc
+
+        -- Millimeters to the minimap's -1 to 1
+        scale =
+            1 / (1000 * Length.inMeters viewRadius)
+
+        vertex x y =
+            { position = Vec2.vec2 (x * scale) (y * scale) }
+    in
+    Json.Decode.map2 Meshes
+        (Json.Decode.field "paving" triangles)
+        (Json.Decode.field "walls" triangles)
+
+
+{-| Draw the meshes laid out from where the player was, moved to show the map from where they are
+now: `offset` is where the player is now on that map, in meters, and `turn` is how far they have
+turned since, counterclockwise in radians. The drawing doesn't change while the player moves a few
+centimeters, so the minimap keeps up between drawings.
+-}
+view : Maybe Meshes -> { offset : MapPoint, turn : Float } -> Html msg
+view maybeMeshes { offset, turn } =
+    let
+        sizeInPixels =
+            Pixels.inPixels size
+
+        uniforms color =
+            { color = color
+            , offset = Vec2.vec2 (offset.x / Length.inMeters viewRadius) (offset.y / Length.inMeters viewRadius)
+            , cosTurn = cos turn
+            , sinTurn = sin turn
+            }
     in
     WebGL.toHtmlWith
         [ WebGL.alpha True, WebGL.antialias, WebGL.clearColor (144 / 255) (187 / 255) (146 / 255) 1 ]
@@ -84,15 +175,23 @@ view surface shapes surfacePoint =
         , Html.Attributes.height sizeInPixels
         , Html.Attributes.style "display" "block"
         ]
-        [ WebGL.entity shapeVS shapeFS (toMesh radius paving) { color = Vec3.vec3 (187 / 255) (157 / 255) (72 / 255) }
-        , WebGL.entity shapeVS shapeFS (toMesh radius walls) { color = Vec3.vec3 0 0 0 }
-        , WebGL.entityWith
-            [ Blend.add Blend.one Blend.oneMinusSrcAlpha ]
-            markerVS
-            markerFS
-            playerMarker
-            {}
-        ]
+        ((case maybeMeshes of
+            Just meshes ->
+                [ WebGL.entity shapeVS shapeFS meshes.paving (uniforms (Vec3.vec3 (187 / 255) (157 / 255) (72 / 255)))
+                , WebGL.entity shapeVS shapeFS meshes.walls (uniforms (Vec3.vec3 0 0 0))
+                ]
+
+            Nothing ->
+                []
+         )
+            ++ [ WebGL.entityWith
+                    [ Blend.add Blend.one Blend.oneMinusSrcAlpha ]
+                    markerVS
+                    markerFS
+                    playerMarker
+                    {}
+               ]
+        )
 
 
 
@@ -580,26 +679,21 @@ pavingTriangles ( p, pImages ) ( q, qImages ) ( r, rImages ) =
         pImages
 
 
-toMesh : Float -> List ( MapPoint, MapPoint, MapPoint ) -> WebGL.Mesh { position : Vec2 }
-toMesh radius triangles =
-    let
-        vertex p =
-            { position = Vec2.vec2 (p.x / radius) (p.y / radius) }
-    in
-    triangles |> List.map (\( a, b, c ) -> ( vertex a, vertex b, vertex c )) |> WebGL.triangles
-
-
-shapeVS : Shader { position : Vec2 } { color : Vec3 } {}
+shapeVS : Shader { position : Vec2 } { u | offset : Vec2, cosTurn : Float, sinTurn : Float } {}
 shapeVS =
     [glsl|
         attribute vec2 position;
+        uniform vec2 offset;
+        uniform float cosTurn;
+        uniform float sinTurn;
         void main () {
-            gl_Position = vec4(position, 0.0, 1.0);
+            vec2 p = position - offset;
+            gl_Position = vec4(cosTurn * p.x + sinTurn * p.y, cosTurn * p.y - sinTurn * p.x, 0.0, 1.0);
         }
     |]
 
 
-shapeFS : Shader {} { color : Vec3 } {}
+shapeFS : Shader {} { u | color : Vec3 } {}
 shapeFS =
     [glsl|
         precision mediump float;

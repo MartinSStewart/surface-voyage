@@ -18,7 +18,6 @@ import Html exposing (Html)
 import Html.Events
 import Html.Events.Extra.Mouse
 import Html.Events.Extra.Touch
-import Html.Lazy
 import Json.Decode
 import Keyboard exposing (Key)
 import KeyboardHelper as Keyboard
@@ -26,6 +25,7 @@ import Length exposing (Meters)
 import LineSegment3d
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Minimap
+import MinimapPort
 import ObjData
 import Pixels exposing (Pixels)
 import Point2d exposing (Point2d)
@@ -60,8 +60,9 @@ type alias LoadedModel_ =
     , surface : Surface WorldCoordinate
     , surfacePoint : SurfacePoint
 
-    -- Where the minimap was last laid out from
-    , minimapPoint : SurfacePoint
+    -- What the minimap shows and where it was laid out from, and where it's being laid out from now
+    , minimap : Maybe { point : SurfacePoint, meshes : Minimap.Meshes }
+    , minimapRequest : Maybe SurfacePoint
     , cameraNormal : Direction3d WorldCoordinate
     , cameraUp : Direction3d WorldCoordinate
     , time : Duration
@@ -102,7 +103,8 @@ initLoadedModel windowSize texture =
                     , windowSize = windowSize
                     , surface = surface
                     , surfacePoint = surfacePoint
-                    , minimapPoint = surfacePoint
+                    , minimap = Nothing
+                    , minimapRequest = Nothing
                     , cameraNormal = cameraNormal surface surfacePoint |> Maybe.withDefault Direction3d.z
                     , cameraUp = cameraUp surface surfacePoint |> Maybe.withDefault Direction3d.y
                     , time = Quantity.zero
@@ -156,6 +158,7 @@ type LoadedMsg_
     | WindowResize (Vector2i Pixels ScreenCoordinate)
     | AnimationFrameDelta Duration
     | MouseEvent MouseEvent_
+    | MinimapDrawn Json.Decode.Value
 
 
 type MouseEventType
@@ -204,7 +207,24 @@ updateLoadedModel msg model =
             { model | windowSize = windowSize } |> addCmdNone
 
         AnimationFrameDelta delta ->
-            { model | time = Quantity.plus model.time delta } |> step |> addCmdNone
+            { model | time = Quantity.plus model.time delta } |> step |> stepMinimap
+
+        MinimapDrawn value ->
+            ( case
+                Json.Decode.decodeValue
+                    (Json.Decode.map2 (\point meshes -> { point = point, meshes = meshes })
+                        (Json.Decode.field "point" Surface.surfacePointDecoder)
+                        (Json.Decode.field "drawing" Minimap.meshesDecoder)
+                    )
+                    value
+              of
+                Ok minimap ->
+                    { model | minimap = Just minimap, minimapRequest = Nothing }
+
+                Err _ ->
+                    { model | minimapRequest = Nothing }
+            , Cmd.none
+            )
 
         MouseEvent event ->
             case event.eventType of
@@ -268,7 +288,6 @@ step model =
     model
         |> stepMovement
         |> stepCamera
-        |> stepMinimap
 
 
 frameDuration =
@@ -329,35 +348,86 @@ stepMovement model =
     }
 
 
-{-| Laying out the minimap takes a few milliseconds, so it's only redone once the player has moved
-or turned far enough for it to show.
+{-| Laying out the minimap takes a while, so a web worker does it (see `MinimapWorker`), one layout at
+a time. A new one is asked for once the player has moved far enough from where the last one was laid
+out from for it to show. In between, the minimap is moved and turned to keep up (see `minimapView`).
 -}
-stepMinimap : LoadedModel_ -> LoadedModel_
+stepMinimap : LoadedModel_ -> ( LoadedModel_, Cmd LoadedMsg_ )
 stepMinimap model =
     let
-        distance =
-            Maybe.map2 Point3d.distanceFrom
-                (Surface.worldPosition model.surfacePoint model.surface)
-                (Surface.worldPosition model.minimapPoint model.surface)
+        movedFar =
+            case model.minimap of
+                Just minimap ->
+                    Maybe.map2 Point3d.distanceFrom
+                        (Surface.worldPosition model.surfacePoint model.surface)
+                        (Surface.worldPosition minimap.point model.surface)
+                        |> Maybe.map (Quantity.greaterThan (Length.centimeters 2))
+                        |> Maybe.withDefault True
 
-        turn =
-            Maybe.map2 Direction3d.angleFrom
-                (Surface.worldDirection model.surface model.surfacePoint)
-                (Surface.worldDirection model.surface model.minimapPoint)
+                Nothing ->
+                    True
     in
-    case ( distance, turn ) of
-        ( Just distance_, Just turn_ ) ->
-            if
-                (distance_ |> Quantity.greaterThan (Length.centimeters 4))
-                    || ((distance_ |> Quantity.lessThan (Length.millimeters 1)) && (Quantity.abs turn_ |> Quantity.greaterThan (Angle.degrees 1)))
-            then
-                { model | minimapPoint = model.surfacePoint }
+    if model.minimapRequest == Nothing && movedFar then
+        ( { model | minimapRequest = Just model.surfacePoint }
+        , Surface.encodeSurfacePoint model.surfacePoint |> MinimapPort.drawMinimap
+        )
 
-            else
-                model
+    else
+        ( model, Cmd.none )
 
-        _ ->
-            { model | minimapPoint = model.surfacePoint }
+
+{-| Where the player is now on the minimap last laid out, and how far they have turned since. This is
+close enough for the few centimeters the player moves before the next layout comes.
+-}
+minimapView : LoadedModel_ -> Html msg
+minimapView model =
+    let
+        unmoved =
+            { offset = { x = 0, y = 0 }, turn = 0 }
+
+        moved =
+            case model.minimap of
+                Just minimap ->
+                    Maybe.map5
+                        (\p0 f0 n0 p f ->
+                            let
+                                forward =
+                                    Direction3d.unwrap f0
+
+                                up =
+                                    Direction3d.unwrap n0
+
+                                -- forward x up
+                                right =
+                                    { x = forward.y * up.z - forward.z * up.y
+                                    , y = forward.z * up.x - forward.x * up.z
+                                    , z = forward.x * up.y - forward.y * up.x
+                                    }
+
+                                d =
+                                    Vector3d.from p0 p |> Vector3d.unwrap
+
+                                dot u v =
+                                    u.x * v.x + u.y * v.y + u.z * v.z
+
+                                facing =
+                                    Direction3d.unwrap f
+                            in
+                            { offset = { x = dot d right, y = dot d forward }
+                            , turn = atan2 -(dot facing right) (dot facing forward)
+                            }
+                        )
+                        (Surface.worldPosition minimap.point model.surface)
+                        (Surface.worldDirection model.surface minimap.point)
+                        (Surface.normal model.surface minimap.point)
+                        (Surface.worldPosition model.surfacePoint model.surface)
+                        (Surface.worldDirection model.surface model.surfacePoint)
+                        |> Maybe.withDefault unmoved
+
+                Nothing ->
+                    unmoved
+    in
+    Minimap.view (Maybe.map .meshes model.minimap) moved
 
 
 stepCamera model =
@@ -488,7 +558,7 @@ viewSuccessModel model =
                 , Element.Border.color (Element.rgb 0.95 0.95 0.95)
                 , Element.clip
                 ]
-                (Element.html (Html.Lazy.lazy3 Minimap.view model.surface MeshData.mapShapes model.minimapPoint))
+                (Element.html (minimapView model))
         ]
         (Element.html (View.view model MeshData.webGlMesh))
 
@@ -532,6 +602,7 @@ subscriptions model =
                 , Browser.Events.onMouseMove (mouseDecoder MouseEventMove)
                 , Browser.Events.onResize (\w h -> Vector2i.pixels w h |> WindowResize)
                 , Browser.Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameDelta)
+                , MinimapPort.minimapDrawn MinimapDrawn
                 ]
                 |> Sub.map LoadedMsg
 
