@@ -11,18 +11,21 @@ import Direction2d exposing (Direction2d)
 import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
 import Element exposing (Element)
+import Element.Border
 import Environment
 import GameLogic
 import Html exposing (Html)
 import Html.Events
 import Html.Events.Extra.Mouse
 import Html.Events.Extra.Touch
+import Html.Lazy
 import Json.Decode
 import Keyboard exposing (Key)
 import KeyboardHelper as Keyboard
 import Length exposing (Meters)
 import LineSegment3d
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
+import Minimap
 import ObjData
 import Pixels exposing (Pixels)
 import Point2d exposing (Point2d)
@@ -436,6 +439,20 @@ viewSuccessModel model =
                   else
                     Element.none
                 ]
+        , Element.inFront <|
+            Element.el
+                [ Element.alignRight
+                , Element.alignTop
+                , Element.moveLeft 12
+                , Element.moveDown 12
+                , Element.width (Element.px (Pixels.inPixels Minimap.size))
+                , Element.height (Element.px (Pixels.inPixels Minimap.size))
+                , Element.Border.rounded (Pixels.inPixels Minimap.size)
+                , Element.Border.width 3
+                , Element.Border.color (Element.rgb 0.95 0.95 0.95)
+                , Element.clip
+                ]
+                (Element.html (Html.Lazy.lazy4 Minimap.view model.surface MeshData.minimapMeshes model.texture model.surfacePoint))
         ]
         (Element.html (View.view model MeshData.webGlMesh))
 

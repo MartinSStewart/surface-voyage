@@ -5,6 +5,7 @@ module Surface exposing
     , SurfacePoint, nearestSurfacePoint, nearestPoint, worldPosition, normal, worldDirection, pointTowards, rotateBy
     , Path, move, pathEnd, pathSegments
     , pieceCount
+    , Complex, Mobius, Placement, Window, flattenAround, chartCoordinate, nearestPiece, placeOnMap
     )
 
 {-| A closed surface made of flat regions and features.
@@ -32,6 +33,7 @@ Conventions:
 @docs SurfacePoint, nearestSurfacePoint, nearestPoint, worldPosition, normal, worldDirection, pointTowards, rotateBy
 @docs Path, move, pathEnd, pathSegments
 @docs pieceCount
+@docs Complex, Mobius, Placement, Window, flattenAround, chartCoordinate, nearestPiece, placeOnMap
 
 -}
 
@@ -2001,3 +2003,676 @@ walkFeatureStep feature pieceIndex state remaining segments =
                     wrapped
                     (remaining - h)
                     (segmentFrom start.p (featurePoint feature wrapped.theta wrapped.s) start.n segments)
+
+
+
+---- FLATTENING ----
+
+
+type alias Complex =
+    { re : Float, im : Float }
+
+
+{-| A Möbius transformation, z -> (a z + b) / (c z + d).
+-}
+type alias Mobius =
+    { a : Complex, b : Complex, c : Complex, d : Complex }
+
+
+{-| Where one piece goes on a flat map. Each point of the piece has a chart coordinate (see
+`chartCoordinate`). If `exponent` is 0 the map position is `mobius chart`, otherwise it is
+`mobius (exp (exponent * chart))`. Either way the map is conformal: shapes are kept and only the
+scale changes from place to place.
+
+A piece can be placed more than once: a rounded corner doesn't flatten out, so going round it one
+way or the other puts what's behind it in two slightly different places. Each placement has a
+`window`, the directions from the middle of the map in which it was seen through the edge it was
+reached by (within `halfWidth` radians of `center`, everything if that's pi or more). Where copies
+overlap, draw the one whose window the point is in, and after that the one with the smallest
+`distance` (how far from the middle of the map the piece was first reached). That cuts the map along
+a line from the player through the corner, like an unfolded box.
+
+-}
+type alias Placement =
+    { piece : Int
+    , exponent : Float
+    , mobius : Mobius
+    , distance : Float
+    , window : Window
+    }
+
+
+type alias Window =
+    { center : Float, halfWidth : Float }
+
+
+fullWindow : Window
+fullWindow =
+    { center = 0, halfWidth = pi }
+
+
+{-| The directions in both windows. If they overlap on both sides, only the overlap nearest the
+first window's middle is kept. If they don't overlap, an empty window where they come closest.
+-}
+intersectWindows : Window -> Window -> Window
+intersectWindows first second =
+    if first.halfWidth >= pi then
+        second
+
+    else if second.halfWidth >= pi then
+        first
+
+    else
+        let
+            offset =
+                wrapAngle (second.center - first.center + pi) - pi
+
+            from =
+                max -first.halfWidth (offset - second.halfWidth)
+
+            to =
+                min first.halfWidth (offset + second.halfWidth)
+        in
+        { center = first.center + (from + to) / 2, halfWidth = max 0 ((to - from) / 2) }
+
+
+{-| The directions from the middle of the map that a line of points covers.
+-}
+windowOf : List Complex -> Window
+windowOf points =
+    case points |> List.filter (\p -> cabs p > 1.0e-9) |> List.map (\p -> atan2 p.im p.re) of
+        first :: rest ->
+            let
+                ( _, low, high ) =
+                    List.foldl
+                        (\angle ( previous, lowSoFar, highSoFar ) ->
+                            let
+                                unwrapped =
+                                    previous + wrapAngle (angle - previous + pi) - pi
+                            in
+                            ( unwrapped, min lowSoFar unwrapped, max highSoFar unwrapped )
+                        )
+                        ( first, first, first )
+                        rest
+            in
+            if high - low >= 2 * pi - 1.0e-3 then
+                fullWindow
+
+            else
+                { center = (low + high) / 2, halfWidth = (high - low) / 2 }
+
+        [] ->
+            fullWindow
+
+
+cadd : Complex -> Complex -> Complex
+cadd p q =
+    { re = p.re + q.re, im = p.im + q.im }
+
+
+csub : Complex -> Complex -> Complex
+csub p q =
+    { re = p.re - q.re, im = p.im - q.im }
+
+
+cmul : Complex -> Complex -> Complex
+cmul p q =
+    { re = p.re * q.re - p.im * q.im, im = p.re * q.im + p.im * q.re }
+
+
+cdiv : Complex -> Complex -> Complex
+cdiv p q =
+    let
+        denominator =
+            q.re * q.re + q.im * q.im
+    in
+    { re = (p.re * q.re + p.im * q.im) / denominator, im = (p.im * q.re - p.re * q.im) / denominator }
+
+
+cexp : Complex -> Complex
+cexp p =
+    let
+        magnitude =
+            e ^ p.re
+    in
+    { re = magnitude * cos p.im, im = magnitude * sin p.im }
+
+
+cabs : Complex -> Float
+cabs p =
+    sqrt (p.re * p.re + p.im * p.im)
+
+
+cscale : Float -> Complex -> Complex
+cscale s p =
+    { re = s * p.re, im = s * p.im }
+
+
+applyMobius : Mobius -> Complex -> Complex
+applyMobius m z =
+    cdiv (cadd (cmul m.a z) m.b) (cadd (cmul m.c z) m.d)
+
+
+composeMobius : Mobius -> Mobius -> Mobius
+composeMobius outer inner =
+    { a = cadd (cmul outer.a inner.a) (cmul outer.b inner.c)
+    , b = cadd (cmul outer.a inner.b) (cmul outer.b inner.d)
+    , c = cadd (cmul outer.c inner.a) (cmul outer.d inner.c)
+    , d = cadd (cmul outer.c inner.b) (cmul outer.d inner.d)
+    }
+
+
+{-| The Möbius transformation sending p1, p2, p3 to 0, 1 and infinity.
+-}
+toZeroOneInfinity : Complex -> Complex -> Complex -> Mobius
+toZeroOneInfinity p1 p2 p3 =
+    { a = csub p2 p3
+    , b = cmul (csub p2 p3) p1 |> cscale -1
+    , c = csub p2 p1
+    , d = cmul (csub p2 p1) p3 |> cscale -1
+    }
+
+
+inverseMobius : Mobius -> Mobius
+inverseMobius m =
+    { a = m.d, b = cscale -1 m.b, c = cscale -1 m.c, d = m.a }
+
+
+normalizeMobius : Mobius -> Mobius
+normalizeMobius m =
+    let
+        largest =
+            List.foldl max 0 [ cabs m.a, cabs m.b, cabs m.c, cabs m.d ]
+    in
+    if largest > 0 then
+        { a = cscale (1 / largest) m.a, b = cscale (1 / largest) m.b, c = cscale (1 / largest) m.c, d = cscale (1 / largest) m.d }
+
+    else
+        m
+
+
+{-| The Möbius transformation sending each `from` point to the matching `to` point.
+-}
+fitMobius : ( Complex, Complex, Complex ) -> ( Complex, Complex, Complex ) -> Mobius
+fitMobius ( f1, f2, f3 ) ( t1, t2, t3 ) =
+    composeMobius (inverseMobius (toZeroOneInfinity t1 t2 t3)) (toZeroOneInfinity f1 f2 f3) |> normalizeMobius
+
+
+{-| Whether a piece closes up to a point on its axis, like a rounded corner.
+-}
+hasPole : Piece -> Bool
+hasPole piece =
+    case piece of
+        FlatPiece _ ->
+            False
+
+        FeaturePiece feature ->
+            abs (profileAt feature 0).r < tolerance || abs (profileAt feature feature.length).r < tolerance
+
+
+{-| 0 if a piece's chart goes straight onto the map, otherwise the exponent k used as exp (k z).
+Flats and part-turn features without a pole are drawn directly. Full turns are drawn through exp so
+they wrap round into a ring, and a pole is sent to 0 so it lands on a point rather than at infinity.
+-}
+pieceExponent : Piece -> Float
+pieceExponent piece =
+    case piece of
+        FlatPiece _ ->
+            0
+
+        FeaturePiece feature ->
+            if abs (profileAt feature feature.length).r < tolerance then
+                -1
+
+            else if abs (profileAt feature 0).r < tolerance || feature.sweep == Nothing then
+                1
+
+            else
+                0
+
+
+{-| The smallest distance from the axis used when flattening, so poles stay finite.
+-}
+minimumRadius : Float
+minimumRadius =
+    1.0e-3
+
+
+{-| Integral of ds / r along the profile from 0 to s. Together with the angle round the axis this
+gives conformal coordinates on a surface of revolution.
+-}
+sigmaAt : Feature -> Float -> Float
+sigmaAt feature s =
+    let
+        inside =
+            List.foldl
+                (\segment total ->
+                    let
+                        s0 =
+                            segS0 segment
+                    in
+                    total + segmentSigma segment (clamp 0 (segLength segment) (s - s0))
+                )
+                0
+                feature.segments
+
+        -- Beyond the ends of the profile, carry on at the end's rate
+        beyond =
+            if s < 0 then
+                s / max minimumRadius (profileAt feature 0).r
+
+            else if s > feature.length then
+                (s - feature.length) / max minimumRadius (profileAt feature feature.length).r
+
+            else
+                0
+    in
+    inside + beyond
+
+
+{-| Integral of ds / r along one profile segment, from its start to t along it. Worked out exactly
+since 1 / r blows up next to a pole.
+-}
+segmentSigma : ProfileSeg -> Float -> Float
+segmentSigma segment t =
+    case segment of
+        LineSeg { r0, dr } ->
+            if abs dr < 1.0e-9 then
+                t / max minimumRadius r0
+
+            else
+                (logBase e (max minimumRadius (r0 + t * dr)) - logBase e (max minimumRadius r0)) / dr
+
+        ArcSeg { cr, radius, a0, dir, len } ->
+            -- r = cr + radius * cos angle and ds = dir * radius * d(angle)
+            let
+                antiderivative angle =
+                    if abs (cr - radius) < 1.0e-9 then
+                        tan (angle / 2)
+
+                    else if cr > radius then
+                        let
+                            root =
+                                sqrt (cr * cr - radius * radius)
+                        in
+                        2 * radius / root * atan2 (sqrt ((cr - radius) / (cr + radius)) * sin (angle / 2)) (cos (angle / 2))
+
+                    else
+                        -- The arc reaches the axis, where the integral goes to infinity
+                        let
+                            root =
+                                sqrt (radius * radius - cr * cr)
+
+                            x =
+                                sqrt ((radius - cr) / (radius + cr)) * tan (angle / 2) |> clamp (-1 + 1.0e-9) (1 - 1.0e-9)
+                        in
+                        radius / root * logBase e ((1 + x) / (1 - x))
+            in
+            dir * (antiderivative (a0 + dir * clamp 0 len t / radius) - antiderivative a0)
+
+
+{-| Chart coordinate of local coordinates (a, b) on a piece: (a, b) itself on a flat, and
+(sigma, chirality \* theta) on a feature.
+-}
+localChart : Piece -> Float -> Float -> Complex
+localChart piece a b =
+    case piece of
+        FlatPiece _ ->
+            { re = a, im = b }
+
+        FeaturePiece feature ->
+            { re = sigmaAt feature b, im = feature.chirality * a }
+
+
+{-| Profile arc length of the point (r, h), carrying on past the ends of the profile in a straight
+line.
+-}
+profileParamUnclamped : Feature -> Float -> Float -> Float
+profileParamUnclamped feature r h =
+    let
+        s =
+            closestOnProfile feature r h
+
+        along end =
+            let
+                p =
+                    profileAt feature end
+            in
+            end + (r - p.r) * p.dr + (h - p.h) * p.dh
+    in
+    if s <= 1.0e-9 then
+        min 0 (along 0)
+
+    else if s >= feature.length - 1.0e-9 then
+        max feature.length (along feature.length)
+
+    else
+        s
+
+
+{-| Chart coordinate of the point of a piece's surface nearest to `point`, without clamping to the
+piece's edges, so a triangle that pokes a little over an edge keeps its shape.
+-}
+chartCoordinate : Surface coordinates -> Int -> Point3d Meters coordinates -> Complex
+chartCoordinate surface pieceIndex point =
+    case getPiece pieceIndex surface of
+        Just ((FlatPiece flat) as piece) ->
+            let
+                local =
+                    sub (fromPoint point) flat.origin
+            in
+            localChart piece (dot local flat.u) (dot local flat.v)
+
+        Just ((FeaturePiece feature) as piece) ->
+            let
+                local =
+                    sub (fromPoint point) feature.origin
+
+                x =
+                    dot local feature.ex
+
+                y =
+                    dot local feature.ey
+
+                rawTheta =
+                    atan2 y x
+
+                theta =
+                    case feature.sweep of
+                        Just { from, to } ->
+                            let
+                                middle =
+                                    (from + to) / 2
+                            in
+                            middle + wrapAngle (rawTheta - middle + pi) - pi
+
+                        Nothing ->
+                            rawTheta
+            in
+            localChart piece theta (profileParamUnclamped feature (x * cos theta + y * sin theta) (dot local feature.ez))
+
+        Nothing ->
+            { re = 0, im = 0 }
+
+
+{-| Index of the piece nearest to a point.
+-}
+nearestPiece : Point3d Meters coordinates -> Surface coordinates -> Maybe Int
+nearestPiece point surface =
+    nearest point surface |> Maybe.map .piece
+
+
+placeOnMap : Placement -> Complex -> Complex
+placeOnMap placement chart =
+    applyMobius placement.mobius
+        (if placement.exponent == 0 then
+            chart
+
+         else
+            cexp (cscale placement.exponent chart)
+        )
+
+
+{-| Lay the surface around a walker out flat, in meters, with the walker at the origin facing +y.
+
+Starting from the walker's piece, each neighbour is placed so that it meets its parent along their
+shared edge, nearest first, out to `radius`. Where a seam joins two charts by a Möbius
+transformation (a flat and a fillet along a straight edge, a flat and the hole along its rim) the
+pieces meet exactly. A rounded corner only fits its neighbours closely, so the map doesn't carry on
+through corners: what's behind one is reached round the sides instead.
+
+-}
+flattenAround : Float -> SurfacePoint -> Surface coordinates -> List Placement
+flattenAround radius (SurfacePoint point) (Surface { pieces, seams }) =
+    case Array.get point.piece pieces of
+        Just piece ->
+            let
+                exponent =
+                    pieceExponent piece
+
+                chart =
+                    localChart piece point.a point.b
+
+                q =
+                    if exponent == 0 then
+                        chart
+
+                    else
+                        cexp (cscale exponent chart)
+
+                -- d(map input)/d(chart)
+                dq =
+                    if exponent == 0 then
+                        { re = 1, im = 0 }
+
+                    else
+                        cscale exponent q
+
+                -- d(chart)/d(distance walked along the heading)
+                rho =
+                    case piece of
+                        FlatPiece _ ->
+                            1
+
+                        FeaturePiece feature ->
+                            max minimumRadius (profileAt feature point.b).r
+
+                dChart =
+                    cscale (1 / rho) { re = cos point.heading, im = sin point.heading }
+
+                -- Walking forward should move up the map at one meter per meter
+                scaleAndTurn =
+                    cdiv { re = 0, im = 1 } (cmul dq dChart)
+
+                -- A ring like the hole can be laid out with either end outside and the other end turned
+                -- inside out (inversion 0 lays out q, 1 lays out 1 / q). Keep whichever end the
+                -- walker is nearer the right way out, so the map doesn't change when they step onto
+                -- the ring.
+                inversion =
+                    case piece of
+                        FeaturePiece feature ->
+                            if exponent == 0 || abs (profileAt feature 0).r < tolerance || abs (profileAt feature feature.length).r < tolerance then
+                                0
+
+                            else if (sigmaAt feature point.b - sigmaAt feature 0 < (sigmaAt feature feature.length - sigmaAt feature 0) / 2) == (exponent > 0) then
+                                1
+
+                            else
+                                0
+
+                        FlatPiece _ ->
+                            0
+
+                start =
+                    { piece = point.piece
+                    , exponent = exponent
+                    , mobius =
+                        { a = scaleAndTurn
+                        , b = cmul scaleAndTurn q |> cscale -1
+                        , c = cdiv { re = inversion, im = 0 } q
+                        , d = { re = 1 - inversion, im = 0 }
+                        }
+                    , distance = 0
+                    , window = fullWindow
+                    }
+            in
+            flattenHelper radius pieces seams [ { placement = start, enteredThrough = -1, route = [ point.piece ] } ] [ start ]
+
+        Nothing ->
+            []
+
+
+maxPlacements : Int
+maxPlacements =
+    48
+
+
+maxPlacementsPerPiece : Int
+maxPlacementsPerPiece =
+    6
+
+
+{-| Breadth first by distance from the walker. Each queued placement remembers the edge it was
+entered through and the pieces on the way to it. A piece is never placed twice along one route,
+which stops routes from circling a corner forever.
+-}
+flattenHelper :
+    Float
+    -> Array Piece
+    -> Array (Array (Maybe ( Int, Int )))
+    -> List { placement : Placement, enteredThrough : Int, route : List Int }
+    -> List Placement
+    -> List Placement
+flattenHelper radius pieces seams queue placed =
+    case List.sortBy (.placement >> .distance) queue of
+        [] ->
+            List.reverse placed
+
+        { placement, enteredThrough, route } :: rest ->
+            case Array.get placement.piece pieces of
+                Just parentPiece ->
+                    if hasPole parentPiece && List.length route > 1 then
+                        -- A rounded corner can't be fitted exactly to its neighbours, so the map
+                        -- doesn't carry on through one. What's behind it is reached the other way,
+                        -- through the edges either side, which do fit exactly.
+                        flattenHelper radius pieces seams rest placed
+
+                    else
+                        let
+                            ( newQueue, newPlaced ) =
+                                List.range 0 (edgeCount parentPiece - 1)
+                                    |> List.foldl
+                                        (\edgeIndex ( queueAcc, placedAcc ) ->
+                                            case
+                                                Array.get placement.piece seams
+                                                    |> Maybe.andThen (Array.get edgeIndex)
+                                                    |> Maybe.andThen identity
+                                            of
+                                                Just ( childIndex, childEdge ) ->
+                                                    if edgeIndex == enteredThrough || List.member childIndex route || List.length placedAcc >= maxPlacements then
+                                                        ( queueAcc, placedAcc )
+
+                                                    else
+                                                        case Array.get childIndex pieces |> Maybe.andThen (placeChild radius placement parentPiece edgeIndex childIndex childEdge) of
+                                                            Just child ->
+                                                                if isNewPlacement child placedAcc then
+                                                                    ( { placement = child, enteredThrough = childEdge, route = childIndex :: route } :: queueAcc
+                                                                    , child :: placedAcc
+                                                                    )
+
+                                                                else
+                                                                    ( queueAcc, placedAcc )
+
+                                                            Nothing ->
+                                                                ( queueAcc, placedAcc )
+
+                                                Nothing ->
+                                                    ( queueAcc, placedAcc )
+                                        )
+                                        ( rest, placed )
+                        in
+                        flattenHelper radius pieces seams newQueue newPlaced
+
+                Nothing ->
+                    flattenHelper radius pieces seams rest placed
+
+
+isNewPlacement : Placement -> List Placement -> Bool
+isNewPlacement child placed =
+    let
+        samePiece =
+            List.filter (\p -> p.piece == child.piece) placed
+
+        probe placement =
+            [ { re = 0.1, im = 0.2 }, { re = -0.3, im = 0.05 } ] |> List.map (placeOnMap placement)
+
+        childProbe =
+            probe child
+    in
+    List.length samePiece
+        < maxPlacementsPerPiece
+        && List.all
+            (\other ->
+                (List.map2 (\p q -> cabs (csub p q)) (probe other) childProbe
+                    |> List.any (\d -> d > 1.0e-3 || isNaN d)
+                )
+                    || abs (wrapAngle (other.window.center - child.window.center + pi) - pi)
+                    > 1.0e-3
+                    || abs (min pi other.window.halfWidth - min pi child.window.halfWidth)
+                    > 1.0e-3
+            )
+            samePiece
+
+
+placeChild : Float -> Placement -> Piece -> Int -> Int -> Int -> Piece -> Maybe Placement
+placeChild radius parent parentPiece edgeIndex childIndex childEdge childPiece =
+    let
+        exponent =
+            pieceExponent childPiece
+
+        childInput p =
+            let
+                located =
+                    locateOnEdge childPiece childEdge p
+
+                chart =
+                    localChart childPiece located.a located.b
+            in
+            if exponent == 0 then
+                chart
+
+            else
+                cexp (cscale exponent chart)
+
+        parentOutput p =
+            let
+                located =
+                    locateOnEdge parentPiece edgeIndex p
+            in
+            placeOnMap parent (localChart parentPiece located.a located.b)
+
+        -- Where the shared edge is on the map
+        edgeOnMap =
+            List.range 0 8
+                |> List.filterMap (\i -> edgeSample parentPiece edgeIndex (toFloat i / 8))
+                |> List.map parentOutput
+
+        distance =
+            List.foldl (\w nearestSoFar -> min (cabs w) nearestSoFar) (1 / 0) edgeOnMap
+
+        visible =
+            intersectWindows parent.window (windowOf edgeOnMap)
+
+        -- Pieces whose shared edge is less than a couple of pixels across aren't worth drawing (this
+        -- stops the copies of the world seen through the hole from nesting forever)
+        extent =
+            case edgeOnMap of
+                first :: _ ->
+                    List.foldl (\w largest -> max (cabs (csub w first)) largest) 0 edgeOnMap
+
+                [] ->
+                    0
+    in
+    case List.filterMap (edgeSample parentPiece edgeIndex) [ 0.15, 0.5, 0.85 ] of
+        [ p1, p2, p3 ] ->
+            let
+                (( f1, f2, f3 ) as from) =
+                    ( childInput p1, childInput p2, childInput p3 )
+
+                separated =
+                    cabs (csub f1 f2) > 1.0e-9 && cabs (csub f2 f3) > 1.0e-9 && cabs (csub f1 f3) > 1.0e-9
+            in
+            if separated && distance < radius && extent > radius * 0.02 then
+                Just
+                    { piece = childIndex
+                    , exponent = exponent
+                    , mobius = fitMobius from ( parentOutput p1, parentOutput p2, parentOutput p3 )
+                    , distance = max distance parent.distance
+                    , window = visible
+                    }
+
+            else
+                Nothing
+
+        _ ->
+            Nothing

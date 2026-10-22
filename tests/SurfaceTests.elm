@@ -119,6 +119,68 @@ suite =
                             Nothing ->
                                 Expect.fail "No surface point"
                     )
+        , describe "Flattening for the minimap"
+            [ test "The player is in the middle of the map, facing up, at one meter per meter" <|
+                \_ ->
+                    withSurface
+                        (\surface ->
+                            let
+                                start =
+                                    standAt surface ( -1.5, top, 1 ) ( -1.5, top, 0 )
+                            in
+                            Expect.all
+                                [ mapPosition surface start ( -1.5, top, 1 ) >> complexWithin 1.0e-9 (Just { re = 0, im = 0 })
+                                , mapPosition surface start ( -1.5, top, 0 ) >> complexWithin 1.0e-9 (Just { re = 0, im = 1 })
+                                , mapPosition surface start ( -2.5, top, 1 ) >> complexWithin 1.0e-9 (Just { re = -1, im = 0 })
+                                ]
+                                ()
+                        )
+            , test "Pieces meet without a gap where a face joins a rounded edge" <|
+                \_ ->
+                    withSurface
+                        (\surface ->
+                            let
+                                start =
+                                    standAt surface ( -1.5, top, 1 ) ( -1.5, top, 0 )
+
+                                edgeZ =
+                                    1.992144 - 0.198579
+                            in
+                            mapPosition surface start ( -1, top, edgeZ - 1.0e-6 ) ()
+                                |> complexWithin 1.0e-5 (mapPosition surface start ( -1, top - 1.0e-9, edgeZ + 1.0e-6 ) ())
+                        )
+            , test "Pieces meet without a gap at the rim of the hole" <|
+                \_ ->
+                    withSurface
+                        (\surface ->
+                            let
+                                start =
+                                    standAt surface ( 1.156, top, 1.5 ) ( 1.156, top, 0 )
+
+                                rimZ =
+                                    -0.2058 + 0.47524 + 0.30432
+                            in
+                            mapPosition surface start ( 1.156, top, rimZ + 1.0e-6 ) ()
+                                |> complexWithin 1.0e-5 (mapPosition surface start ( 1.156, top - 1.0e-9, rimZ - 1.0e-6 ) ())
+                        )
+            , test "The map doesn't jump when stepping into the hole" <|
+                \_ ->
+                    withSurface
+                        (\surface ->
+                            let
+                                rimZ =
+                                    -0.2058 + 0.47524 + 0.30432
+
+                                outside =
+                                    standAt surface ( 1.156, top, rimZ + 1.0e-4 ) ( 1.156, top, 0 )
+
+                                inside =
+                                    standAt surface ( 1.156, top - 1.0e-7, rimZ - 1.0e-4 ) ( 1.156, top, 0 )
+                            in
+                            mapPosition surface outside ( 0, top, 1 ) ()
+                                |> complexWithin 1.0e-3 (mapPosition surface inside ( 0, top, 1 ) ())
+                        )
+            ]
         , Test.fuzz pointNearWorld "The nearest surface point is its own nearest surface point" <|
             \point ->
                 withSurface
@@ -136,6 +198,46 @@ suite =
                                 Expect.fail "No position"
                     )
         ]
+
+
+standAt : Surface WorldCoordinate -> ( Float, Float, Float ) -> ( Float, Float, Float ) -> Maybe Surface.SurfacePoint
+standAt surface ( x, y, z ) ( tx, ty, tz ) =
+    Surface.nearestSurfacePoint (Point3d.meters x y z) surface
+        |> Maybe.map (Surface.pointTowards (Point3d.meters tx ty tz) surface)
+
+
+{-| Where a point goes on the map, using the copy of its piece placed first.
+-}
+mapPosition : Surface WorldCoordinate -> Maybe Surface.SurfacePoint -> ( Float, Float, Float ) -> () -> Maybe Surface.Complex
+mapPosition surface maybeStart ( x, y, z ) () =
+    let
+        point =
+            Point3d.meters x y z
+    in
+    Maybe.map2
+        (\start piece ->
+            Surface.flattenAround 3 start surface
+                |> List.filter (\placement -> placement.piece == piece)
+                |> List.head
+                |> Maybe.map (\placement -> Surface.placeOnMap placement (Surface.chartCoordinate surface piece point))
+        )
+        maybeStart
+        (Surface.nearestPiece point surface)
+        |> Maybe.andThen identity
+
+
+complexWithin : Float -> Maybe Surface.Complex -> Maybe Surface.Complex -> Expectation
+complexWithin tolerance maybeExpected maybeActual =
+    case ( maybeExpected, maybeActual ) of
+        ( Just expected, Just actual ) ->
+            if sqrt ((expected.re - actual.re) ^ 2 + (expected.im - actual.im) ^ 2) < tolerance then
+                Expect.pass
+
+            else
+                Expect.fail (Debug.toString actual ++ " is not within " ++ String.fromFloat tolerance ++ " of " ++ Debug.toString expected)
+
+        _ ->
+            Expect.fail "Not on the map"
 
 
 pointNearWorld : Fuzzer (Point3d Length.Meters WorldCoordinate)

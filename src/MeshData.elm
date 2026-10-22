@@ -1,11 +1,13 @@
-module MeshData exposing (ScreenCoordinate, WorldCoordinate, surface, webGlMesh)
+module MeshData exposing (ScreenCoordinate, WorldCoordinate, minimapMeshes, surface, webGlMesh)
 
+import Array exposing (Array)
 import Dict
 import Geometry.Interop.LinearAlgebra.Direction3d as Direction3d
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Math.Vector2 as Vec2
 import Math.Vector3 as Vec3
 import MeshBuilder exposing (Vertex)
+import Minimap
 import OBJ
 import OBJ.Types exposing (Mesh(..))
 import ObjData
@@ -70,10 +72,10 @@ snapToSurface surface_ vertex =
             vertex
 
 
-{-| The textured world model, with its vertices moved onto the surface.
+{-| The world model's vertices, moved onto the surface, and its triangles.
 -}
-webGlMesh : WebGL.Mesh Vertex
-webGlMesh =
+model : { vertices : List Vertex, indices : List ( Int, Int, Int ) }
+model =
     case OBJ.parseObjStringWith OBJ.defaultSettings ObjData.objData of
         Ok objFile ->
             case objFile |> Dict.values |> List.head |> Maybe.andThen (Dict.values >> List.head) of
@@ -81,19 +83,50 @@ webGlMesh =
                     let
                         { vertices, indices } =
                             getVerticesAndIndices mesh
-
-                        snapped =
-                            case surface of
-                                Ok surface_ ->
-                                    List.map (snapToSurface surface_) vertices
-
-                                Err _ ->
-                                    vertices
                     in
-                    MeshBuilder.VerticesAndIndices snapped indices |> MeshBuilder.toWebGlMesh
+                    { vertices =
+                        case surface of
+                            Ok surface_ ->
+                                List.map (snapToSurface surface_) vertices
+
+                            Err _ ->
+                                vertices
+                    , indices = indices
+                    }
 
                 Nothing ->
-                    WebGL.triangles []
+                    { vertices = [], indices = [] }
 
         Err _ ->
-            WebGL.triangles []
+            { vertices = [], indices = [] }
+
+
+{-| The textured world model.
+-}
+webGlMesh : WebGL.Mesh Vertex
+webGlMesh =
+    MeshBuilder.VerticesAndIndices model.vertices model.indices |> MeshBuilder.toWebGlMesh
+
+
+{-| The textured world model cut up by surface piece, for drawing the minimap.
+-}
+minimapMeshes : Array (WebGL.Mesh Minimap.Vertex)
+minimapMeshes =
+    case surface of
+        Ok surface_ ->
+            let
+                vertices =
+                    Array.fromList model.vertices
+            in
+            model.indices
+                |> List.filterMap
+                    (\( i0, i1, i2 ) ->
+                        Maybe.map3 (\v0 v1 v2 -> ( v0, v1, v2 ))
+                            (Array.get i0 vertices)
+                            (Array.get i1 vertices)
+                            (Array.get i2 vertices)
+                    )
+                |> Minimap.meshes surface_
+
+        Err _ ->
+            Array.empty
