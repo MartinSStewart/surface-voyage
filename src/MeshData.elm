@@ -1,19 +1,19 @@
-module MeshData exposing (ScreenCoordinate, WorldCoordinate, minimapMeshes, surface, webGlMesh)
+module MeshData exposing (ScreenCoordinate, WorldCoordinate, mapShapes, surface, webGlMesh)
 
-import Array exposing (Array)
 import Dict
 import Geometry.Interop.LinearAlgebra.Direction3d as Direction3d
 import Geometry.Interop.LinearAlgebra.Point3d as Point3d
 import Math.Vector2 as Vec2
 import Math.Vector3 as Vec3
 import MeshBuilder exposing (Vertex)
-import Minimap
 import OBJ
 import OBJ.Types exposing (Mesh(..))
 import ObjData
+import Shapes exposing (Shapes)
 import Surface exposing (Surface)
 import WebGL
 import World
+import WorldShapes
 
 
 type WorldCoordinate
@@ -108,25 +108,13 @@ webGlMesh =
     MeshBuilder.VerticesAndIndices model.vertices model.indices |> MeshBuilder.toWebGlMesh
 
 
-{-| The textured world model cut up by surface piece, for drawing the minimap.
+{-| The shapes drawn on the minimap, moved onto the surface.
 -}
-minimapMeshes : Minimap.Meshes
-minimapMeshes =
+mapShapes : Shapes
+mapShapes =
     case surface of
         Ok surface_ ->
-            let
-                vertices =
-                    Array.fromList model.vertices
-            in
-            model.indices
-                |> List.filterMap
-                    (\( i0, i1, i2 ) ->
-                        Maybe.map3 (\v0 v1 v2 -> ( v0, v1, v2 ))
-                            (Array.get i0 vertices)
-                            (Array.get i1 vertices)
-                            (Array.get i2 vertices)
-                    )
-                |> Minimap.meshes surface_
+            Shapes.prepare surface_ WorldShapes.walls WorldShapes.pavings
 
         Err _ ->
-            Minimap.emptyMeshes
+            Shapes.empty

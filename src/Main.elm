@@ -488,7 +488,7 @@ viewSuccessModel model =
                 , Element.Border.color (Element.rgb 0.95 0.95 0.95)
                 , Element.clip
                 ]
-                (Element.html (Html.Lazy.lazy4 Minimap.view model.surface MeshData.minimapMeshes model.texture model.minimapPoint))
+                (Element.html (Html.Lazy.lazy3 Minimap.view model.surface MeshData.mapShapes model.minimapPoint))
         ]
         (Element.html (View.view model MeshData.webGlMesh))
 

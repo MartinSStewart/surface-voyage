@@ -1,35 +1,31 @@
-module Minimap exposing (Meshes, Vertex, emptyMeshes, meshes, size, view)
+module Minimap exposing (size, view)
 
 {-| A map of the surface around the player, with the player in the middle facing up. Distances from
 the player are kept: a circle round the middle is everything that far away to walk to, walking
 straight.
 
-Flat faces and rounded edges unroll without stretching, so they are drawn whole from the textured
-world model, cut up by surface piece, with each vertex storing where it is in its piece's chart. The
-vertex shader moves them into place. Paths that cross the hole or a rounded corner bend, so beyond
-those the map is drawn from a fan of paths traced out from the player each frame, coloured by
-looking up where each point is in the world model.
+The map shows shapes on the surface (see `Shapes`): walls as lines and paving as filled areas. Each
+shape point near enough to the player is put on the map, sometimes in more than one place, as there
+can be more than one straight way to walk to it. Flat faces and rounded edges unroll without
+stretching, so points on those go where their piece is placed. Paths that cross the hole or a
+rounded corner bend, so beyond those, points are found among a fan of paths traced out from the
+player.
 
 -}
 
 import Array exposing (Array)
-import Environment
 import Html exposing (Html)
 import Html.Attributes
 import Length exposing (Length)
 import Math.Vector2 as Vec2 exposing (Vec2)
 import Math.Vector3 as Vec3 exposing (Vec3)
-import Math.Vector4 as Vec4 exposing (Vec4)
-import MeshBuilder
 import Pixels exposing (Pixels)
-import Point3d exposing (Point3d)
+import Point3d
 import Quantity exposing (Quantity)
+import Shapes exposing (ShapePoint, Shapes)
 import Surface exposing (Surface, SurfacePoint)
 import WebGL exposing (Shader)
-import WebGL.Settings
 import WebGL.Settings.Blend as Blend
-import WebGL.Settings.DepthTest
-import WebGL.Texture exposing (Texture)
 
 
 size : Quantity Int Pixels
@@ -44,393 +40,19 @@ viewRadius =
     Length.meters 3
 
 
-{-| Triangles longer than this are split before they go on the map, so that looking up a point in
-them finds a triangle close to the surface.
+{-| How wide walls are drawn, in pixels
 -}
-maxEdgeLength : Float
-maxEdgeLength =
-    0.25
+wallWidth : Float
+wallWidth =
+    2.5
 
 
-type alias Vertex =
-    { chart : Vec2
-    , uv : Vec2
-    }
+type alias MapPoint =
+    { x : Float, y : Float }
 
 
-type alias GridVertex =
-    { chart : Vec2
-    , uv : Vec2
-    , position : Vec3
-    }
-
-
-{-| More than any piece has, for giving each triangle its own id.
--}
-maxTrianglesPerPiece : Int
-maxTrianglesPerPiece =
-    1000000
-
-
-{-| The world model cut up by surface piece: a mesh per piece, and a way to look up the texture
-coordinate of a point on a piece from its chart coordinate.
--}
-type Meshes
-    = Meshes
-        { pieces : Array (WebGL.Mesh Vertex)
-        , lookup : Array Grid
-        }
-
-
-emptyMeshes : Meshes
-emptyMeshes =
-    Meshes { pieces = Array.empty, lookup = Array.empty }
-
-
-{-| A piece's triangles, bucketed by where they are in its chart.
--}
-type alias Grid =
-    { minRe : Float
-    , minIm : Float
-    , cellSize : Float
-    , columns : Int
-    , rows : Int
-    , cells : Array (List LookupTriangle)
-    }
-
-
-{-| A triangle in chart coordinates (corners (x0, y0), (x1, y1), (x2, y2)), with the inverse of its
-edge matrix for barycentric coordinates. `id` is unique across all pieces.
--}
-type alias LookupTriangle =
-    { id : Int
-    , x0 : Float
-    , y0 : Float
-    , x1 : Float
-    , y1 : Float
-    , x2 : Float
-    , y2 : Float
-    , m00 : Float
-    , m01 : Float
-    , m10 : Float
-    , m11 : Float
-
-    -- The texture coordinate at the first corner, and how it changes along the two edges
-    , u : Float
-    , v : Float
-    , du1 : Float
-    , dv1 : Float
-    , du2 : Float
-    , dv2 : Float
-
-    -- The first corner in 3D, and vectors giving the barycentric coordinates of a point in 3D
-    -- (projected onto the triangle's plane) relative to it
-    , corner : Vec3
-    , along1 : Vec3
-    , along2 : Vec3
-    }
-
-
-maxGridSize : Int
-maxGridSize =
-    256
-
-
-meshes : Surface coordinates -> List ( MeshBuilder.Vertex, MeshBuilder.Vertex, MeshBuilder.Vertex ) -> Meshes
-meshes surface triangles =
-    let
-        toMapVertex piece vertex =
-            let
-                position =
-                    Vec3.toRecord vertex.position
-
-                chart =
-                    Surface.chartCoordinate surface piece (Point3d.meters position.x position.y position.z)
-            in
-            { chart = Vec2.vec2 chart.re chart.im, uv = vertex.uv, position = vertex.position }
-
-        byPiece =
-            List.concatMap split triangles
-                |> List.foldl
-                    (\(( v0, v1, v2 ) as triangle) pieces ->
-                        let
-                            centroid =
-                                Vec3.add v0.position v1.position |> Vec3.add v2.position |> Vec3.scale (1 / 3) |> Vec3.toRecord
-                        in
-                        case Surface.nearestPiece (Point3d.meters centroid.x centroid.y centroid.z) surface of
-                            Just piece ->
-                                Array.set
-                                    piece
-                                    (( toMapVertex piece v0, toMapVertex piece v1, toMapVertex piece v2 )
-                                        :: (Array.get piece pieces |> Maybe.withDefault [])
-                                    )
-                                    pieces
-
-                            Nothing ->
-                                pieces
-                    )
-                    (Array.repeat (Surface.pieceCount surface) [])
-
-        forDrawing { chart, uv } =
-            { chart = chart, uv = uv }
-    in
-    Meshes
-        { pieces = Array.map (List.map (\( v0, v1, v2 ) -> ( forDrawing v0, forDrawing v1, forDrawing v2 )) >> WebGL.triangles) byPiece
-        , lookup = Array.indexedMap buildGrid byPiece
-        }
-
-
-buildGrid : Int -> List ( GridVertex, GridVertex, GridVertex ) -> Grid
-buildGrid piece triangles =
-    let
-        charts =
-            List.concatMap (\( v0, v1, v2 ) -> [ Vec2.toRecord v0.chart, Vec2.toRecord v1.chart, Vec2.toRecord v2.chart ]) triangles
-
-        minRe =
-            List.map .x charts |> List.minimum |> Maybe.withDefault 0
-
-        maxRe =
-            List.map .x charts |> List.maximum |> Maybe.withDefault 0
-
-        minIm =
-            List.map .y charts |> List.minimum |> Maybe.withDefault 0
-
-        maxIm =
-            List.map .y charts |> List.maximum |> Maybe.withDefault 0
-
-        -- About two cells per triangle
-        cellSize =
-            max 1.0e-6 (sqrt ((maxRe - minRe) * (maxIm - minIm) / toFloat (2 * max 1 (List.length triangles))))
-                |> max (max (maxRe - minRe) (maxIm - minIm) / toFloat maxGridSize)
-
-        columns =
-            floor ((maxRe - minRe) / cellSize) + 1
-
-        rows =
-            floor ((maxIm - minIm) / cellSize) + 1
-
-        cellOf re im =
-            ( clamp 0 (columns - 1) (floor ((re - minRe) / cellSize)), clamp 0 (rows - 1) (floor ((im - minIm) / cellSize)) )
-
-        insert ( id, ( v0, v1, v2 ) ) cells =
-            let
-                p0 =
-                    Vec2.toRecord v0.chart
-
-                p1 =
-                    Vec2.toRecord v1.chart
-
-                p2 =
-                    Vec2.toRecord v2.chart
-
-                e1x =
-                    p1.x - p0.x
-
-                e1y =
-                    p1.y - p0.y
-
-                e2x =
-                    p2.x - p0.x
-
-                e2y =
-                    p2.y - p0.y
-
-                determinant =
-                    e1x * e2y - e2x * e1y
-            in
-            if abs determinant < 1.0e-18 then
-                cells
-
-            else
-                let
-                    uv0 =
-                        Vec2.toRecord v0.uv
-
-                    uv1 =
-                        Vec2.toRecord v1.uv
-
-                    uv2 =
-                        Vec2.toRecord v2.uv
-
-                    q0 =
-                        v0.position
-
-                    e1 =
-                        Vec3.sub v1.position q0
-
-                    e2 =
-                        Vec3.sub v2.position q0
-
-                    g11 =
-                        Vec3.dot e1 e1
-
-                    g12 =
-                        Vec3.dot e1 e2
-
-                    g22 =
-                        Vec3.dot e2 e2
-
-                    gram =
-                        g11 * g22 - g12 * g12
-
-                    triangle =
-                        { id = piece * maxTrianglesPerPiece + id
-                        , x0 = p0.x
-                        , y0 = p0.y
-                        , x1 = p1.x
-                        , y1 = p1.y
-                        , x2 = p2.x
-                        , y2 = p2.y
-                        , m00 = e2y / determinant
-                        , m01 = -e2x / determinant
-                        , m10 = -e1y / determinant
-                        , m11 = e1x / determinant
-                        , u = uv0.x
-                        , v = uv0.y
-                        , du1 = uv1.x - uv0.x
-                        , dv1 = uv1.y - uv0.y
-                        , du2 = uv2.x - uv0.x
-                        , dv2 = uv2.y - uv0.y
-                        , corner = q0
-                        , along1 = Vec3.sub (Vec3.scale g22 e1) (Vec3.scale g12 e2) |> Vec3.scale (1 / gram)
-                        , along2 = Vec3.sub (Vec3.scale g11 e2) (Vec3.scale g12 e1) |> Vec3.scale (1 / gram)
-                        }
-
-                    ( c0, r0 ) =
-                        cellOf (min p0.x (min p1.x p2.x)) (min p0.y (min p1.y p2.y))
-
-                    ( c1, r1 ) =
-                        cellOf (max p0.x (max p1.x p2.x)) (max p0.y (max p1.y p2.y))
-                in
-                List.range r0 r1
-                    |> List.concatMap (\row -> List.range c0 c1 |> List.map (\column -> row * columns + column))
-                    |> List.foldl
-                        (\index acc -> Array.set index (triangle :: (Array.get index acc |> Maybe.withDefault [])) acc)
-                        cells
-    in
-    { minRe = minRe
-    , minIm = minIm
-    , cellSize = cellSize
-    , columns = columns
-    , rows = rows
-    , cells = List.foldl insert (Array.repeat (columns * rows) []) (List.indexedMap Tuple.pair triangles)
-    }
-
-
-{-| The triangle a chart coordinate is in, or failing that the nearest one in the same cell.
--}
-lookupTriangle : Grid -> Surface.Complex -> Maybe LookupTriangle
-lookupTriangle grid { re, im } =
-    let
-        column =
-            floor ((re - grid.minRe) / grid.cellSize)
-
-        row =
-            floor ((im - grid.minIm) / grid.cellSize)
-    in
-    if column < 0 || row < 0 || column >= grid.columns || row >= grid.rows then
-        Nothing
-
-    else
-        case Array.get (row * grid.columns + column) grid.cells of
-            Just candidates ->
-                closestTriangle re im candidates Nothing 0.5
-
-            Nothing ->
-                Nothing
-
-
-{-| The texture coordinate at a chart coordinate, by carrying the triangle's texture coordinates on
-across its plane.
--}
-uvIn : LookupTriangle -> Float -> Float -> { x : Float, y : Float }
-uvIn triangle re im =
-    let
-        dx =
-            re - triangle.x0
-
-        dy =
-            im - triangle.y0
-
-        l1 =
-            triangle.m00 * dx + triangle.m01 * dy
-
-        l2 =
-            triangle.m10 * dx + triangle.m11 * dy
-    in
-    { x = triangle.u + l1 * triangle.du1 + l2 * triangle.du2
-    , y = triangle.v + l1 * triangle.dv1 + l2 * triangle.dv2
-    }
-
-
-split : ( MeshBuilder.Vertex, MeshBuilder.Vertex, MeshBuilder.Vertex ) -> List ( MeshBuilder.Vertex, MeshBuilder.Vertex, MeshBuilder.Vertex )
-split ( v0, v1, v2 ) =
-    let
-        d01 =
-            Vec3.distance v0.position v1.position
-
-        d12 =
-            Vec3.distance v1.position v2.position
-
-        d20 =
-            Vec3.distance v2.position v0.position
-
-        midpoint a b =
-            { position = Vec3.add a.position b.position |> Vec3.scale 0.5
-            , normal = a.normal
-            , uv = Vec2.add a.uv b.uv |> Vec2.scale 0.5
-            }
-    in
-    if max d01 (max d12 d20) <= maxEdgeLength then
-        [ ( v0, v1, v2 ) ]
-
-    else if d01 >= d12 && d01 >= d20 then
-        split ( v0, midpoint v0 v1, v2 ) ++ split ( midpoint v0 v1, v1, v2 )
-
-    else if d12 >= d20 then
-        split ( v0, v1, midpoint v1 v2 ) ++ split ( v0, midpoint v1 v2, v2 )
-
-    else
-        split ( v0, v1, midpoint v2 v0 ) ++ split ( midpoint v2 v0, v1, v2 )
-
-
-{-| The first triangle containing the point, or failing that the one it's least far outside.
--}
-closestTriangle : Float -> Float -> List LookupTriangle -> Maybe LookupTriangle -> Float -> Maybe LookupTriangle
-closestTriangle re im candidates best bestOutside =
-    case candidates of
-        triangle :: rest ->
-            let
-                dx =
-                    re - triangle.x0
-
-                dy =
-                    im - triangle.y0
-
-                l1 =
-                    triangle.m00 * dx + triangle.m01 * dy
-
-                l2 =
-                    triangle.m10 * dx + triangle.m11 * dy
-
-                outside =
-                    max 0 -l1 + max 0 -l2 + max 0 (l1 + l2 - 1)
-            in
-            if outside <= 0 then
-                Just triangle
-
-            else if outside < bestOutside then
-                closestTriangle re im rest (Just triangle) outside
-
-            else
-                closestTriangle re im rest best bestOutside
-
-        [] ->
-            best
-
-
-view : Surface coordinates -> Meshes -> Texture -> SurfacePoint -> Html msg
-view surface (Meshes { pieces, lookup }) texture surfacePoint =
+view : Surface coordinates -> Shapes -> SurfacePoint -> Html msg
+view surface shapes surfacePoint =
     let
         sizeInPixels =
             Pixels.inPixels size
@@ -441,64 +63,140 @@ view surface (Meshes { pieces, lookup }) texture surfacePoint =
         layout =
             Surface.mapAround radius surfacePoint surface
 
-        terrain index placement =
-            case Array.get placement.piece pieces of
-                Just mesh ->
-                    Just
-                        (WebGL.entityWith
-                            [ WebGL.Settings.DepthTest.less { write = True, near = 0, far = 1 } ]
-                            terrainVS
-                            terrainFS
-                            mesh
-                            { texture = texture
-                            , scale = complex placement.scale |> Vec2.scale (1 / radius)
-                            , offset = complex placement.offset |> Vec2.scale (1 / radius)
-                            , depth = placement.distance / radius / 4 + toFloat index * 1.0e-4
-                            , window = Vec2.vec2 placement.window.center placement.window.halfWidth
-                            , hole =
-                                case placement.hole of
-                                    Just hole ->
-                                        Vec3.vec3 (hole.center.re / radius) (hole.center.im / radius) (hole.radius / radius)
+        images =
+            case Surface.worldPosition surfacePoint surface of
+                Just position ->
+                    let
+                        player =
+                            Point3d.toMeters position
 
-                                    Nothing ->
-                                        Vec3.vec3 0 0 0
-                            , tint = tint index
-                            }
-                        )
+                        throughPlacements =
+                            Array.map
+                                (\point ->
+                                    if distance point.position player <= radius + 0.05 then
+                                        List.filterMap (placementImage radius point) layout.placements
+                                            |> List.foldl addImage []
+
+                                    else
+                                        []
+                                )
+                                shapes.points
+                    in
+                    fanTriangles layout.fan |> List.foldl (addFanImages shapes) throughPlacements
 
                 Nothing ->
-                    Nothing
+                    Array.empty
+
+        withImages index =
+            Maybe.map2 Tuple.pair (Array.get index shapes.points) (Array.get index images)
+
+        walls =
+            shapes.walls
+                |> List.concatMap (\wall -> wallQuads (wallWidth / toFloat sizeInPixels * 2 * radius) (List.filterMap withImages wall))
+
+        paving =
+            shapes.pavingTriangles
+                |> List.concatMap
+                    (\( i, j, k ) ->
+                        Maybe.map3 pavingTriangles (withImages i) (withImages j) (withImages k)
+                            |> Maybe.withDefault []
+                    )
     in
     WebGL.toHtmlWith
-        [ WebGL.alpha True, WebGL.antialias, WebGL.depth 1, WebGL.clearColor 0.12 0.14 0.18 1 ]
+        [ WebGL.alpha True, WebGL.antialias, WebGL.clearColor (144 / 255) (187 / 255) (146 / 255) 1 ]
         [ Html.Attributes.width sizeInPixels
         , Html.Attributes.height sizeInPixels
         , Html.Attributes.style "display" "block"
         ]
-        (WebGL.entityWith
-            [ WebGL.Settings.DepthTest.less { write = True, near = 0, far = 1 } ]
-            fanVS
-            fanFS
-            (fanMesh lookup radius layout.fan)
-            { texture = texture, tint = fanTint }
-            :: (List.indexedMap terrain layout.placements |> List.filterMap identity)
-            ++ [ WebGL.entityWith
-                    [ Blend.add Blend.one Blend.oneMinusSrcAlpha ]
-                    markerVS
-                    markerFS
-                    playerMarker
-                    {}
-               ]
-        )
+        [ WebGL.entity shapeVS shapeFS (toMesh radius paving) { color = Vec3.vec3 (187 / 255) (157 / 255) (72 / 255) }
+        , WebGL.entity shapeVS shapeFS (toMesh radius walls) { color = Vec3.vec3 0 0 0 }
+        , WebGL.entityWith
+            [ Blend.add Blend.one Blend.oneMinusSrcAlpha ]
+            markerVS
+            markerFS
+            playerMarker
+            {}
+        ]
 
 
-{-| Map position and texture coordinate in one attribute, as making each attribute takes a while.
-`clip` is where the vertex is relative to a world model triangle (barycentric coordinates): the
-fragment shader leaves out what's outside that triangle. Its third part is the depth.
+
+---- WHERE POINTS GO ----
+
+
+{-| Where a point goes on the map through a placed piece, if that part of the piece is shown.
 -}
-type alias FanVertex =
-    { positionAndUv : Vec4
-    , clip : Vec3
+placementImage : Float -> ShapePoint -> Surface.Placement -> Maybe MapPoint
+placementImage radius point placement =
+    if placement.piece /= point.piece then
+        Nothing
+
+    else
+        let
+            w =
+                Surface.placeOnMap placement point.chart
+
+            lengthSquared =
+                w.re * w.re + w.im * w.im
+
+            inWindow =
+                placement.window.halfWidth >= pi || abs (angleBetween (atan2 w.im w.re) placement.window.center) <= placement.window.halfWidth + 0.002
+
+            behindHole =
+                case placement.hole of
+                    Just hole ->
+                        let
+                            t =
+                                if lengthSquared > 0 then
+                                    clamp 0 1 ((hole.center.re * w.re + hole.center.im * w.im) / lengthSquared)
+
+                                else
+                                    0
+                        in
+                        (t * w.re - hole.center.re) ^ 2 + (t * w.im - hole.center.im) ^ 2 < hole.radius * hole.radius
+
+                    Nothing ->
+                        False
+        in
+        if inWindow && not behindHole && lengthSquared < (1.2 * radius) ^ 2 then
+            Just { x = w.re, y = w.im }
+
+        else
+            Nothing
+
+
+{-| From one angle to another, between -pi and pi.
+-}
+angleBetween : Float -> Float -> Float
+angleBetween a b =
+    let
+        d =
+            a - b + pi
+    in
+    d - 2 * pi * toFloat (floor (d / (2 * pi))) - pi
+
+
+{-| A point traced on the fan. `map` is in meters.
+-}
+type alias FanPoint =
+    { map : MapPoint
+    , position : Vec
+    , chart : Surface.Complex
+    , piece : Int
+    }
+
+
+type alias Vec =
+    { x : Float, y : Float, z : Float }
+
+
+{-| A fan triangle, and the box round it with `maxOffSurface` to spare.
+-}
+type alias FanTriangle =
+    { a : FanPoint
+    , b : FanPoint
+    , c : FanPoint
+    , min : Vec
+    , max : Vec
     }
 
 
@@ -511,15 +209,9 @@ maxFanEdge =
 
 
 {-| Triangles between neighbouring fan paths, `Surface.fanSpacing` meters long.
-
-The world model's texture is cut up into many small islands (the hole's wall especially), so
-blending texture coordinates across a fan triangle would show whatever lies between the islands.
-Instead each fan triangle is cut along the world model's triangles, and each bit takes its texture
-from its own triangle.
-
 -}
-fanMesh : Array Grid -> Float -> List (List Surface.FanRay) -> WebGL.Mesh FanVertex
-fanMesh lookup radius groups =
+fanTriangles : List (List Surface.FanRay) -> List FanTriangle
+fanTriangles groups =
     let
         pointsOf ray =
             { first = ray.firstSample
@@ -528,30 +220,14 @@ fanMesh lookup radius groups =
                     |> List.indexedMap
                         (\i sample ->
                             let
-                                distance =
-                                    toFloat (ray.firstSample + i) * Surface.fanSpacing / radius
+                                distanceOnMap =
+                                    toFloat (ray.firstSample + i) * Surface.fanSpacing
                             in
-                            case Array.get sample.piece lookup |> Maybe.andThen (\grid -> lookupTriangle grid sample.chart) of
-                                Just triangle ->
-                                    let
-                                        map =
-                                            { x = distance * cos ray.angle, y = distance * sin ray.angle }
-
-                                        uv =
-                                            uvIn triangle sample.chart.re sample.chart.im
-                                    in
-                                    Just
-                                        { map = map
-                                        , uv = uv
-                                        , vertex = fanVertex map uv
-                                        , position = sample.position
-                                        , chart = sample.chart
-                                        , triangle = triangle
-                                        , piece = sample.piece
-                                        }
-
-                                Nothing ->
-                                    Nothing
+                            { map = { x = distanceOnMap * cos ray.angle, y = distanceOnMap * sin ray.angle }
+                            , position = sample.position
+                            , chart = sample.chart
+                            , piece = sample.piece
+                            }
                         )
                     |> Array.fromList
             }
@@ -564,48 +240,53 @@ fanMesh lookup radius groups =
                 [] ->
                     triangles
     in
-    List.foldl addGroup [] groups |> WebGL.triangles
-
-
-type alias FanPoint =
-    { map : { x : Float, y : Float }
-    , uv : { x : Float, y : Float }
-    , vertex : FanVertex
-    , position : { x : Float, y : Float, z : Float }
-    , chart : Surface.Complex
-    , triangle : LookupTriangle
-    , piece : Int
-    }
+    List.foldl addGroup [] groups
 
 
 {-| Add the triangles between two neighbouring fan paths.
 -}
 between :
-    { first : Int, points : Array (Maybe FanPoint) }
-    -> { first : Int, points : Array (Maybe FanPoint) }
-    -> List ( FanVertex, FanVertex, FanVertex )
-    -> List ( FanVertex, FanVertex, FanVertex )
+    { first : Int, points : Array FanPoint }
+    -> { first : Int, points : Array FanPoint }
+    -> List FanTriangle
+    -> List FanTriangle
 between left right triangles =
     let
         last =
             min (left.first + Array.length left.points) (right.first + Array.length right.points) - 2
 
         at ray j =
-            Array.get (j - ray.first) ray.points |> Maybe.andThen identity
+            Array.get (j - ray.first) ray.points
+
+        add a b c acc =
+            if near a.position b.position && near b.position c.position && near c.position a.position then
+                { a = a
+                , b = b
+                , c = c
+                , min =
+                    { x = min a.position.x (min b.position.x c.position.x) - maxOffSurface
+                    , y = min a.position.y (min b.position.y c.position.y) - maxOffSurface
+                    , z = min a.position.z (min b.position.z c.position.z) - maxOffSurface
+                    }
+                , max =
+                    { x = max a.position.x (max b.position.x c.position.x) + maxOffSurface
+                    , y = max a.position.y (max b.position.y c.position.y) + maxOffSurface
+                    , z = max a.position.z (max b.position.z c.position.z) + maxOffSurface
+                    }
+                }
+                    :: acc
+
+            else
+                acc
 
         go j acc =
             if j > last then
                 acc
 
             else
-                case ( at left j, at right j ) of
-                    ( Just a, Just b ) ->
-                        case ( at right (j + 1), at left (j + 1) ) of
-                            ( Just c, Just d ) ->
-                                go (j + 1) (addTriangle a c d (addTriangle a b c acc))
-
-                            _ ->
-                                go (j + 1) acc
+                case ( ( at left j, at right j ), ( at right (j + 1), at left (j + 1) ) ) of
+                    ( ( Just a, Just b ), ( Just c, Just d ) ) ->
+                        go (j + 1) (add a c d (add a b c acc))
 
                     _ ->
                         go (j + 1) acc
@@ -613,270 +294,291 @@ between left right triangles =
     go (max left.first right.first) triangles
 
 
-addTriangle : FanPoint -> FanPoint -> FanPoint -> List ( FanVertex, FanVertex, FanVertex ) -> List ( FanVertex, FanVertex, FanVertex )
-addTriangle a b c triangles =
-    if not (near a.position b.position && near b.position c.position && near c.position a.position) then
-        triangles
-
-    else if sameIsland a b && sameIsland a c && sameIsland b c then
-        ( a.vertex, b.vertex, c.vertex ) :: triangles
-
-    else
-        cutAlongModel a b c triangles
-
-
-{-| Whether two fan points' texture coordinates can be blended: they're in the same world model
-triangle, or carrying one's triangle on to the other gets close to the other's texture coordinate.
-Carrying on goes through 3D, as the two may be on different pieces.
--}
-sameIsland : FanPoint -> FanPoint -> Bool
-sameIsland p q =
-    if p.triangle.id == q.triangle.id then
-        True
-
-    else
-        let
-            ( l1, l2 ) =
-                barycentric p.triangle q.position
-
-            carried =
-                { x = p.triangle.u + l1 * p.triangle.du1 + l2 * p.triangle.du2
-                , y = p.triangle.v + l1 * p.triangle.dv1 + l2 * p.triangle.dv2
-                }
-        in
-        abs (carried.x - q.uv.x) + abs (carried.y - q.uv.y) < islandTolerance
-
-
-{-| Where a point in 3D is relative to a world model triangle (after being projected onto its
-plane), as the weights of its second and third corners.
--}
-barycentric : LookupTriangle -> { x : Float, y : Float, z : Float } -> ( Float, Float )
-barycentric triangle position =
-    let
-        offset =
-            Vec3.sub (Vec3.fromRecord position) triangle.corner
-    in
-    ( Vec3.dot triangle.along1 offset, Vec3.dot triangle.along2 offset )
-
-
-{-| How far apart, in texture coordinates, two estimates of the same point's texture coordinate can
-be and still be on the same island of the texture.
--}
-islandTolerance : Float
-islandTolerance =
-    0.01
-
-
-fanVertex : { x : Float, y : Float } -> { x : Float, y : Float } -> FanVertex
-fanVertex map uv =
-    { positionAndUv = Vec4.vec4 map.x map.y uv.x uv.y, clip = noClip }
-
-
-{-| A fan triangle once for each world model triangle its corners are in, coloured from that
-triangle's texture coordinates carried on across the whole fan triangle, and cut down to that
-triangle by the fragment shader. This is worked out in 3D, as the corners may be on different
-pieces. A fan triangle is about as big as these, so it seldom reaches into any others, and if it
-does the same triangle in one colour behind covers the gap.
--}
-cutAlongModel : FanPoint -> FanPoint -> FanPoint -> List ( FanVertex, FanVertex, FanVertex ) -> List ( FanVertex, FanVertex, FanVertex )
-cutAlongModel a b c triangles =
-    let
-        models =
-            a.triangle
-                :: (if b.triangle.id /= a.triangle.id then
-                        [ b.triangle ]
-
-                    else
-                        []
-                   )
-                ++ (if c.triangle.id /= a.triangle.id && c.triangle.id /= b.triangle.id then
-                        [ c.triangle ]
-
-                    else
-                        []
-                   )
-
-        cut model p =
-            let
-                ( l1, l2 ) =
-                    barycentric model p.position
-            in
-            { positionAndUv =
-                Vec4.vec4
-                    p.map.x
-                    p.map.y
-                    (model.u + l1 * model.du1 + l2 * model.du2)
-                    (model.v + l1 * model.dv1 + l2 * model.dv2)
-            , clip = Vec3.vec3 l1 l2 cutDepth
-            }
-
-        -- The middle of a model triangle, well away from the edge of its island
-        fill p =
-            { positionAndUv =
-                Vec4.vec4
-                    p.map.x
-                    p.map.y
-                    (a.triangle.u + (a.triangle.du1 + a.triangle.du2) / 3)
-                    (a.triangle.v + (a.triangle.dv1 + a.triangle.dv2) / 3)
-            , clip = fillClip
-            }
-    in
-    List.foldl (\model acc -> ( cut model a, cut model b, cut model c ) :: acc)
-        (( fill a, fill b, fill c ) :: triangles)
-        models
-
-
-cutDepth : Float
-cutDepth =
-    0.6
-
-
-{-| Keeps everything, behind the cut triangles.
--}
-fillClip : Vec3
-fillClip =
-    Vec3.vec3 0.25 0.25 0.62
-
-
-{-| Keeps everything, in front.
--}
-noClip : Vec3
-noClip =
-    Vec3.vec3 0.25 0.25 cutDepth
-
-
-near : { x : Float, y : Float, z : Float } -> { x : Float, y : Float, z : Float } -> Bool
+near : Vec -> Vec -> Bool
 near p q =
-    (p.x - q.x) ^ 2 + (p.y - q.y) ^ 2 + (p.z - q.z) ^ 2 < maxFanEdge * maxFanEdge
+    distance p q < maxFanEdge
 
 
-{-| In debug builds each placed piece is tinted a different colour, to show how the map is pieced
-together.
+{-| Add where the shape points in a fan triangle go on the map.
 -}
-tint : Int -> Vec4
-tint index =
-    if Environment.isDebug then
-        let
-            hue =
-                toFloat index * 0.618034 - toFloat (floor (toFloat index * 0.618034))
-        in
-        Vec4.vec4 (0.5 + 0.5 * cos (2 * pi * hue)) (0.5 + 0.5 * cos (2 * pi * (hue - 1 / 3))) (0.5 + 0.5 * cos (2 * pi * (hue - 2 / 3))) 0.4
+addFanImages : Shapes -> FanTriangle -> Array (List MapPoint) -> Array (List MapPoint)
+addFanImages shapes triangle images =
+    Shapes.pointsWithin { min = triangle.min, max = triangle.max } shapes
+        |> List.foldl
+            (\index acc ->
+                case Array.get index shapes.points |> Maybe.andThen (fanImage triangle) of
+                    Just image ->
+                        Array.set index (addImage image (Array.get index acc |> Maybe.withDefault [])) acc
+
+                    Nothing ->
+                        acc
+            )
+            images
+
+
+{-| A point further than this from a fan triangle, in meters, is on some other part of the surface.
+-}
+maxOffSurface : Float
+maxOffSurface =
+    0.05
+
+
+fanImage : FanTriangle -> ShapePoint -> Maybe MapPoint
+fanImage { a, b, c, min, max } point =
+    let
+        p =
+            point.position
+
+        weights () =
+            if a.piece == point.piece && b.piece == point.piece && c.piece == point.piece then
+                -- In the piece's chart, where the fan's points were found
+                let
+                    e1x =
+                        b.chart.re - a.chart.re
+
+                    e1y =
+                        b.chart.im - a.chart.im
+
+                    e2x =
+                        c.chart.re - a.chart.re
+
+                    e2y =
+                        c.chart.im - a.chart.im
+
+                    dx =
+                        point.chart.re - a.chart.re
+
+                    dy =
+                        point.chart.im - a.chart.im
+
+                    determinant =
+                        e1x * e2y - e2x * e1y
+                in
+                if abs determinant < 1.0e-14 then
+                    Nothing
+
+                else
+                    Just ( (e2y * dx - e2x * dy) / determinant, (e1x * dy - e1y * dx) / determinant )
+
+            else
+                -- Across pieces, in 3D
+                let
+                    e1 =
+                        sub b.position a.position
+
+                    e2 =
+                        sub c.position a.position
+
+                    d =
+                        sub point.position a.position
+
+                    g11 =
+                        dot e1 e1
+
+                    g12 =
+                        dot e1 e2
+
+                    g22 =
+                        dot e2 e2
+
+                    gram =
+                        g11 * g22 - g12 * g12
+
+                    l1 =
+                        (g22 * dot e1 d - g12 * dot e2 d) / gram
+
+                    l2 =
+                        (g11 * dot e2 d - g12 * dot e1 d) / gram
+
+                    off =
+                        { x = d.x - l1 * e1.x - l2 * e2.x, y = d.y - l1 * e1.y - l2 * e2.y, z = d.z - l1 * e1.z - l2 * e2.z }
+                in
+                if gram < 1.0e-14 || dot off off > maxOffSurface * maxOffSurface then
+                    Nothing
+
+                else
+                    Just ( l1, l2 )
+    in
+    case
+        if p.x < min.x || p.x > max.x || p.y < min.y || p.y > max.y || p.z < min.z || p.z > max.z then
+            Nothing
+
+        else
+            weights ()
+    of
+        Just ( l1, l2 ) ->
+            if l1 >= -1.0e-3 && l2 >= -1.0e-3 && l1 + l2 <= 1.001 then
+                Just
+                    { x = a.map.x + l1 * (b.map.x - a.map.x) + l2 * (c.map.x - a.map.x)
+                    , y = a.map.y + l1 * (b.map.y - a.map.y) + l2 * (c.map.y - a.map.y)
+                    }
+
+            else
+                Nothing
+
+        Nothing ->
+            Nothing
+
+
+{-| Images closer than this, in meters, are the same one found twice (in two fan triangles that
+share an edge, or in the fan and a placed piece both).
+-}
+sameImage : Float
+sameImage =
+    0.02
+
+
+addImage : MapPoint -> List MapPoint -> List MapPoint
+addImage image images =
+    if List.any (\other -> mapDistance image other < sameImage) images then
+        images
 
     else
-        Vec4.vec4 0 0 0 0
+        image :: images
 
 
-{-| In debug builds the fan is tinted too.
+
+---- DRAWING ----
+
+
+{-| Two images of neighbouring shape points belong together if they're no further apart on the map
+than this many times their distance on the surface (plus `sameImage`). Away from the player the map
+stretches sideways, but images of the same point reached different ways are much further apart.
 -}
-fanTint : Vec4
-fanTint =
-    if Environment.isDebug then
-        Vec4.vec4 1 0 1 0.3
-
-    else
-        Vec4.vec4 0 0 0 0
+maxStretch : Float
+maxStretch =
+    4
 
 
-complex : Surface.Complex -> Vec2
-complex { re, im } =
-    Vec2.vec2 re im
+closestMatch : Float -> MapPoint -> List MapPoint -> Maybe MapPoint
+closestMatch surfaceDistance image candidates =
+    candidates
+        |> List.map (\candidate -> ( mapDistance image candidate, candidate ))
+        |> List.filter (\( d, _ ) -> d <= maxStretch * surfaceDistance + sameImage)
+        |> List.sortBy Tuple.first
+        |> List.head
+        |> Maybe.map Tuple.second
 
 
-type alias Uniforms =
-    { texture : Texture
-    , scale : Vec2
-    , offset : Vec2
-    , depth : Float
-    , window : Vec2
-    , hole : Vec3
-    , tint : Vec4
-    }
+{-| Each wall segment as a quad, made longer by half the width at each end so that corners are
+filled.
+-}
+wallQuads : Float -> List ( ShapePoint, List MapPoint ) -> List ( MapPoint, MapPoint, MapPoint )
+wallQuads width points =
+    case points of
+        ( p, pImages ) :: ((( q, qImages ) :: _) as rest) ->
+            List.concatMap
+                (\a ->
+                    case closestMatch (distance p.position q.position) a qImages of
+                        Just b ->
+                            quad width a b
+
+                        Nothing ->
+                            []
+                )
+                pImages
+                ++ wallQuads width rest
+
+        _ ->
+            []
 
 
-terrainVS : Shader Vertex Uniforms { uv_ : Vec2, w : Vec2 }
-terrainVS =
+quad : Float -> MapPoint -> MapPoint -> List ( MapPoint, MapPoint, MapPoint )
+quad width a b =
+    let
+        length =
+            max 1.0e-9 (mapDistance a b)
+
+        ux =
+            (b.x - a.x) / length * width / 2
+
+        uy =
+            (b.y - a.y) / length * width / 2
+
+        corner s t p =
+            { x = p.x + s * ux - t * uy, y = p.y + s * uy + t * ux }
+
+        a1 =
+            corner -1 1 a
+
+        a2 =
+            corner -1 -1 a
+
+        b1 =
+            corner 1 1 b
+
+        b2 =
+            corner 1 -1 b
+    in
+    [ ( a1, a2, b2 ), ( a1, b2, b1 ) ]
+
+
+pavingTriangles : ( ShapePoint, List MapPoint ) -> ( ShapePoint, List MapPoint ) -> ( ShapePoint, List MapPoint ) -> List ( MapPoint, MapPoint, MapPoint )
+pavingTriangles ( p, pImages ) ( q, qImages ) ( r, rImages ) =
+    List.filterMap
+        (\a ->
+            case ( closestMatch (distance p.position q.position) a qImages, closestMatch (distance p.position r.position) a rImages ) of
+                ( Just b, Just c ) ->
+                    if mapDistance b c <= maxStretch * distance q.position r.position + sameImage then
+                        Just ( a, b, c )
+
+                    else
+                        Nothing
+
+                _ ->
+                    Nothing
+        )
+        pImages
+
+
+toMesh : Float -> List ( MapPoint, MapPoint, MapPoint ) -> WebGL.Mesh { position : Vec2 }
+toMesh radius triangles =
+    let
+        vertex p =
+            { position = Vec2.vec2 (p.x / radius) (p.y / radius) }
+    in
+    triangles |> List.map (\( a, b, c ) -> ( vertex a, vertex b, vertex c )) |> WebGL.triangles
+
+
+shapeVS : Shader { position : Vec2 } { color : Vec3 } {}
+shapeVS =
     [glsl|
-        attribute vec2 chart;
-        attribute vec2 uv;
-        uniform vec2 scale;
-        uniform vec2 offset;
-        uniform float depth;
-        varying vec2 uv_;
-        varying vec2 w;
-
+        attribute vec2 position;
         void main () {
-            w = vec2(scale.x * chart.x - scale.y * chart.y, scale.x * chart.y + scale.y * chart.x) + offset;
-            gl_Position = vec4(w, depth * 2.0 - 1.0, 1.0);
-            uv_ = uv;
+            gl_Position = vec4(position, 0.0, 1.0);
         }
     |]
 
 
-terrainFS : Shader {} Uniforms { uv_ : Vec2, w : Vec2 }
-terrainFS =
+shapeFS : Shader {} { color : Vec3 } {}
+shapeFS =
     [glsl|
         precision mediump float;
-        uniform sampler2D texture;
-        uniform vec2 window;
-        uniform vec3 hole;
-        uniform vec4 tint;
-        varying vec2 uv_;
-        varying vec2 w;
-
+        uniform vec3 color;
         void main () {
-            // Only what straight paths reach through the pieces on the way here
-            if (window.y < 3.14159) {
-                float offset = mod(atan(w.y, w.x) - window.x + 3.14159265, 6.28318531) - 3.14159265;
-                if (abs(offset) > window.y + 0.002) {
-                    discard;
-                }
-            }
-            // and not behind the hole
-            if (hole.z > 0.0) {
-                vec2 closest = clamp(dot(hole.xy, w) / dot(w, w), 0.0, 1.0) * w;
-                if (distance(closest, hole.xy) < hole.z) {
-                    discard;
-                }
-            }
-            vec4 color = texture2D(texture, uv_);
-            gl_FragColor = vec4(mix(color.rgb, tint.rgb, tint.a), color.a);
+            gl_FragColor = vec4(color, 1.0);
         }
     |]
 
 
-fanVS : Shader FanVertex { texture : Texture, tint : Vec4 } { uv_ : Vec2, clip_ : Vec2 }
-fanVS =
-    [glsl|
-        attribute vec4 positionAndUv;
-        attribute vec3 clip;
-        varying vec2 uv_;
-        varying vec2 clip_;
-
-        void main () {
-            gl_Position = vec4(positionAndUv.xy, clip.z * 2.0 - 1.0, 1.0);
-            uv_ = positionAndUv.zw;
-            clip_ = clip.xy;
-        }
-    |]
+mapDistance : MapPoint -> MapPoint -> Float
+mapDistance a b =
+    sqrt ((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2)
 
 
-fanFS : Shader {} { texture : Texture, tint : Vec4 } { uv_ : Vec2, clip_ : Vec2 }
-fanFS =
-    [glsl|
-        precision highp float;
-        uniform sampler2D texture;
-        uniform vec4 tint;
-        varying vec2 uv_;
-        varying vec2 clip_;
+distance : Vec -> Vec -> Float
+distance a b =
+    sqrt ((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2)
 
-        void main () {
-            if (clip_.x < -0.0005 || clip_.y < -0.0005 || clip_.x + clip_.y > 1.0005) {
-                discard;
-            }
-            vec4 color = texture2D(texture, uv_);
-            gl_FragColor = vec4(mix(color.rgb, tint.rgb, tint.a), color.a);
-        }
-    |]
+
+sub : Vec -> Vec -> Vec
+sub a b =
+    { x = a.x - b.x, y = a.y - b.y, z = a.z - b.z }
+
+
+dot : Vec -> Vec -> Float
+dot a b =
+    a.x * b.x + a.y * b.y + a.z * b.z
 
 
 {-| An arrow in the middle of the minimap pointing the way the player is facing
