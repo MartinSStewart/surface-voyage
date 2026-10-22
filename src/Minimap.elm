@@ -30,14 +30,14 @@ import WebGL.Settings.Blend as Blend
 
 size : Quantity Int Pixels
 size =
-    Pixels.pixels 220
+    Pixels.pixels 500
 
 
 {-| How far from the player the minimap shows
 -}
 viewRadius : Length
 viewRadius =
-    Length.meters 3
+    Length.meters 4
 
 
 {-| How wide walls are drawn, in pixels
