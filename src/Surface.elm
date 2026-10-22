@@ -2356,17 +2356,34 @@ piece's edges, so a triangle that pokes a little over an edge keeps its shape.
 chartCoordinate : Surface coordinates -> Int -> Point3d Meters coordinates -> Complex
 chartCoordinate surface pieceIndex point =
     case getPiece pieceIndex surface of
-        Just ((FlatPiece flat) as piece) ->
+        Just piece ->
             let
                 local =
-                    sub (fromPoint point) flat.origin
+                    localCoordinatesUnclamped piece (fromPoint point)
             in
-            localChart piece (dot local flat.u) (dot local flat.v)
+            localChart piece local.a local.b
 
-        Just ((FeaturePiece feature) as piece) ->
+        Nothing ->
+            { re = 0, im = 0 }
+
+
+{-| Local coordinates of the point of a piece's surface nearest to `point`, carrying on past the
+piece's edges.
+-}
+localCoordinatesUnclamped : Piece -> Vec -> { a : Float, b : Float }
+localCoordinatesUnclamped piece point =
+    case piece of
+        FlatPiece flat ->
             let
                 local =
-                    sub (fromPoint point) feature.origin
+                    sub point flat.origin
+            in
+            { a = dot local flat.u, b = dot local flat.v }
+
+        FeaturePiece feature ->
+            let
+                local =
+                    sub point feature.origin
 
                 x =
                     dot local feature.ex
@@ -2389,10 +2406,7 @@ chartCoordinate surface pieceIndex point =
                         Nothing ->
                             rawTheta
             in
-            localChart piece theta (profileParamUnclamped feature (x * cos theta + y * sin theta) (dot local feature.ez))
-
-        Nothing ->
-            { re = 0, im = 0 }
+            { a = theta, b = profileParamUnclamped feature (x * cos theta + y * sin theta) (dot local feature.ez) }
 
 
 {-| Index of the piece nearest to a point.
@@ -2413,6 +2427,76 @@ placeOnMap placement chart =
         )
 
 
+{-| A rounded corner only fits its neighbours closely, so laying the map out from one would put
+everything else a little out of place (and things far out a lot out of place). Instead, a walker
+on a corner is laid out from the nearest piece that isn't one, as if that piece carried on under
+their feet.
+-}
+startOn : Array Piece -> SurfacePoint_ -> Piece -> ( SurfacePoint_, Piece )
+startOn pieces walker piece =
+    if hasPole piece then
+        let
+            frame =
+                tangentFrame piece walker.a walker.b
+
+            direction =
+                headingToVec frame walker.heading
+
+            closest =
+                Array.foldl
+                    (\candidate ( index, best ) ->
+                        let
+                            ( a, b ) =
+                                projectOntoPiece candidate frame.p
+
+                            distance =
+                                lengthOf (sub (piecePoint candidate a b) frame.p)
+                        in
+                        ( index + 1
+                        , if hasPole candidate then
+                            best
+
+                          else
+                            case best of
+                                Just ( _, _, bestDistance ) ->
+                                    if distance < bestDistance then
+                                        Just ( index, candidate, distance )
+
+                                    else
+                                        best
+
+                                Nothing ->
+                                    Just ( index, candidate, distance )
+                        )
+                    )
+                    ( 0, Nothing )
+                    pieces
+                    |> Tuple.second
+        in
+        case closest of
+            Just ( index, candidate, _ ) ->
+                let
+                    local =
+                        localCoordinatesUnclamped candidate frame.p
+
+                    ( a, b ) =
+                        projectOntoPiece candidate frame.p
+                in
+                ( { piece = index
+                  , a = local.a
+                  , b = local.b
+                  , heading = vecToHeading (tangentFrame candidate a b) direction
+                  }
+                , candidate
+                )
+
+            Nothing ->
+                ( walker, piece )
+
+    else
+        ( walker, piece )
+
+
 {-| Lay the surface around a walker out flat, in meters, with the walker at the origin facing +y.
 
 Starting from the walker's piece, each neighbour is placed so that it meets its parent along their
@@ -2423,9 +2507,9 @@ through corners: what's behind one is reached round the sides instead.
 
 -}
 flattenAround : Float -> SurfacePoint -> Surface coordinates -> List Placement
-flattenAround radius (SurfacePoint point) (Surface { pieces, seams }) =
-    case Array.get point.piece pieces of
-        Just piece ->
+flattenAround radius (SurfacePoint walker) (Surface { pieces, seams }) =
+    case Array.get walker.piece pieces |> Maybe.map (\piece -> startOn pieces walker piece) of
+        Just ( point, piece ) ->
             let
                 exponent =
                     pieceExponent piece
@@ -2465,20 +2549,28 @@ flattenAround radius (SurfacePoint point) (Surface { pieces, seams }) =
                     cdiv { re = 0, im = 1 } (cmul dq dChart)
 
                 -- A ring like the hole can be laid out with either end outside and the other end turned
-                -- inside out (inversion 0 lays out q, 1 lays out 1 / q). Keep whichever end the
-                -- walker is nearer the right way out, so the map doesn't change when they step onto
-                -- the ring.
+                -- inside out: inversion 0 lays out q and 1 lays out 1 / q, both scaled to match at the
+                -- walker. Near an end, keep that end the right way out so the map doesn't change when
+                -- stepping onto the ring, and in between move smoothly from one to the other.
                 inversion =
                     case piece of
                         FeaturePiece feature ->
-                            if exponent == 0 || abs (profileAt feature 0).r < tolerance || abs (profileAt feature feature.length).r < tolerance then
+                            if exponent == 0 || hasPole piece then
                                 0
-
-                            else if (sigmaAt feature point.b - sigmaAt feature 0 < (sigmaAt feature feature.length - sigmaAt feature 0) / 2) == (exponent > 0) then
-                                1
 
                             else
-                                0
+                                let
+                                    depth =
+                                        (sigmaAt feature point.b - sigmaAt feature 0) / (sigmaAt feature feature.length - sigmaAt feature 0)
+
+                                    eased =
+                                        clamp 0 1 ((depth - inversionStart) / (1 - 2 * inversionStart)) |> (\t -> t * t * (3 - 2 * t))
+                                in
+                                if exponent > 0 then
+                                    1 - eased
+
+                                else
+                                    eased
 
                         FlatPiece _ ->
                             0
@@ -2500,6 +2592,14 @@ flattenAround radius (SurfacePoint point) (Surface { pieces, seams }) =
 
         Nothing ->
             []
+
+
+{-| How far through a ring (as a fraction of its conformal length) the map starts turning the
+other end the right way out.
+-}
+inversionStart : Float
+inversionStart =
+    0.2
 
 
 maxPlacements : Int

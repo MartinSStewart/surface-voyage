@@ -163,6 +163,21 @@ suite =
                             mapPosition surface start ( 1.156, top, rimZ + 1.0e-6 ) ()
                                 |> complexWithin 1.0e-5 (mapPosition surface start ( 1.156, top - 1.0e-9, rimZ - 1.0e-6 ) ())
                         )
+            , test "Standing on a rounded corner keeps the faces around it full size" <|
+                \_ ->
+                    withSurface
+                        (\surface ->
+                            let
+                                start =
+                                    standAt surface ( 4.044, 0.5966, -2.2798 ) ( 4.044, 0.5966, 0 )
+                            in
+                            case mapPosition surface start ( 4.0, top, -1.2798 ) () of
+                                Just w ->
+                                    sqrt (w.re ^ 2 + w.im ^ 2) |> Expect.within (Expect.Absolute 0.05) 1
+
+                                Nothing ->
+                                    Expect.fail "Not on the map"
+                        )
             , test "The map doesn't jump when stepping into the hole" <|
                 \_ ->
                     withSurface
