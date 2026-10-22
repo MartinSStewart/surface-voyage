@@ -120,7 +120,7 @@ imagesAround surface shapes surfacePoint =
                 throughPlacements =
                     Array.map
                         (\point ->
-                            if distance point.position player <= radius + 0.05 then
+                            if distance point.position player - (radius + 0.05) <= 0 then
                                 List.filterMap (placementImage radius point) layout.placements
                                     |> List.foldl addImage []
 
@@ -276,14 +276,14 @@ between left right triangles =
                 , b = b
                 , c = c
                 , min =
-                    { x = min a.position.x (min b.position.x c.position.x) - maxOffSurface
-                    , y = min a.position.y (min b.position.y c.position.y) - maxOffSurface
-                    , z = min a.position.z (min b.position.z c.position.z) - maxOffSurface
+                    { x = minFloat a.position.x (minFloat b.position.x c.position.x) - maxOffSurface
+                    , y = minFloat a.position.y (minFloat b.position.y c.position.y) - maxOffSurface
+                    , z = minFloat a.position.z (minFloat b.position.z c.position.z) - maxOffSurface
                     }
                 , max =
-                    { x = max a.position.x (max b.position.x c.position.x) + maxOffSurface
-                    , y = max a.position.y (max b.position.y c.position.y) + maxOffSurface
-                    , z = max a.position.z (max b.position.z c.position.z) + maxOffSurface
+                    { x = maxFloat a.position.x (maxFloat b.position.x c.position.x) + maxOffSurface
+                    , y = maxFloat a.position.y (maxFloat b.position.y c.position.y) + maxOffSurface
+                    , z = maxFloat a.position.z (maxFloat b.position.z c.position.z) + maxOffSurface
                     }
                 }
                     :: acc
@@ -292,7 +292,7 @@ between left right triangles =
                 acc
 
         go j acc =
-            if j > last then
+            if j - last > 0 then
                 acc
 
             else
@@ -308,12 +308,12 @@ between left right triangles =
 
 near : Vec -> Vec -> Bool
 near p q =
-    distance p q < maxFanEdge
+    distance p q - maxFanEdge < 0
 
 
 inBox : { a | min : Vec, max : Vec } -> Vec -> Bool
 inBox box p =
-    p.x >= box.min.x && p.x <= box.max.x && p.y >= box.min.y && p.y <= box.max.y && p.z >= box.min.z && p.z <= box.max.z
+    p.x - box.min.x >= 0 && p.x - box.max.x <= 0 && p.y - box.min.y >= 0 && p.y - box.max.y <= 0 && p.z - box.min.z >= 0 && p.z - box.max.z <= 0
 
 
 {-| Add where the shape points in a fan triangle go on the map.
@@ -420,21 +420,21 @@ fanImage { a, b, c, min, max } point =
                     off =
                         { x = d.x - l1 * e1.x - l2 * e2.x, y = d.y - l1 * e1.y - l2 * e2.y, z = d.z - l1 * e1.z - l2 * e2.z }
                 in
-                if gram < 1.0e-14 || dot off off > maxOffSurface * maxOffSurface then
+                if gram < 1.0e-14 || dot off off - maxOffSurface * maxOffSurface > 0 then
                     Nothing
 
                 else
                     Just ( l1, l2 )
     in
     case
-        if p.x < min.x || p.x > max.x || p.y < min.y || p.y > max.y || p.z < min.z || p.z > max.z then
+        if p.x - min.x < 0 || p.x - max.x > 0 || p.y - min.y < 0 || p.y - max.y > 0 || p.z - min.z < 0 || p.z - max.z > 0 then
             Nothing
 
         else
             weights ()
     of
         Just ( l1, l2 ) ->
-            if l1 >= -1.0e-3 && l2 >= -1.0e-3 && l1 + l2 <= 1.001 then
+            if l1 + 1.0e-3 >= 0 && l2 + 1.0e-3 >= 0 && l1 + l2 <= 1.001 then
                 Just
                     { x = a.map.x + l1 * (b.map.x - a.map.x) + l2 * (c.map.x - a.map.x)
                     , y = a.map.y + l1 * (b.map.y - a.map.y) + l2 * (c.map.y - a.map.y)
@@ -457,7 +457,7 @@ sameImage =
 
 addImage : MapPoint -> List MapPoint -> List MapPoint
 addImage image images =
-    if List.any (\other -> mapDistance image other < sameImage) images then
+    if List.any (\other -> mapDistance image other - sameImage < 0) images then
         images
 
     else
@@ -492,14 +492,14 @@ closestMatch surfaceDistance image candidates =
                 in
                 case best of
                     Just ( bestDistance, _ ) ->
-                        if d < bestDistance then
+                        if d - bestDistance < 0 then
                             Just ( d, candidate )
 
                         else
                             best
 
                     Nothing ->
-                        if d <= reach then
+                        if d - reach <= 0 then
                             Just ( d, candidate )
 
                         else
@@ -536,7 +536,7 @@ quad : Float -> MapPoint -> MapPoint -> List ( MapPoint, MapPoint, MapPoint )
 quad width a b =
     let
         length =
-            max 1.0e-9 (mapDistance a b)
+            maxFloat 1.0e-9 (mapDistance a b)
 
         ux =
             (b.x - a.x) / length * width / 2
@@ -568,7 +568,7 @@ pavingTriangles ( p, pImages ) ( q, qImages ) ( r, rImages ) =
         (\a ->
             case ( closestMatch (distance p.position q.position) a qImages, closestMatch (distance p.position r.position) a rImages ) of
                 ( Just b, Just c ) ->
-                    if mapDistance b c <= maxStretch * distance q.position r.position + sameImage then
+                    if mapDistance b c - (maxStretch * distance q.position r.position + sameImage) <= 0 then
                         Just ( a, b, c )
 
                     else
@@ -608,6 +608,29 @@ shapeFS =
             gl_FragColor = vec4(color, 1.0);
         }
     |]
+
+
+{-| `max` and `min` for numbers. Elm compiles a comparison to JavaScript's own only when it can tell
+from the code that both sides are numbers (one is a sum or a difference, say), and otherwise to a
+much slower one that works for anything comparable, so the comparisons here and in other busy code
+are written as differences against 0.
+-}
+maxFloat : Float -> Float -> Float
+maxFloat a b =
+    if a - b > 0 then
+        a
+
+    else
+        b
+
+
+minFloat : Float -> Float -> Float
+minFloat a b =
+    if a - b < 0 then
+        a
+
+    else
+        b
 
 
 mapDistance : MapPoint -> MapPoint -> Float

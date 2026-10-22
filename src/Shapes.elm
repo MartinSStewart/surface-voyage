@@ -79,23 +79,35 @@ foldWithin box step initial shapes =
         grid =
             shapes.grid
 
+        -- Comparisons are written as differences so that they're JavaScript's own (see
+        -- `Minimap.maxFloat`)
+        clampCell first count i =
+            if i - first < 0 then
+                0
+
+            else if i - first - count >= 0 then
+                count - 1
+
+            else
+                i - first
+
         xTo =
-            min (grid.nx - 1) (cellOf box.max.x - grid.x0)
+            clampCell grid.x0 grid.nx (cellOf box.max.x)
 
         ( yFrom, yTo ) =
-            ( max 0 (cellOf box.min.y - grid.y0), min (grid.ny - 1) (cellOf box.max.y - grid.y0) )
+            ( clampCell grid.y0 grid.ny (cellOf box.min.y), clampCell grid.y0 grid.ny (cellOf box.max.y) )
 
         ( zFrom, zTo ) =
-            ( max 0 (cellOf box.min.z - grid.z0), min (grid.nz - 1) (cellOf box.max.z - grid.z0) )
+            ( clampCell grid.z0 grid.nz (cellOf box.min.z), clampCell grid.z0 grid.nz (cellOf box.max.z) )
 
         go x y z acc =
-            if x > xTo then
+            if x - xTo > 0 then
                 acc
 
-            else if y > yTo then
+            else if y - yTo > 0 then
                 go (x + 1) yFrom zFrom acc
 
-            else if z > zTo then
+            else if z - zTo > 0 then
                 go x (y + 1) zFrom acc
 
             else
@@ -110,7 +122,7 @@ foldWithin box step initial shapes =
                             acc
                     )
     in
-    go (max 0 (cellOf box.min.x - grid.x0)) yFrom zFrom initial
+    go (clampCell grid.x0 grid.nx (cellOf box.min.x)) yFrom zFrom initial
 
 
 gridOf : Array ShapePoint -> Grid

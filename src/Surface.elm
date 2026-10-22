@@ -282,6 +282,41 @@ toDirection v =
     Direction3d.unsafe v
 
 
+{-| `max`, `min` and `clamp` for numbers. Elm compiles a comparison to JavaScript's own only when it
+can tell from the code that both sides are numbers (one is a sum or a difference, say), and
+otherwise to a much slower one that works for anything comparable, so the comparisons in code that
+runs often are written as differences against 0.
+-}
+maxFloat : Float -> Float -> Float
+maxFloat a b =
+    if a - b > 0 then
+        a
+
+    else
+        b
+
+
+minFloat : Float -> Float -> Float
+minFloat a b =
+    if a - b < 0 then
+        a
+
+    else
+        b
+
+
+clampFloat : Float -> Float -> Float -> Float
+clampFloat low high x =
+    if x - low < 0 then
+        low
+
+    else if x - high > 0 then
+        high
+
+    else
+        x
+
+
 {-| Angle wrapped into [0, 2pi).
 -}
 wrapAngle : Float -> Float
@@ -599,7 +634,7 @@ edgeSample piece edgeIndex t =
                         featurePoint feature (from + t * (to - from)) 0 |> Just
 
                 1 ->
-                    if abs (profileAt feature feature.length).r < tolerance then
+                    if abs (profileAt feature feature.length).r - tolerance < 0 then
                         Nothing
 
                     else
@@ -739,7 +774,7 @@ profileAtHelper segments s =
             segmentAt last s
 
         first :: rest ->
-            if s < segS0 first + segLength first then
+            if s - (segS0 first + segLength first) < 0 then
                 segmentAt first s
 
             else
@@ -762,14 +797,14 @@ segmentAt segment s =
         LineSeg { s0, len, r0, h0, dr, dh } ->
             let
                 t =
-                    clamp 0 len (s - s0)
+                    clampFloat 0 len (s - s0)
             in
             { r = r0 + t * dr, h = h0 + t * dh, dr = dr, dh = dh }
 
         ArcSeg { s0, len, cr, ch, radius, a0, dir } ->
             let
                 angle =
-                    a0 + dir * clamp 0 len (s - s0) / radius
+                    a0 + dir * clampFloat 0 len (s - s0) / radius
             in
             { r = cr + radius * cos angle
             , h = ch + radius * sin angle
@@ -935,7 +970,7 @@ insideSweep : Feature -> Float -> Bool
 insideSweep feature theta =
     case feature.sweep of
         Just { from, to } ->
-            wrapAngle (theta - from) <= to - from + 1.0e-9
+            wrapAngle (theta - from) - (to - from) <= 1.0e-9
 
         Nothing ->
             True
@@ -1099,7 +1134,7 @@ onArc a0 swept angle =
             else
                 1
     in
-    wrapAngle (dir * (angle - a0)) <= abs swept + 1.0e-9
+    wrapAngle (dir * (angle - a0)) - abs swept <= 1.0e-9
 
 
 projectOntoPiece : Piece -> Vec -> ( Float, Float )
@@ -1588,7 +1623,7 @@ flatExit flat px py dx dy =
                 Just t ->
                     case best of
                         Just ( _, bestT ) ->
-                            if t < bestT then
+                            if t - bestT < 0 then
                                 Just ( index, t )
 
                             else
@@ -1644,7 +1679,7 @@ rayExit edge px py dx dy =
                     u =
                         ((ax - px) * dy - (ay - py) * dx) / denominator
                 in
-                if t > -1.0e-9 && u >= -1.0e-9 && u <= 1 + 1.0e-9 then
+                if t + 1.0e-9 > 0 && u + 1.0e-9 >= 0 && u <= 1 + 1.0e-9 then
                     Just (max 0 t)
 
                 else
@@ -1697,7 +1732,7 @@ rayExit edge px py dx dy =
                             inwardY =
                                 -dir * hy
                         in
-                        if t > -1.0e-9 && dx * inwardX + dy * inwardY < 0 && onArc a0 swept (atan2 hy hx) then
+                        if t + 1.0e-9 > 0 && dx * inwardX + dy * inwardY < 0 && onArc a0 swept (atan2 hy hx) then
                             Just (max 0 t)
 
                         else
@@ -1736,7 +1771,7 @@ derivative feature state =
             profileAt feature state.s
 
         r =
-            max 1.0e-6 p.r
+            maxFloat 1.0e-6 p.r
     in
     { theta = feature.chirality * sin state.phi / r
     , s = cos state.phi
@@ -1779,13 +1814,13 @@ firstViolation feature before after =
                 0
 
             else
-                clamp 0 1 ((bound - start) / (end - start))
+                clampFloat 0 1 ((bound - start) / (end - start))
 
         profileViolations =
             if after.s < 0 then
                 [ ( 0, fraction before.s after.s 0 ) ]
 
-            else if after.s > feature.length then
+            else if after.s - feature.length > 0 then
                 [ ( 1, fraction before.s after.s feature.length ) ]
 
             else
@@ -1794,10 +1829,10 @@ firstViolation feature before after =
         sweepViolations =
             case feature.sweep of
                 Just { from, to } ->
-                    if after.theta < from then
+                    if after.theta - from < 0 then
                         [ ( 2, fraction before.theta after.theta from ) ]
 
-                    else if after.theta > to then
+                    else if after.theta - to > 0 then
                         [ ( 3, fraction before.theta after.theta to ) ]
 
                     else
@@ -1810,7 +1845,7 @@ firstViolation feature before after =
         (\( edge, f ) best ->
             case best of
                 Just ( _, bestF ) ->
-                    if f < bestF then
+                    if f - bestF < 0 then
                         Just ( edge, f )
 
                     else
@@ -1831,15 +1866,15 @@ leavePole : Feature -> FeatureState -> Result Vec FeatureState
 leavePole feature state =
     let
         atStart =
-            state.s < tolerance
+            state.s - tolerance < 0
 
         atEnd =
-            state.s > feature.length - tolerance
+            state.s - (feature.length - tolerance) > 0
 
         p =
             profileAt feature state.s
     in
-    if abs p.r < tolerance && (atStart || atEnd) then
+    if abs p.r - tolerance < 0 && (atStart || atEnd) then
         let
             basis =
                 featureBasis feature state.theta state.s
@@ -1918,7 +1953,7 @@ refineFraction feature edgeIndex h state fraction iterations =
             fraction
 
         else
-            refineFraction feature edgeIndex h state (clamp 0 1 (fraction - value / (speed * h))) (iterations - 1)
+            refineFraction feature edgeIndex h state (clampFloat 0 1 (fraction - value / (speed * h))) (iterations - 1)
 
 
 walkFeature : Feature -> SurfacePoint_ -> Float -> Segments coordinates -> ( Exit, Segments coordinates )
@@ -1985,7 +2020,7 @@ walkFeatureStep feature pieceIndex state remaining segments =
                     newSegments =
                         segmentFrom start.p end start.n segments
                 in
-                if edgeIndex <= 1 && abs (profileAt feature clamped.s).r < tolerance then
+                if edgeIndex <= 1 && abs (profileAt feature clamped.s).r - tolerance < 0 then
                     -- The profile touches the axis here, so this edge is just a point: carry on over it
                     walkFeatureHelper feature pieceIndex clamped (remaining - h * fraction) newSegments
 
@@ -2194,10 +2229,10 @@ pieceExponent piece =
             0
 
         FeaturePiece feature ->
-            if abs (profileAt feature feature.length).r < tolerance then
+            if abs (profileAt feature feature.length).r - tolerance < 0 then
                 -1
 
-            else if abs (profileAt feature 0).r < tolerance || feature.sweep == Nothing then
+            else if abs (profileAt feature 0).r - tolerance < 0 || feature.sweep == Nothing then
                 1
 
             else
@@ -2224,7 +2259,7 @@ sigmaAt feature s =
                         s0 =
                             segS0 segment
                     in
-                    total + segmentSigma segment (clamp 0 (segLength segment) (s - s0))
+                    total + segmentSigma segment (clampFloat 0 (segLength segment) (s - s0))
                 )
                 0
                 feature.segments
@@ -2232,10 +2267,10 @@ sigmaAt feature s =
         -- Beyond the ends of the profile, carry on at the end's rate
         beyond =
             if s < 0 then
-                s / max minimumRadius (profileAt feature 0).r
+                s / maxFloat minimumRadius (profileAt feature 0).r
 
-            else if s > feature.length then
-                (s - feature.length) / max minimumRadius (profileAt feature feature.length).r
+            else if s - feature.length > 0 then
+                (s - feature.length) / maxFloat minimumRadius (profileAt feature feature.length).r
 
             else
                 0
@@ -2251,10 +2286,10 @@ segmentSigma segment t =
     case segment of
         LineSeg { r0, dr } ->
             if abs dr < 1.0e-9 then
-                t / max minimumRadius r0
+                t / maxFloat minimumRadius r0
 
             else
-                (logBase e (max minimumRadius (r0 + t * dr)) - logBase e (max minimumRadius r0)) / dr
+                (logBase e (maxFloat minimumRadius (r0 + t * dr)) - logBase e (maxFloat minimumRadius r0)) / dr
 
         ArcSeg { cr, radius, a0, dir, len } ->
             -- r = cr + radius * cos angle and ds = dir * radius * d(angle)
@@ -2263,7 +2298,7 @@ segmentSigma segment t =
                     if abs (cr - radius) < 1.0e-9 then
                         tan (angle / 2)
 
-                    else if cr > radius then
+                    else if cr - radius > 0 then
                         let
                             root =
                                 sqrt (cr * cr - radius * radius)
@@ -2281,7 +2316,7 @@ segmentSigma segment t =
                         in
                         radius / root * logBase e ((1 + x) / (1 - x))
             in
-            dir * (antiderivative (a0 + dir * clamp 0 len t / radius) - antiderivative a0)
+            dir * (antiderivative (a0 + dir * clampFloat 0 len t / radius) - antiderivative a0)
 
 
 {-| Chart coordinate of local coordinates (a, b) on a piece: (a, b) itself on a flat, and
@@ -3007,7 +3042,7 @@ the start.
 -}
 traceStep : TraceContext -> Int -> SurfacePoint_ -> Float -> Int -> Trace -> Trace
 traceStep context crossings point travelled index trace =
-    if index > context.count || crossings > maxSeamCrossings then
+    if index - context.count > 0 || crossings - maxSeamCrossings > 0 then
         trace
 
     else
@@ -3015,7 +3050,7 @@ traceStep context crossings point travelled index trace =
             Just piece ->
                 let
                     newTrace =
-                        if travelled < trace.firstCurved && Array.get point.piece context.rigid /= Just True then
+                        if travelled - trace.firstCurved < 0 && Array.get point.piece context.rigid /= Just True then
                             { trace | firstCurved = travelled }
 
                         else
@@ -3034,7 +3069,7 @@ traceStep context crossings point travelled index trace =
                                 flatExit flat point.a point.b dx dy
 
                             until =
-                                min (toFloat context.count * fanSpacing)
+                                minFloat (toFloat context.count * fanSpacing)
                                     (case exit of
                                         Just ( _, t ) ->
                                             travelled + t
@@ -3048,7 +3083,7 @@ traceStep context crossings point travelled index trace =
                                     t =
                                         toFloat i * fanSpacing - travelled
                                 in
-                                if toFloat i * fanSpacing <= until + 1.0e-9 then
+                                if toFloat i * fanSpacing - until <= 1.0e-9 then
                                     emit (i + 1) (sampleAt piece point.piece (point.a + t * dx) (point.b + t * dy) :: samples)
 
                                 else
@@ -3074,7 +3109,7 @@ traceStep context crossings point travelled index trace =
                                 traceCylinder context crossings point.piece piece feature radius state travelled index newTrace
 
                             Sphere center radius ->
-                                if (profileAt feature state.s).r < tolerance then
+                                if (profileAt feature state.s).r - tolerance < 0 then
                                     traceFeature context crossings point.piece piece feature state travelled index newTrace
 
                                 else
@@ -3108,7 +3143,7 @@ crossTrace context crossings pieceIndex edgeIndex edgePoint travelled index trac
 
 traceFeature : TraceContext -> Int -> Int -> Piece -> Feature -> FeatureState -> Float -> Int -> Trace -> Trace
 traceFeature context crossings pieceIndex piece feature state_ travelled index trace =
-    if index > context.count then
+    if index - context.count > 0 then
         trace
 
     else
@@ -3147,7 +3182,7 @@ traceFeature context crossings pieceIndex piece feature state_ travelled index t
                 else
                     let
                         h =
-                            min (target - travelled) (max 1.0e-4 (0.25 * (profileAt feature state.s).r))
+                            minFloat (target - travelled) (maxFloat 1.0e-4 (0.25 * (profileAt feature state.s).r))
 
                         next =
                             rk4 feature h state
@@ -3175,7 +3210,7 @@ traceFeature context crossings pieceIndex piece feature state_ travelled index t
                                         _ ->
                                             { partial | theta = Tuple.second (sweepRange feature) }
                             in
-                            if edgeIndex <= 1 && abs (profileAt feature clamped.s).r < tolerance then
+                            if edgeIndex <= 1 && abs (profileAt feature clamped.s).r - tolerance < 0 then
                                 traceFeature context crossings pieceIndex piece feature clamped (travelled + h * fraction) index trace
 
                             else
@@ -3237,7 +3272,7 @@ featureShape feature =
 -}
 emitSamples : TraceContext -> Float -> Float -> (Float -> FanSample) -> Int -> List FanSample -> ( Int, List FanSample )
 emitSamples context travelled until at index samples =
-    if index <= context.count && toFloat index * fanSpacing <= until + 1.0e-9 then
+    if index - context.count <= 0 && toFloat index * fanSpacing - until <= 1.0e-9 then
         emitSamples context travelled until at (index + 1) (at (toFloat index * fanSpacing - travelled) :: samples)
 
     else
@@ -3254,7 +3289,7 @@ traceCylinder context crossings pieceIndex piece feature radius state travelled 
             feature.chirality * sin state.phi / radius
 
         exits =
-            [ if ds < -1.0e-12 then
+            [ if ds + 1.0e-12 < 0 then
                 Just ( 0, -state.s / ds )
 
               else
@@ -3267,7 +3302,7 @@ traceCylinder context crossings pieceIndex piece feature radius state travelled 
             ]
                 ++ (case feature.sweep of
                         Just { from, to } ->
-                            [ if dTheta < -1.0e-12 then
+                            [ if dTheta + 1.0e-12 < 0 then
                                 Just ( 2, (from - state.theta) / dTheta )
 
                               else
@@ -3287,10 +3322,10 @@ traceCylinder context crossings pieceIndex piece feature radius state travelled 
                 |> List.head
 
         until =
-            min (toFloat context.count * fanSpacing)
+            minFloat (toFloat context.count * fanSpacing)
                 (case exits of
                     Just ( _, t ) ->
-                        travelled + max 0 t
+                        travelled + maxFloat 0 t
 
                     Nothing ->
                         1 / 0
@@ -3303,7 +3338,7 @@ traceCylinder context crossings pieceIndex piece feature radius state travelled 
         Just ( edgeIndex, t_ ) ->
             let
                 t =
-                    max 0 t_
+                    maxFloat 0 t_
 
                 ( a, b ) =
                     case edgeIndex of
@@ -3372,7 +3407,7 @@ traceSphere context crossings pieceIndex piece feature center radius state trave
                     firstPositive angle =
                         wrapAngle (angle - 1.0e-6) + 1.0e-6
                 in
-                Just (min (firstPositive (delta - spread_)) (firstPositive (delta + spread_)))
+                Just (minFloat (firstPositive (delta - spread_)) (firstPositive (delta + spread_)))
 
         profileEdge edgeIndex s =
             let
@@ -3402,7 +3437,7 @@ traceSphere context crossings pieceIndex piece feature center radius state trave
                 |> List.head
 
         until =
-            min (toFloat context.count * fanSpacing)
+            minFloat (toFloat context.count * fanSpacing)
                 (case exit of
                     Just ( _, angle ) ->
                         travelled + radius * angle
