@@ -39,6 +39,7 @@ import WebGL exposing (Shader)
 import WebGL.Settings
 import WebGL.Settings.Blend as Blend
 import WebGL.Settings.DepthTest
+import WorldMesh exposing (WallVertex)
 
 
 type alias Config a =
@@ -53,8 +54,8 @@ type alias Config a =
     }
 
 
-view : Config a -> WebGL.Mesh Vertex -> Html msg
-view config webGlMesh =
+view : Config a -> WebGL.Mesh Vertex -> WebGL.Mesh WallVertex -> Html msg
+view config webGlMesh wallMesh =
     let
         ( windowWidth, windowHeight ) =
             Vector2i.toTuple Pixels.inPixels config.windowSize
@@ -85,6 +86,17 @@ view config webGlMesh =
                             worldFS
                             playerMesh
                             (uniforms config cameraMatrix_ (playerPosition_ |> Point3d.toVec3 |> Mat4.makeTranslate))
+                        , entity
+                            wallVS
+                            worldFS
+                            wallMesh
+                            { perspective = perspective config.windowSize
+                            , camera = cameraMatrix_
+                            , eye =
+                                playerPosition_
+                                    |> Point3d.translateIn config.cameraNormal wallEyeHeight
+                                    |> Point3d.toVec3
+                            }
                         ]
 
                     Nothing ->
@@ -351,7 +363,7 @@ worldVS =
 
 {-| Lit from one side, softly, so that the shape of things shows without anything going dark.
 -}
-worldFS : Shader {} Uniforms { color_ : Vec3, normal_ : Vec3 }
+worldFS : Shader {} u { color_ : Vec3, normal_ : Vec3 }
 worldFS =
     [glsl|
         precision mediump float;
@@ -361,5 +373,60 @@ worldFS =
             vec3 light = normalize(vec3(0.4, 1.0, 0.3));
             float shade = 0.75 + 0.25 * dot(normalize(normal_), light);
             gl_FragColor = vec4(color_ * shade, 1.0);
+        }
+    |]
+
+
+{-| How high above the player the eye is that the walls are drawn from. The lower it is, the further
+the walls' tops and sides spread out on the surface.
+-}
+wallEyeHeight : Length
+wallEyeHeight =
+    Length.meters 0.4
+
+
+{-| The walls are drawn flat on the surface, each corner where the line from the eye through it meets
+the surface (taken as flat round the point the wall stands on), like a picture painted on the ground
+that looks 3D from one spot. Corners are kept below 80% of the eye's height, so tall walls don't
+stretch away forever, and walls on parts of the surface the eye is barely above or below lie down flat
+instead. Corners are moved no further from where they stand than the surface stays flat (`reach`),
+so that they don't hang off edges or float over curves.
+
+Walls overlap on the surface, so their depth is set by how far from the eye they are rather than
+where they're drawn: nearer is on top. All of it is a few millimeters above the surface, so it's
+drawn over the paving.
+
+-}
+wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, eye : Vec3 } { color_ : Vec3, normal_ : Vec3 }
+wallVS =
+    [glsl|
+        attribute vec3 position;
+        attribute vec3 normal;
+        attribute vec3 color;
+        attribute vec3 base;
+        attribute vec3 up;
+        attribute float reach;
+        uniform mat4 perspective;
+        uniform mat4 camera;
+        uniform vec3 eye;
+        varying vec3 color_;
+        varying vec3 normal_;
+        void main () {
+            float height = dot(position - base, up);
+            float eyeHeight = dot(eye - base, up);
+            float k = eyeHeight > 0.0 ? clamp(height / eyeHeight, 0.0, 0.8) * smoothstep(0.0, 0.1, eyeHeight) : 0.0;
+            vec3 onSurface = position - height * up;
+            vec3 eyeOnSurface = eye - eyeHeight * up;
+            vec3 shift = (onSurface - eyeOnSurface) * k / (1.0 - k);
+            float shiftLength = length(shift);
+            if (shiftLength > reach) {
+                shift *= reach / shiftLength;
+            }
+            vec3 image = onSurface + shift + 0.004 * up;
+            vec4 clip = perspective * camera * vec4(image, 1.0);
+            clip.z -= 0.0001 * (1.0 + 4.0 / (1.0 + distance(position, eye))) * clip.w;
+            gl_Position = clip;
+            color_ = color;
+            normal_ = normal;
         }
     |]

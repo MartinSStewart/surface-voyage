@@ -534,7 +534,7 @@ viewSuccessModel model =
                 ]
                 (Element.html (minimapView model))
         ]
-        (Element.html (View.view model MeshData.webGlMesh))
+        (Element.html (View.view model MeshData.webGlMesh MeshData.wallMesh))
 
 
 mouseDecoder : MouseEventType -> Json.Decode.Decoder LoadedMsg_

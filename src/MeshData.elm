@@ -1,4 +1,4 @@
-module MeshData exposing (ScreenCoordinate, WorldCoordinate, mapShapes, surface, webGlMesh)
+module MeshData exposing (ScreenCoordinate, WorldCoordinate, mapShapes, surface, wallMesh, webGlMesh)
 
 import MeshBuilder exposing (Vertex)
 import Shapes exposing (Shapes)
@@ -22,13 +22,25 @@ surface =
     World.surface
 
 
-{-| The world as it's drawn.
+{-| The surface and the paving.
 -}
 webGlMesh : WebGL.Mesh Vertex
 webGlMesh =
     case surface of
         Ok surface_ ->
-            WorldMesh.mesh surface_ WorldShapes.walls WorldShapes.pavings
+            WorldMesh.mesh surface_ WorldShapes.pavings
+
+        Err _ ->
+            WebGL.triangles []
+
+
+{-| The walls, drawn flat on the surface (see `WorldMesh`).
+-}
+wallMesh : WebGL.Mesh WorldMesh.WallVertex
+wallMesh =
+    case surface of
+        Ok surface_ ->
+            WorldMesh.wallMesh surface_ WorldShapes.walls
 
         Err _ ->
             WebGL.triangles []

@@ -1,7 +1,12 @@
-module WorldMesh exposing (mesh)
+module WorldMesh exposing (WallVertex, mesh, wallMesh)
 
-{-| What the world looks like: the surface, with the paving laid on it and the walls standing on it
-(see `WorldShapes`).
+{-| What the world looks like: the surface with the paving laid on it, and the walls (see
+`WorldShapes`).
+
+The walls are made as blocks standing on the surface, but they're drawn flat on it, as their
+perspective image seen from an eye above the player (see `View.wallVS`). So each corner of a wall
+also knows the point on the surface it stands on and the surface's normal there.
+
 -}
 
 import Array
@@ -24,8 +29,30 @@ type alias OnSurface =
     { position : Vec, normal : Vec }
 
 
+{-| How far walls may be drawn from where they stand on curved parts of the surface, as how far
+from its tangent plane the surface may get there, in meters.
+-}
+wallImageTolerance : Float
+wallImageTolerance =
+    0.002
+
+
 type alias Triangle =
     ( Vertex, Vertex, Vertex )
+
+
+{-| A corner of a wall: where it is as part of a block standing on the surface, the point it stands
+on (`base`), the surface's outward normal there (`up`), and how far from `base` it can be drawn
+while staying on the surface (see `Surface.flatReach`).
+-}
+type alias WallVertex =
+    { position : Vec3
+    , normal : Vec3
+    , color : Vec3
+    , base : Vec3
+    , up : Vec3
+    , reach : Float
+    }
 
 
 grassColor : Vec3
@@ -94,27 +121,32 @@ wallStep =
     0.04
 
 
-{-| Walls start this far below the surface, so that they don't float over it where it curves away.
+snap : Surface coordinates -> Vec -> OnSurface
+snap surface p =
+    case Surface.nearestPoint (Point3d.meters p.x p.y p.z) surface of
+        Just nearest ->
+            { position = Point3d.toMeters nearest.position, normal = Direction3d.unwrap nearest.normal }
+
+        Nothing ->
+            { position = p, normal = { x = 0, y = 1, z = 0 } }
+
+
+{-| The surface and the paving.
 -}
-wallDepth : Float
-wallDepth =
-    0.01
-
-
-mesh : Surface coordinates -> List (List ( Float, Float, Float )) -> List Paving -> WebGL.Mesh Vertex
-mesh surface walls pavings =
-    let
-        onSurface p =
-            case Surface.nearestPoint (Point3d.meters p.x p.y p.z) surface of
-                Just nearest ->
-                    { position = Point3d.toMeters nearest.position, normal = Direction3d.unwrap nearest.normal }
-
-                Nothing ->
-                    { position = p, normal = { x = 0, y = 1, z = 0 } }
-    in
+mesh : Surface coordinates -> List Paving -> WebGL.Mesh Vertex
+mesh surface pavings =
     surfaceTriangles surface
-        ++ pavingTriangles onSurface pavings
-        ++ List.concatMap (\wall -> List.map (\( x, y, z ) -> { x = x, y = y, z = z }) wall |> wallTriangles onSurface) walls
+        ++ pavingTriangles (snap surface) pavings
+        |> WebGL.triangles
+
+
+wallMesh : Surface coordinates -> List (List ( Float, Float, Float )) -> WebGL.Mesh WallVertex
+wallMesh surface walls =
+    let
+        reach p =
+            Surface.flatReach wallImageTolerance (Point3d.fromMeters p) surface
+    in
+    List.concatMap (\wall -> List.map (\( x, y, z ) -> { x = x, y = y, z = z }) wall |> wallTriangles (snap surface) reach) walls
         |> WebGL.triangles
 
 
@@ -154,8 +186,8 @@ pavingTriangles onSurface pavings =
 
 {-| A wall standing on the surface along a line of points: two sides, a top and two ends.
 -}
-wallTriangles : (Vec -> OnSurface) -> List Vec -> List Triangle
-wallTriangles onSurface points =
+wallTriangles : (Vec -> OnSurface) -> (Vec -> Float) -> List Vec -> List ( WallVertex, WallVertex, WallVertex )
+wallTriangles onSurface reach points =
     let
         onWall =
             Shapes.alongWall wallStep points |> List.map onSurface |> Array.fromList
@@ -186,8 +218,10 @@ wallTriangles onSurface points =
             { right = right
             , up = p.normal
             , along = along_
-            , bottomLeft = corner -1 -wallDepth
-            , bottomRight = corner 1 -wallDepth
+            , base = p
+            , reach = reach p.position
+            , bottomLeft = corner -1 0
+            , bottomRight = corner 1 0
             , topLeft = corner -1 wallHeight
             , topRight = corner 1 wallHeight
             }
@@ -195,21 +229,31 @@ wallTriangles onSurface points =
         sections =
             List.range 0 (count - 1) |> List.map section
 
+        wallVertex normal ( position, s ) =
+            { position = Vec3.fromRecord position
+            , normal = Vec3.fromRecord normal
+            , color = wallColor
+            , base = Vec3.fromRecord s.base.position
+            , up = Vec3.fromRecord s.base.normal
+            , reach = s.reach
+            }
+
+        -- Corners are ( position, the section they're in )
         quad normal a b c d =
-            [ facing (Vec3.fromRecord normal) (vertex wallColor a normal) (vertex wallColor b normal) (vertex wallColor c normal)
-            , facing (Vec3.fromRecord normal) (vertex wallColor a normal) (vertex wallColor c normal) (vertex wallColor d normal)
+            [ wallFacing (Vec3.fromRecord normal) (wallVertex normal a) (wallVertex normal b) (wallVertex normal c)
+            , wallFacing (Vec3.fromRecord normal) (wallVertex normal a) (wallVertex normal c) (wallVertex normal d)
             ]
 
         between s t =
-            quad s.right s.bottomRight t.bottomRight t.topRight s.topRight
-                ++ quad (scale -1 s.right) s.bottomLeft s.topLeft t.topLeft t.bottomLeft
-                ++ quad s.up s.topLeft s.topRight t.topRight t.topLeft
+            quad s.right ( s.bottomRight, s ) ( t.bottomRight, t ) ( t.topRight, t ) ( s.topRight, s )
+                ++ quad (scale -1 s.right) ( s.bottomLeft, s ) ( s.topLeft, s ) ( t.topLeft, t ) ( t.bottomLeft, t )
+                ++ quad s.up ( s.topLeft, s ) ( s.topRight, s ) ( t.topRight, t ) ( t.topLeft, t )
 
         sides =
             List.map2 between sections (List.drop 1 sections) |> List.concat
 
         end s outward =
-            quad outward s.bottomLeft s.bottomRight s.topRight s.topLeft
+            quad outward ( s.bottomLeft, s ) ( s.bottomRight, s ) ( s.topRight, s ) ( s.topLeft, s )
     in
     case ( sections, List.reverse sections ) of
         ( first :: _ :: _, last :: _ ) ->
@@ -224,6 +268,15 @@ culled.
 -}
 facing : Vec3 -> Vertex -> Vertex -> Vertex -> Triangle
 facing normal a b c =
+    if Vec3.dot (Vec3.cross (Vec3.sub b.position a.position) (Vec3.sub c.position a.position)) normal >= 0 then
+        ( a, b, c )
+
+    else
+        ( a, c, b )
+
+
+wallFacing : Vec3 -> WallVertex -> WallVertex -> WallVertex -> ( WallVertex, WallVertex, WallVertex )
+wallFacing normal a b c =
     if Vec3.dot (Vec3.cross (Vec3.sub b.position a.position) (Vec3.sub c.position a.position)) normal >= 0 then
         ( a, b, c )
 
