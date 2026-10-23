@@ -1,4 +1,4 @@
-module WorldMesh exposing (WallVertex, mesh, playerMesh, roofMesh, wallMesh)
+module WorldMesh exposing (WallVertex, mesh, placedWallMesh, playerMesh, roofMesh, wallMesh)
 
 {-| What the world looks like: the surface with the paving laid on it, and the walls (see
 `WorldShapes`).
@@ -74,6 +74,13 @@ wallColor =
 roofColor : Vec3
 roofColor =
     Vec3.vec3 0.62 0.3 0.24
+
+
+{-| A wall the player is placing, before it's finished (see `Main.WallPlacing`).
+-}
+previewColor : Vec3
+previewColor =
+    Vec3.vec3 0.82 0.82 0.82
 
 
 stairsColor : Vec3
@@ -159,9 +166,34 @@ wallMesh surface walls =
         reach p =
             Surface.flatReach wallImageTolerance (Point3d.fromMeters p) surface
     in
-    List.concatMap (\wall -> List.map (\( x, y, z ) -> { x = x, y = y, z = z }) wall |> wallTriangles (snap surface) reach) walls
+    wallsTriangles surface wallColor walls
         ++ List.concatMap (stairsTriangles (snap surface) reach) Buildings.stairs
         |> WebGL.triangles
+
+
+{-| Walls the player has placed, drawn like the others, or in light gray while they're being placed.
+-}
+placedWallMesh : Surface coordinates -> { preview : Bool } -> List (List ( Float, Float, Float )) -> WebGL.Mesh WallVertex
+placedWallMesh surface { preview } walls =
+    wallsTriangles
+        surface
+        (if preview then
+            previewColor
+
+         else
+            wallColor
+        )
+        walls
+        |> WebGL.triangles
+
+
+wallsTriangles : Surface coordinates -> Vec3 -> List (List ( Float, Float, Float )) -> List ( WallVertex, WallVertex, WallVertex )
+wallsTriangles surface color walls =
+    let
+        reach p =
+            Surface.flatReach wallImageTolerance (Point3d.fromMeters p) surface
+    in
+    List.concatMap (\wall -> List.map (\( x, y, z ) -> { x = x, y = y, z = z }) wall |> wallTriangles (snap surface) reach color) walls
 
 
 {-| The roofs. They're drawn over everything else that's flat, as nothing under a roof shows.
@@ -373,8 +405,8 @@ pavingTriangles onSurface pavings =
 
 {-| A wall standing on the surface along a line of points: two sides, a top and two ends.
 -}
-wallTriangles : (Vec -> OnSurface) -> (Vec -> Float) -> List Vec -> List ( WallVertex, WallVertex, WallVertex )
-wallTriangles onSurface reach points =
+wallTriangles : (Vec -> OnSurface) -> (Vec -> Float) -> Vec3 -> List Vec -> List ( WallVertex, WallVertex, WallVertex )
+wallTriangles onSurface reach color points =
     let
         onWall =
             Shapes.alongWall wallStep points |> List.map onSurface |> Array.fromList
@@ -419,7 +451,7 @@ wallTriangles onSurface reach points =
         wallVertex normal ( position, s ) =
             { position = Vec3.fromRecord position
             , normal = Vec3.fromRecord normal
-            , color = wallColor
+            , color = color
             , base = Vec3.fromRecord s.base.position
             , up = Vec3.fromRecord s.base.normal
             , reach = s.reach

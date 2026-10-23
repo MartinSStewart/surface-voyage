@@ -19,6 +19,7 @@ import Html.Events
 import Html.Events.Extra.Mouse
 import Html.Events.Extra.Touch
 import Json.Decode
+import Json.Encode
 import Keyboard exposing (Key)
 import KeyboardHelper as Keyboard
 import Length exposing (Meters)
@@ -33,6 +34,7 @@ import Point3dEx as Point3d
 import Quantity exposing (Quantity)
 import Rectangle2d exposing (Rectangle2d)
 import Rectangle2dEx as Rectangle2d
+import ShortestPath
 import SketchPlane3d
 import Surface exposing (Surface, SurfacePoint)
 import Task
@@ -42,6 +44,7 @@ import Vector3d
 import View
 import Viewpoint3d
 import WallCollision
+import WebGL
 import WorldMesh
 
 
@@ -75,6 +78,32 @@ type alias LoadedModel_ =
     , cameraNormal : Direction3d WorldCoordinate
     , cameraUp : Direction3d WorldCoordinate
     , time : Duration
+
+    -- Walls the player has placed, oldest first, how many of them the minimap has been sent, and how
+    -- they're drawn
+    , placedWalls : List (List ( Float, Float, Float ))
+    , placedWallsSent : Int
+    , placedWallMesh : WebGL.Mesh WorldMesh.WallVertex
+
+    -- All the walls that stop the player, placed ones included
+    , wallCollision : WallCollision.Walls
+    , wallPlacing : Maybe WallPlacing
+    }
+
+
+{-| A wall the player is placing (pressing W starts one where they stand, Enter finishes it where they
+are, Escape stops). It's the shortest path along the surface between those two points, shown in light
+gray until it's finished.
+-}
+type alias WallPlacing =
+    { start : SurfacePoint
+    , path : Maybe ShortestPath.Path
+    , mesh : WebGL.Mesh WorldMesh.WallVertex
+
+    -- Where the player was when the path was last found, and when it was last searched for all
+    -- round rather than followed from the one before (see `ShortestPath.follow`)
+    , foundFor : Maybe (Point3d.Point3d Meters WorldCoordinate)
+    , searchedFor : Maybe (Point3d.Point3d Meters WorldCoordinate)
     }
 
 
@@ -118,6 +147,11 @@ initLoadedModel windowSize =
                     , cameraNormal = cameraNormal surface surfacePoint |> Maybe.withDefault Direction3d.z
                     , cameraUp = cameraUp surface surfacePoint |> Maybe.withDefault Direction3d.y
                     , time = Quantity.zero
+                    , placedWalls = []
+                    , placedWallsSent = 0
+                    , placedWallMesh = WebGL.triangles []
+                    , wallCollision = MeshData.wallCollision
+                    , wallPlacing = Nothing
                     }
                         |> LoadedModel
 
@@ -327,7 +361,126 @@ keyMsgUpdate keyMsg model =
             Keyboard.update keyMsg model.keys
     in
     { model | keys = newKeys, previousKeys = model.keys }
+        |> placeWalls
         |> addCmdNone
+
+
+placeWalls : LoadedModel_ -> LoadedModel_
+placeWalls model =
+    if Keyboard.isPressed model Keyboard.Escape then
+        { model | wallPlacing = Nothing }
+
+    else if Keyboard.isPressed model Keyboard.Enter then
+        case model.wallPlacing of
+            Just placing ->
+                -- Searched for again, in case the path followed isn't the shortest any more
+                case
+                    Surface.worldPosition model.surfacePoint model.surface
+                        |> Maybe.andThen (\position -> ShortestPath.between model.surface placing.start position placing.path)
+                of
+                    Just path ->
+                        let
+                            placedWalls =
+                                model.placedWalls ++ [ path.points ]
+                        in
+                        { model
+                            | wallPlacing = Nothing
+                            , placedWalls = placedWalls
+                            , placedWallMesh = WorldMesh.placedWallMesh model.surface { preview = False } placedWalls
+                            , wallCollision = WallCollision.add model.surface [ path.points ] model.wallCollision
+                        }
+
+                    Nothing ->
+                        { model | wallPlacing = Nothing }
+
+            Nothing ->
+                model
+
+    else if Keyboard.isPressed model (Keyboard.Character "W") && not (isPlacingWall model) then
+        { model
+            | wallPlacing =
+                Just
+                    { start = model.surfacePoint
+                    , path = Nothing
+                    , mesh = WebGL.triangles []
+                    , foundFor = Nothing
+                    , searchedFor = Nothing
+                    }
+        }
+
+    else
+        model
+
+
+isPlacingWall : LoadedModel_ -> Bool
+isPlacingWall model =
+    case model.wallPlacing of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
+
+
+{-| Keep the wall being placed going from where it started to where the player is.
+-}
+stepWallPlacing : LoadedModel_ -> LoadedModel_
+stepWallPlacing model =
+    case ( model.wallPlacing, Surface.worldPosition model.surfacePoint model.surface ) of
+        ( Just placing, Just position ) ->
+            if placing.foundFor == Just position then
+                model
+
+            else
+                let
+                    searchAgain =
+                        case ( placing.path, placing.searchedFor ) of
+                            ( Just _, Just lastSearch ) ->
+                                Point3d.distanceFrom lastSearch position |> Quantity.greaterThan searchEvery
+
+                            _ ->
+                                True
+
+                    followed =
+                        if searchAgain then
+                            Nothing
+
+                        else
+                            placing.path |> Maybe.andThen (ShortestPath.follow model.surface placing.start position)
+
+                    ( path, searchedFor ) =
+                        case followed of
+                            Just _ ->
+                                ( followed, placing.searchedFor )
+
+                            Nothing ->
+                                ( ShortestPath.between model.surface placing.start position placing.path, Just position )
+                in
+                { model
+                    | wallPlacing =
+                        Just
+                            { placing
+                                | path = path
+                                , mesh =
+                                    WorldMesh.placedWallMesh model.surface
+                                        { preview = True }
+                                        (Maybe.map (.points >> List.singleton) path |> Maybe.withDefault [])
+                                , foundFor = Just position
+                                , searchedFor = searchedFor
+                            }
+                }
+
+        _ ->
+            model
+
+
+{-| How far the player moves between looking all round for the shortest path for the wall they're
+placing. In between, the path found last is followed, which is quicker, but stays the same side of
+the hole even if the other side gets shorter.
+-}
+searchEvery : Length.Length
+searchEvery =
+    Length.centimeters 15
 
 
 step : LoadedModel_ -> LoadedModel_
@@ -336,6 +489,7 @@ step model =
         |> stepMovement
         |> stepHeight
         |> stepCamera
+        |> stepWallPlacing
 
 
 frameDuration =
@@ -356,7 +510,7 @@ stepMovement model =
                     GameLogic.playerSpeed |> Quantity.for frameDuration
             in
             if model.height < WallCollision.blocksBelow then
-                WallCollision.move model.surface MeshData.wallCollision angle distance model.surfacePoint
+                WallCollision.move model.surface model.wallCollision angle distance model.surfacePoint
 
             else
                 Surface.move model.surface angle distance model.surfacePoint
@@ -408,10 +562,27 @@ stepMinimap model =
 
                 Nothing ->
                     True
+
+        placedWallsUnsent =
+            List.length model.placedWalls > model.placedWallsSent
     in
-    if model.minimapRequest == Nothing && movedFar then
-        ( { model | minimapRequest = Just model.surfacePoint }
-        , Surface.encodeSurfacePoint model.surfacePoint |> MinimapPort.drawMinimap
+    if model.minimapRequest == Nothing && (movedFar || placedWallsUnsent) then
+        ( { model | minimapRequest = Just model.surfacePoint, placedWallsSent = List.length model.placedWalls }
+        , Json.Encode.object
+            (( "point", Surface.encodeSurfacePoint model.surfacePoint )
+                :: (if placedWallsUnsent then
+                        [ ( "placedWalls"
+                          , Json.Encode.list
+                                (Json.Encode.list (\( x, y, z ) -> Json.Encode.list Json.Encode.float [ x, y, z ]))
+                                (List.drop model.placedWallsSent model.placedWalls)
+                          )
+                        ]
+
+                    else
+                        []
+                   )
+            )
+            |> MinimapPort.drawMinimap
         )
 
     else
@@ -593,6 +764,14 @@ viewSuccessModel model =
         , Element.inFront <|
             Element.column [ Element.spacing 6, Element.padding 4 ]
                 [ Element.text "Move with arrow keys or mouse click. Hold the middle mouse button and drag to turn the camera"
+                , Element.text
+                    (case model.wallPlacing of
+                        Just _ ->
+                            "Move to where the wall should end and press Enter, or Escape to cancel"
+
+                        Nothing ->
+                            "Press W to start a wall where you're standing"
+                    )
                 , if Environment.isDebug then
                     Surface.worldPosition model.surfacePoint model.surface
                         |> Maybe.map Point3d.pointToString
@@ -617,7 +796,15 @@ viewSuccessModel model =
                 ]
                 (Element.html (minimapView model))
         ]
-        (Element.html (View.view model { world = MeshData.webGlMesh, walls = MeshData.wallMesh, roofs = MeshData.roofMesh, player = WorldMesh.playerMesh }))
+        (Element.html
+            (View.view model
+                { world = MeshData.webGlMesh
+                , walls = MeshData.wallMesh :: model.placedWallMesh :: (Maybe.map (.mesh >> List.singleton) model.wallPlacing |> Maybe.withDefault [])
+                , roofs = MeshData.roofMesh
+                , player = WorldMesh.playerMesh
+                }
+            )
+        )
 
 
 mouseDecoder : MouseEventType -> Json.Decode.Decoder LoadedMsg_

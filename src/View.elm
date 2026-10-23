@@ -56,7 +56,7 @@ type alias Config a =
     }
 
 
-view : Config a -> { world : WebGL.Mesh Vertex, walls : WebGL.Mesh WallVertex, roofs : WebGL.Mesh WallVertex, player : WebGL.Mesh WallVertex } -> Html msg
+view : Config a -> { world : WebGL.Mesh Vertex, walls : List (WebGL.Mesh WallVertex), roofs : WebGL.Mesh WallVertex, player : WebGL.Mesh WallVertex } -> Html msg
 view config meshes =
     let
         ( windowWidth, windowHeight ) =
@@ -93,7 +93,7 @@ view config meshes =
                                 , lift = 0
                                 }
                         in
-                        [ entity wallVS worldFS meshes.walls flatUniforms ]
+                        List.map (\walls -> entity wallVS worldFS walls flatUniforms) meshes.walls
                             ++ (if Buildings.underRoof config.height (Point3d.toMeters playerPosition_) then
                                     -- So the player can see inside
                                     []

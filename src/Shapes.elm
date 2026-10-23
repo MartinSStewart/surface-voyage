@@ -1,4 +1,4 @@
-module Shapes exposing (Paving, ShapePoint, Shapes, alongWall, empty, foldWithin, prepare, splitPavings)
+module Shapes exposing (Paving, ShapePoint, Shapes, addWalls, alongWall, empty, foldWithin, prepare, splitPavings)
 
 {-| Shapes drawn on the surface: walls as lines and paving (paths and floors) as filled areas.
 
@@ -178,53 +178,67 @@ pavingEdge =
 prepare : Surface coordinates -> List (List ( Float, Float, Float )) -> List Paving -> Shapes
 prepare surface walls pavings =
     let
-        snap p =
-            case Surface.nearestPoint (Point3d.meters p.x p.y p.z) surface of
-                Just { position } ->
-                    Point3d.toMeters position
-
-                Nothing ->
-                    p
-
-        onPiece p =
-            let
-                point =
-                    Point3d.meters p.x p.y p.z
-            in
-            Surface.nearestPiece point surface
-                |> Maybe.map
-                    (\piece ->
-                        { piece = piece
-                        , chart = Surface.chartCoordinate surface piece point
-                        , position = p
-                        }
-                    )
-
         ( points, triangles ) =
-            splitPavings (\p q -> distance p q - pavingEdge > 0) snap identity pavings
+            splitPavings (\p q -> distance p q - pavingEdge > 0) (snap surface) identity pavings
 
+        shapePoints =
+            Array.map (onPiece surface) points
+    in
+    { points = shapePoints
+    , walls = []
+    , pavingTriangles = triangles
+    , grid = gridOf shapePoints
+    }
+        |> addWalls surface walls
+
+
+{-| Add walls to shapes, like the ones the player places.
+-}
+addWalls : Surface coordinates -> List (List ( Float, Float, Float )) -> Shapes -> Shapes
+addWalls surface walls shapes =
+    let
         ( allPoints, wallIndices ) =
             List.foldl
                 (\wall ( pointsSoFar, wallsSoFar ) ->
                     let
                         added =
-                            List.map fromTuple wall |> alongWall wallStep |> List.map snap
+                            List.map fromTuple wall |> alongWall wallStep |> List.map (snap surface >> onPiece surface)
                     in
                     ( Array.append pointsSoFar (Array.fromList added)
                     , List.range (Array.length pointsSoFar) (Array.length pointsSoFar + List.length added - 1) :: wallsSoFar
                     )
                 )
-                ( points, [] )
+                ( shapes.points, shapes.walls )
                 walls
-
-        shapePoints =
-            Array.map (\p -> onPiece p |> Maybe.withDefault { piece = -1, chart = { re = 0, im = 0 }, position = p }) allPoints
     in
-    { points = shapePoints
-    , walls = wallIndices
-    , pavingTriangles = triangles
-    , grid = gridOf shapePoints
-    }
+    { shapes | points = allPoints, walls = wallIndices, grid = gridOf allPoints }
+
+
+snap : Surface coordinates -> Vec -> Vec
+snap surface p =
+    case Surface.nearestPoint (Point3d.meters p.x p.y p.z) surface of
+        Just { position } ->
+            Point3d.toMeters position
+
+        Nothing ->
+            p
+
+
+onPiece : Surface coordinates -> Vec -> ShapePoint
+onPiece surface p =
+    let
+        point =
+            Point3d.meters p.x p.y p.z
+    in
+    case Surface.nearestPiece point surface of
+        Just piece ->
+            { piece = piece
+            , chart = Surface.chartCoordinate surface piece point
+            , position = p
+            }
+
+        Nothing ->
+            { piece = -1, chart = { re = 0, im = 0 }, position = p }
 
 
 fromTuple : ( Float, Float, Float ) -> Vec

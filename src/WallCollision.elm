@@ -1,4 +1,4 @@
-module WallCollision exposing (Walls, blocksBelow, fromShapes, move, none)
+module WallCollision exposing (Walls, add, blocksBelow, fromShapes, move, none)
 
 {-| Walls stop the player, who slides along them instead of walking through.
 
@@ -76,6 +76,15 @@ fromShapes surface walls =
                     |> segments
             )
         |> Walls
+
+
+{-| More walls, like the ones the player places.
+-}
+add : Surface coordinates -> List (List ( Float, Float, Float )) -> Walls -> Walls
+add surface walls (Walls existing) =
+    case fromShapes surface walls of
+        Walls added ->
+            Walls (added ++ existing)
 
 
 {-| Walk like `Surface.move`, but kept out of the walls. If that can't be done (squeezed between
