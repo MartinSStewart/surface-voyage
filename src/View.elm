@@ -88,6 +88,10 @@ view config meshes =
                                 { perspective = perspective config.windowSize
                                 , camera = cameraMatrix_
                                 , player = Point3d.toVec3 playerPosition_
+                                , playerUp =
+                                    Surface.normal config.surface config.surfacePoint
+                                        |> Maybe.map (Direction3d.unwrap >> Vec3.fromRecord)
+                                        |> Maybe.withDefault Vec3.j
                                 , eyeHeight = Length.inMeters wallEyeHeight + config.height
                                 , maxShift = Length.inMeters wallMaxShift
                                 , local = Mat4.identity
@@ -465,7 +469,9 @@ The surface curves, so each wall is drawn as if the ground were flat between the
 player stands `distance` back from where the wall stands, in the direction away from the player along
 the surface there, and the eye is above that. Each corner is drawn where the line from that eye
 through it meets the ground, so walls lean straight away from the player, more the further away they
-are. Corners are kept below 80% of the eye's height, so tall walls don't stretch away forever, and
+are. Where the surface faces the player, though, they look down onto it: the eye is never lower over
+the wall's ground than the player's eye really is, so the further the surface turns towards the
+player, the higher the eye and the less the wall leans. Corners are kept below 80% of the eye's height, so tall walls don't stretch away forever, and
 are moved no more than `maxShift`, so far away walls don't either. They're drawn in the tangent plane where the wall stands, however far that is from it, so near edges
 and curves they can hang off the surface or sink into it.
 
@@ -478,7 +484,7 @@ The player is drawn the same way, from a mesh made where they stand (see `WorldM
 identity and 0.
 
 -}
-wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float, maxShift : Float, local : Mat4, lift : Float } { color_ : Vec3, normal_ : Vec3 }
+wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, playerUp : Vec3, eyeHeight : Float, maxShift : Float, local : Mat4, lift : Float } { color_ : Vec3, normal_ : Vec3 }
 wallVS =
     [glsl|
         attribute vec3 position;
@@ -489,6 +495,7 @@ wallVS =
         uniform mat4 perspective;
         uniform mat4 camera;
         uniform vec3 player;
+        uniform vec3 playerUp;
         uniform float eyeHeight;
         uniform mat4 local;
         uniform float lift;
@@ -502,10 +509,16 @@ wallVS =
             vec3 fromPlayer = standsOn - player;
             vec3 away = fromPlayer - dot(fromPlayer, outward) * outward;
             float awayLength = length(away);
-            vec3 foot = awayLength > 0.0 ? standsOn - away * (length(fromPlayer) / awayLength) : standsOn;
-            vec3 eye = foot + eyeHeight * outward;
+            // The eye is at least as high over the plane the wall stands on as the player's eye
+            // really is. Where the surface faces the player, the player looks down onto it, and
+            // the eye comes over the wall rather than off to the side of it.
+            vec3 toEye = player + eyeHeight * playerUp - standsOn;
+            float eyeAbove = max(dot(toEye, outward), eyeHeight);
+            float eyeOut = sqrt(max(dot(toEye, toEye) - eyeAbove * eyeAbove, 0.0));
+            vec3 foot = awayLength > 0.0 ? standsOn - away * (eyeOut / awayLength) : standsOn;
+            vec3 eye = foot + eyeAbove * outward;
             float height = dot(corner - standsOn, outward);
-            float k = clamp(height / eyeHeight, 0.0, 0.8);
+            float k = clamp(height / eyeAbove, 0.0, 0.8);
             vec3 onSurface = corner - height * outward;
             vec3 shift = (onSurface - foot) * k / (1.0 - k);
             float shiftLength = length(shift);
