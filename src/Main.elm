@@ -11,8 +11,13 @@ import Direction2d exposing (Direction2d)
 import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
 import Element exposing (Element)
+import Element.Background
 import Element.Border
+import Element.Font
+import Element.Input
 import Environment
+import File exposing (File)
+import File.Select
 import GameLogic
 import Html exposing (Html)
 import Html.Events
@@ -24,6 +29,7 @@ import Keyboard exposing (Key)
 import KeyboardHelper as Keyboard
 import Length exposing (Meters)
 import LineSegment3d
+import MeshBuilder
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Minimap
 import MinimapPort
@@ -36,6 +42,7 @@ import Rectangle2d exposing (Rectangle2d)
 import Rectangle2dEx as Rectangle2d
 import ShortestPath
 import SketchPlane3d
+import StepImport
 import Surface exposing (Surface, SurfacePoint)
 import Task
 import Vector2d exposing (Vector2d)
@@ -88,6 +95,35 @@ type alias LoadedModel_ =
     -- All the walls that stop the player, placed ones included
     , wallCollision : WallCollision.Walls
     , wallPlacing : Maybe WallPlacing
+
+    -- The world being played in: the one made in code, or one imported from a STEP file
+    , level : Level
+
+    -- What the scale field for importing says, and what went wrong importing last, if anything
+    , importScale : String
+    , importError : Maybe String
+
+    -- How many minimap drawings still to come are of the world before the last import
+    , staleMinimaps : Int
+    }
+
+
+{-| How a world is drawn, and whether it has the buildings (roofs and stairs, see `Buildings`) in it.
+-}
+type alias Level =
+    { world : WebGL.Mesh MeshBuilder.Vertex
+    , walls : WebGL.Mesh WorldMesh.WallVertex
+    , roofs : WebGL.Mesh WorldMesh.WallVertex
+    , buildings : Bool
+    }
+
+
+defaultLevel : Level
+defaultLevel =
+    { world = MeshData.webGlMesh
+    , walls = MeshData.wallMesh
+    , roofs = MeshData.roofMesh
+    , buildings = True
     }
 
 
@@ -152,6 +188,10 @@ initLoadedModel windowSize =
                     , placedWallMesh = WebGL.triangles []
                     , wallCollision = MeshData.wallCollision
                     , wallPlacing = Nothing
+                    , level = defaultLevel
+                    , importScale = "1"
+                    , importError = Nothing
+                    , staleMinimaps = 0
                     }
                         |> LoadedModel
 
@@ -189,6 +229,10 @@ type LoadedMsg_
     | AnimationFrameDelta Duration
     | MouseEvent MouseEvent_
     | MinimapDrawn Json.Decode.Value
+    | ImportPressed
+    | ImportFileSelected File
+    | ImportFileLoaded String
+    | ImportScaleChanged String
 
 
 type MouseEventType
@@ -240,6 +284,32 @@ updateLoadedModel msg model =
         AnimationFrameDelta delta ->
             { model | time = Quantity.plus model.time delta } |> step |> stepMinimap
 
+        MinimapDrawn _ ->
+            if model.staleMinimaps > 0 then
+                ( { model | staleMinimaps = model.staleMinimaps - 1 }, Cmd.none )
+
+            else
+                minimapDrawn msg model
+
+        ImportPressed ->
+            ( model, File.Select.file [ ".step", ".stp", ".STEP", ".STP" ] ImportFileSelected )
+
+        ImportFileSelected file ->
+            ( model, File.toString file |> Task.perform ImportFileLoaded )
+
+        ImportFileLoaded text ->
+            importLevel text model
+
+        ImportScaleChanged text ->
+            { model | importScale = text } |> addCmdNone
+
+        MouseEvent event ->
+            mouseEvent event model
+
+
+minimapDrawn : LoadedMsg_ -> LoadedModel_ -> ( LoadedModel_, Cmd LoadedMsg_ )
+minimapDrawn msg model =
+    case msg of
         MinimapDrawn value ->
             ( case
                 Json.Decode.decodeValue
@@ -257,59 +327,148 @@ updateLoadedModel msg model =
             , Cmd.none
             )
 
-        MouseEvent event ->
-            case ( event.eventType, event.button ) of
-                ( MouseEventDown, Html.Events.Extra.Mouse.MainButton ) ->
-                    { model
-                        | mouseLastDown = Just { position = event.position, time = model.time }
-                        , moveAction =
-                            let
-                                ray =
-                                    View.cameraRay model event.position
+        _ ->
+            ( model, Cmd.none )
 
-                                endPoint =
-                                    ray
-                                        |> Axis3d.intersectionWithSketchPlane (View.cameraSketchPlane model)
-                                        -- Clicking above the horizon would otherwise walk the other way
-                                        |> Maybe.andThen
-                                            (\end ->
-                                                if Point3d.signedDistanceAlong ray (Point3d.on (View.cameraSketchPlane model) end) |> Quantity.greaterThan Quantity.zero then
-                                                    Just end
 
-                                                else
-                                                    Nothing
-                                            )
-                            in
-                            case endPoint of
-                                Just end ->
-                                    let
-                                        endTime =
-                                            Point2d.distanceFrom Point2d.origin end |> Quantity.at_ GameLogic.playerSpeed
-
-                                        direction =
-                                            Direction2d.from Point2d.origin end |> Maybe.withDefault Direction2d.y
-                                    in
-                                    Just { direction = direction, endTime = Quantity.plus model.time endTime }
-
-                                Nothing ->
-                                    Nothing
+{-| Replace the world with the solid in a STEP file (see `StepImport`), with the player on top of it.
+Nothing that was made for the world in code comes with it: no paths, walls or buildings. The minimap
+worker is sent the file too, so that it lays out the same surface.
+-}
+importLevel : String -> LoadedModel_ -> ( LoadedModel_, Cmd LoadedMsg_ )
+importLevel text model =
+    let
+        scale =
+            String.toFloat model.importScale |> Maybe.withDefault 1
+    in
+    case
+        StepImport.surface scale text
+            |> Result.andThen
+                (\surface ->
+                    startOn surface
+                        |> Result.fromMaybe "There's nowhere on the surface to stand"
+                        |> Result.map (Tuple.pair surface)
+                )
+    of
+        Ok ( surface, surfacePoint ) ->
+            ( { model
+                | surface = surface
+                , surfacePoint = surfacePoint
+                , height = 0
+                , level =
+                    { world = WorldMesh.mesh surface []
+                    , walls = WebGL.triangles []
+                    , roofs = WebGL.triangles []
+                    , buildings = False
                     }
-                        |> addCmdNone
+                , importError = Nothing
+                , moveAction = Nothing
+                , minimap = Nothing
+                , minimapRequest = Nothing
+                , staleMinimaps =
+                    if model.minimapRequest == Nothing then
+                        model.staleMinimaps
 
-                ( MouseEventDown, Html.Events.Extra.Mouse.MiddleButton ) ->
-                    { model | cameraDrag = Just event.position } |> addCmdNone
+                    else
+                        model.staleMinimaps + 1
+                , cameraNormal = cameraNormal surface surfacePoint |> Maybe.withDefault Direction3d.y
+                , cameraUp = cameraUp surface surfacePoint |> Maybe.withDefault Direction3d.z
+                , placedWalls = []
+                , placedWallsSent = 0
+                , placedWallMesh = WebGL.triangles []
+                , wallCollision = WallCollision.none
+                , wallPlacing = Nothing
+              }
+            , Json.Encode.object [ ( "step", Json.Encode.string text ), ( "scale", Json.Encode.float scale ) ]
+                |> MinimapPort.drawMinimap
+            )
 
-                ( MouseEventDown, _ ) ->
-                    model |> addCmdNone
+        Err message ->
+            ( { model | importError = Just message }, Cmd.none )
 
-                ( MouseEventMove, _ ) ->
-                    { model | mousePosition = Just event.position } |> dragCamera event.position |> addCmdNone
 
-                ( MouseEventUp, Html.Events.Extra.Mouse.MiddleButton ) ->
-                    { model | cameraDrag = Nothing } |> addCmdNone
+{-| The middle of the top of a surface (the side up in the CAD program), facing away from the front
+-}
+startOn : Surface WorldCoordinate -> Maybe SurfacePoint
+startOn surface =
+    let
+        positions =
+            Surface.tessellate (pi / 12) surface
+                |> List.concatMap (\( a, b, c ) -> [ a.position, b.position, c.position ])
 
-                ( MouseEventUp, _ ) ->
-                    { model | mouseLastUp = Just { position = event.position, time = model.time } } |> addCmdNone
+        range get =
+            ( List.map get positions |> List.minimum, List.map get positions |> List.maximum )
+    in
+    case ( range .x, range .y, range .z ) of
+        ( ( Just minX, Just maxX ), ( Just _, Just maxY ), ( Just minZ, Just maxZ ) ) ->
+            let
+                x =
+                    (minX + maxX) / 2
+
+                z =
+                    (minZ + maxZ) / 2
+            in
+            Surface.nearestSurfacePoint (Point3d.meters x (maxY + 1) z) surface
+                |> Maybe.map (Surface.pointTowards (Point3d.meters x maxY (z - 1)) surface)
+
+        _ ->
+            Nothing
+
+
+mouseEvent : MouseEvent_ -> LoadedModel_ -> ( LoadedModel_, Cmd LoadedMsg_ )
+mouseEvent event model =
+    case ( event.eventType, event.button ) of
+        ( MouseEventDown, Html.Events.Extra.Mouse.MainButton ) ->
+            { model
+                | mouseLastDown = Just { position = event.position, time = model.time }
+                , moveAction =
+                    let
+                        ray =
+                            View.cameraRay model event.position
+
+                        endPoint =
+                            ray
+                                |> Axis3d.intersectionWithSketchPlane (View.cameraSketchPlane model)
+                                -- Clicking above the horizon would otherwise walk the other way
+                                |> Maybe.andThen
+                                    (\end ->
+                                        if Point3d.signedDistanceAlong ray (Point3d.on (View.cameraSketchPlane model) end) |> Quantity.greaterThan Quantity.zero then
+                                            Just end
+
+                                        else
+                                            Nothing
+                                    )
+                    in
+                    case endPoint of
+                        Just end ->
+                            let
+                                endTime =
+                                    Point2d.distanceFrom Point2d.origin end |> Quantity.at_ GameLogic.playerSpeed
+
+                                direction =
+                                    Direction2d.from Point2d.origin end |> Maybe.withDefault Direction2d.y
+                            in
+                            Just { direction = direction, endTime = Quantity.plus model.time endTime }
+
+                        Nothing ->
+                            Nothing
+            }
+                |> addCmdNone
+
+        ( MouseEventDown, Html.Events.Extra.Mouse.MiddleButton ) ->
+            { model | cameraDrag = Just event.position } |> addCmdNone
+
+        ( MouseEventDown, _ ) ->
+            model |> addCmdNone
+
+        ( MouseEventMove, _ ) ->
+            { model | mousePosition = Just event.position } |> dragCamera event.position |> addCmdNone
+
+        ( MouseEventUp, Html.Events.Extra.Mouse.MiddleButton ) ->
+            { model | cameraDrag = Nothing } |> addCmdNone
+
+        ( MouseEventUp, _ ) ->
+            { model | mouseLastUp = Just { position = event.position, time = model.time } } |> addCmdNone
 
 
 {-| Dragging with the middle button held turns the camera around the player: sideways turns the player
@@ -647,7 +806,11 @@ stepHeight : LoadedModel_ -> LoadedModel_
 stepHeight model =
     case Surface.worldPosition model.surfacePoint model.surface of
         Just position ->
-            { model | height = Buildings.heightAfter (Duration.inSeconds frameDuration) model.height (Point3d.toMeters position) }
+            if not model.level.buildings then
+                model
+
+            else
+                { model | height = Buildings.heightAfter (Duration.inSeconds frameDuration) model.height (Point3d.toMeters position) }
 
         Nothing ->
             model
@@ -772,6 +935,7 @@ viewSuccessModel model =
                         Nothing ->
                             "Press W to start a wall where you're standing"
                     )
+                , importControls model
                 , if Environment.isDebug then
                     Surface.worldPosition model.surfacePoint model.surface
                         |> Maybe.map Point3d.pointToString
@@ -798,13 +962,48 @@ viewSuccessModel model =
         ]
         (Element.html
             (View.view model
-                { world = MeshData.webGlMesh
-                , walls = MeshData.wallMesh :: model.placedWallMesh :: (Maybe.map (.mesh >> List.singleton) model.wallPlacing |> Maybe.withDefault [])
-                , roofs = MeshData.roofMesh
+                { world = model.level.world
+                , walls = model.level.walls :: model.placedWallMesh :: (Maybe.map (.mesh >> List.singleton) model.wallPlacing |> Maybe.withDefault [])
+                , roofs = model.level.roofs
                 , player = WorldMesh.playerMesh
                 }
             )
         )
+
+
+{-| A button to import a world from a STEP file, how much to scale it by, and what went wrong importing
+it last. Mouse presses on them don't walk the player there.
+-}
+importControls : LoadedModel_ -> Element LoadedMsg_
+importControls model =
+    Element.column
+        [ Element.spacing 4
+        , Element.htmlAttribute <| Html.Events.stopPropagationOn "mousedown" (Json.Decode.succeed ( NoOp, True ))
+        ]
+        [ Element.row [ Element.spacing 8 ]
+            [ Element.Input.button
+                [ Element.Background.color (Element.rgb 0.95 0.95 0.95)
+                , Element.Border.rounded 4
+                , Element.Border.width 1
+                , Element.Border.color (Element.rgb 0.6 0.6 0.6)
+                , Element.paddingXY 8 4
+                ]
+                { onPress = Just ImportPressed, label = Element.text "Import STEP file" }
+            , Element.Input.text
+                [ Element.width (Element.px 70), Element.paddingXY 6 4 ]
+                { onChange = ImportScaleChanged
+                , text = model.importScale
+                , placeholder = Nothing
+                , label = Element.Input.labelLeft [ Element.centerY ] (Element.text "Scale")
+                }
+            ]
+        , case model.importError of
+            Just message ->
+                Element.paragraph [ Element.Font.color (Element.rgb 0.75 0 0), Element.width (Element.maximum 600 Element.fill) ] [ Element.text message ]
+
+            Nothing ->
+                Element.none
+        ]
 
 
 mouseDecoder : MouseEventType -> Json.Decode.Decoder LoadedMsg_

@@ -2,7 +2,8 @@ port module MinimapWorker exposing (main)
 
 {-| Works out what the minimap shows, in a web worker so that the game doesn't stutter while it does.
 The game sends where the player is to `drawMinimap` and gets the drawing back from `minimapDrawn`
-(see elm-pkg-js/minimap-worker.js). When the player has placed walls since, it sends those too.
+(see elm-pkg-js/minimap-worker.js). When the player has placed walls since, it sends those too. When
+a world is imported from a STEP file, it sends the file, and the minimap shows that world from then on.
 
 This isn't part of the Lamdera app, so it's compiled on its own:
 
@@ -12,10 +13,11 @@ This isn't part of the Lamdera app, so it's compiled on its own:
 
 import Json.Decode
 import Json.Encode
-import MeshData
+import MeshData exposing (WorldCoordinate)
 import Minimap
 import Shapes exposing (Shapes)
-import Surface
+import StepImport
+import Surface exposing (Surface)
 
 
 port drawMinimap : (Json.Decode.Value -> msg) -> Sub msg
@@ -28,47 +30,64 @@ type Msg
     = DrawMinimap Json.Decode.Value
 
 
-main : Program () Shapes Msg
+type alias Model =
+    { surface : Maybe (Surface WorldCoordinate), shapes : Shapes }
+
+
+main : Program () Model Msg
 main =
     Platform.worker
-        { init = \() -> ( MeshData.mapShapes, Cmd.none )
+        { init = \() -> ( { surface = Result.toMaybe MeshData.surface, shapes = MeshData.mapShapes }, Cmd.none )
         , update = update
         , subscriptions = \_ -> drawMinimap DrawMinimap
         }
 
 
-update : Msg -> Shapes -> ( Shapes, Cmd Msg )
-update (DrawMinimap value) shapes =
-    case
-        ( Json.Decode.decodeValue
-            (Json.Decode.map2 Tuple.pair
-                (Json.Decode.field "point" Surface.surfacePointDecoder)
-                (Json.Decode.maybe (Json.Decode.field "placedWalls" placedWallsDecoder))
-            )
-            value
-        , MeshData.surface
-        )
-    of
-        ( Ok ( point, placedWalls ), Ok surface ) ->
-            let
-                withPlaced =
-                    case placedWalls of
-                        Just walls ->
-                            Shapes.addWalls surface walls shapes
+update : Msg -> Model -> ( Model, Cmd Msg )
+update (DrawMinimap value) model =
+    case Json.Decode.decodeValue importDecoder value of
+        Ok ( text, scale ) ->
+            -- The same import as the game's, so the surface is the same too
+            ( { surface = StepImport.surface scale text |> Result.toMaybe, shapes = Shapes.empty }, Cmd.none )
 
-                        Nothing ->
-                            shapes
-            in
-            ( withPlaced
-            , Json.Encode.object
-                [ ( "point", Surface.encodeSurfacePoint point )
-                , ( "drawing", Minimap.drawingAround surface withPlaced point |> Minimap.encodeDrawing )
-                ]
-                |> minimapDrawn
-            )
+        Err _ ->
+            case
+                ( Json.Decode.decodeValue
+                    (Json.Decode.map2 Tuple.pair
+                        (Json.Decode.field "point" Surface.surfacePointDecoder)
+                        (Json.Decode.maybe (Json.Decode.field "placedWalls" placedWallsDecoder))
+                    )
+                    value
+                , model.surface
+                )
+            of
+                ( Ok ( point, placedWalls ), Just surface ) ->
+                    let
+                        withPlaced =
+                            case placedWalls of
+                                Just walls ->
+                                    Shapes.addWalls surface walls model.shapes
 
-        _ ->
-            ( shapes, Cmd.none )
+                                Nothing ->
+                                    model.shapes
+                    in
+                    ( { model | shapes = withPlaced }
+                    , Json.Encode.object
+                        [ ( "point", Surface.encodeSurfacePoint point )
+                        , ( "drawing", Minimap.drawingAround surface withPlaced point |> Minimap.encodeDrawing )
+                        ]
+                        |> minimapDrawn
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+
+importDecoder : Json.Decode.Decoder ( String, Float )
+importDecoder =
+    Json.Decode.map2 Tuple.pair
+        (Json.Decode.field "step" Json.Decode.string)
+        (Json.Decode.field "scale" Json.Decode.float)
 
 
 {-| Walls as lists of points, each point a list of x, y and z in meters.
