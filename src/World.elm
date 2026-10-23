@@ -1,7 +1,7 @@
 module World exposing (features, flats, surface)
 
-{-| The game world as flats and features: a slab with rounded edges and corners, and a round hole
-through the middle.
+{-| The game world as flats and features: a slab with rounded edges and corners, a round hole
+through the middle, and a round hill on top next to the house by the start.
 
 The numbers come from the Blender model (world.blend), which the world used to be drawn from: the box
 and its 0.199 m fillets are exact, and the hole was fitted to its mesh: a 0.475 m waist with 0.304 m
@@ -43,6 +43,24 @@ hole =
 holeRim : Float
 holeRim =
     hole.waist + hole.filletRadius
+
+
+{-| A round hill on the top face, east of the house by the start, where the surface was empty. It
+rises from its foot `radius` out from the middle to `height` at the top, curving up out of the flat
+and then over the top, both with the same radius, so the slope changes smoothly all the way (it's
+steepest, about 37 degrees, halfway up).
+-}
+hill : { x : Float, z : Float, radius : Float, height : Float }
+hill =
+    { x = 3.5, z = -1.3, radius = 0.45, height = 0.15 }
+
+
+{-| The radius of both of the hill's curves: they meet where they touch, which is when
+radius^2 + (2 r - height)^2 = (2 r)^2
+-}
+hillCurveRadius : Float
+hillCurveRadius =
+    (hill.radius ^ 2 + hill.height ^ 2) / (4 * hill.height)
 
 
 type Axis
@@ -133,25 +151,33 @@ boxFace axis sign =
             [ ( -1, -1 ), ( 1, -1 ), ( 1, 1 ), ( -1, 1 ) ]
                 |> List.map (\( sa, sb ) -> Point2d.meters (inner a sa) (inner b sb) |> Straight)
 
-        holeLoop =
+        -- Clockwise, so the flat is on its left
+        circle x z radius =
+            let
+                center =
+                    if sign > 0 then
+                        -- a = Z, b = X
+                        Point2d.meters z x
+
+                    else
+                        Point2d.meters x z
+            in
+            [ Arc
+                { start = center |> Point2d.translateBy (Vector2d.meters radius 0)
+                , center = center
+                , sweptAngle = Angle.degrees -360
+                }
+            ]
+
+        holeLoops =
             if axis == Y then
-                let
-                    center =
-                        if sign > 0 then
-                            -- a = Z, b = X
-                            Point2d.meters hole.z hole.x
+                circle hole.x hole.z holeRim
+                    :: (if sign > 0 then
+                            [ circle hill.x hill.z hill.radius ]
 
                         else
-                            Point2d.meters hole.x hole.z
-                in
-                -- Clockwise, so the flat is on its left
-                [ [ Arc
-                        { start = center |> Point2d.translateBy (Vector2d.meters holeRim 0)
-                        , center = center
-                        , sweptAngle = Angle.degrees -360
-                        }
-                  ]
-                ]
+                            []
+                       )
 
             else
                 []
@@ -162,7 +188,7 @@ boxFace axis sign =
             , xDirection = unit a 1
             , yDirection = unit b 1
             }
-    , boundary = rectangle :: holeLoop
+    , boundary = rectangle :: holeLoops
     }
 
 
@@ -253,6 +279,44 @@ holeFeature =
     }
 
 
+hillFeature : FeatureSpec coordinates
+hillFeature =
+    let
+        top =
+            box.max.y
+
+        r =
+            hillCurveRadius
+
+        -- Where the curve up out of the flat meets the curve over the top
+        foot =
+            { r = hill.radius, h = top + r }
+
+        peak =
+            { r = 0, h = top + hill.height - r }
+
+        meet =
+            { r = foot.r + (peak.r - foot.r) / 2, h = foot.h + (peak.h - foot.h) / 2 }
+    in
+    { frame =
+        Frame3d.unsafe
+            { originPoint = Point3d.meters hill.x 0 hill.z
+            , xDirection = Direction3d.x
+            , yDirection = Direction3d.negativeZ
+            , zDirection = Direction3d.y
+            }
+    , profile =
+        -- From the foot in to the top
+        { start = Point2d.meters hill.radius top
+        , segments =
+            [ Circle { end = Point2d.meters meet.r meet.h, center = Point2d.meters foot.r foot.h }
+            , Circle { end = Point2d.meters 0 (top + hill.height), center = Point2d.meters peak.r peak.h }
+            ]
+        }
+    , sweep = FullTurn
+    }
+
+
 signs : List Float
 signs =
     [ -1, 1 ]
@@ -266,6 +330,7 @@ flats =
 features : List (FeatureSpec coordinates)
 features =
     holeFeature
+        :: hillFeature
         :: ([ X, Y, Z ] |> List.concatMap (\along -> signs |> List.concatMap (\signA -> List.map (edgeFillet along signA) signs)))
         ++ (signs |> List.concatMap (\signX -> signs |> List.concatMap (\signY -> List.map (corner signX signY) signs)))
 
