@@ -2,7 +2,7 @@ module Surface exposing
     ( Surface, build, Error(..), errorToString
     , FlatSpec, FlatEdge(..), FeatureSpec, ProfileSegment(..), Sweep(..)
     , FlatCoordinate, FeatureCoordinate, ProfileCoordinate
-    , SurfacePoint, nearestSurfacePoint, nearestPoint, flatReach, worldPosition, normal, worldDirection, pointTowards, rotateBy
+    , SurfacePoint, nearestSurfacePoint, nearestPoint, worldPosition, normal, worldDirection, pointTowards, rotateBy
     , encodeSurfacePoint, surfacePointDecoder
     , Path, move, pathEnd, pathSegments
     , pieceCount
@@ -32,7 +32,7 @@ Conventions:
 @docs Surface, build, Error, errorToString
 @docs FlatSpec, FlatEdge, FeatureSpec, ProfileSegment, Sweep
 @docs FlatCoordinate, FeatureCoordinate, ProfileCoordinate
-@docs SurfacePoint, nearestSurfacePoint, nearestPoint, flatReach, worldPosition, normal, worldDirection, pointTowards, rotateBy
+@docs SurfacePoint, nearestSurfacePoint, nearestPoint, worldPosition, normal, worldDirection, pointTowards, rotateBy
 @docs encodeSurfacePoint, surfacePointDecoder
 @docs Path, move, pathEnd, pathSegments
 @docs pieceCount
@@ -1393,72 +1393,6 @@ boxDistance p box =
             maxFloat 0 (maxFloat (low - x) (x - high))
     in
     lengthOf (vec (outside box.min.x box.max.x p.x) (outside box.min.y box.max.y p.y) (outside box.min.z box.max.z p.z))
-
-
-{-| Roughly how far you can go from the surface point nearest to a point in space, in any direction,
-before the surface is more than `tolerance` meters from its tangent plane there. On a flat that's
-how far it is to the flat's edge (beyond which the surface might bend away); on a curved piece it
-depends on how sharply the piece curves.
--}
-flatReach : Float -> Point3d Meters coordinates -> Surface coordinates -> Float
-flatReach tolerance_ point ((Surface surface) as surface_) =
-    case nearest point surface_ |> Maybe.andThen (\found -> Array.get found.piece surface.pieces |> Maybe.map (Tuple.pair found)) of
-        Just ( found, FlatPiece flat ) ->
-            Array.foldl
-                (\edge best ->
-                    let
-                        ( ca, cb ) =
-                            closestOnEdge2d edge found.a found.b
-                    in
-                    minFloat best (sqrt ((ca - found.a) ^ 2 + (cb - found.b) ^ 2))
-                )
-                (1 / 0)
-                flat.edges
-
-        Just ( found, FeaturePiece feature ) ->
-            let
-                segment =
-                    List.foldl
-                        (\seg chosen ->
-                            if found.b - segS0 seg >= 0 then
-                                Just seg
-
-                            else
-                                chosen
-                        )
-                        Nothing
-                        feature.segments
-
-                alongProfile =
-                    case segment of
-                        Just (ArcSeg { radius }) ->
-                            1 / radius
-
-                        _ ->
-                            0
-
-                p =
-                    profileAt feature found.b
-
-                -- Round the axis: the normal's tilt away from the axis over the distance to it
-                aroundAxis =
-                    if p.r - 1.0e-6 > 0 then
-                        abs p.dh / p.r
-
-                    else
-                        alongProfile
-
-                curvature =
-                    maxFloat alongProfile aroundAxis
-            in
-            if curvature - 1.0e-9 > 0 then
-                sqrt (2 * tolerance_ / curvature)
-
-            else
-                1 / 0
-
-        Nothing ->
-            0
 
 
 {-| The surface point closest to a point in space, facing along the first tangent direction.

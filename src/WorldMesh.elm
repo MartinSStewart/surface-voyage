@@ -30,21 +30,12 @@ type alias OnSurface =
     { position : Vec, normal : Vec }
 
 
-{-| How far walls may be drawn from where they stand on curved parts of the surface, as how far
-from its tangent plane the surface may get there, in meters.
--}
-wallImageTolerance : Float
-wallImageTolerance =
-    0.002
-
-
 type alias Triangle =
     ( Vertex, Vertex, Vertex )
 
 
 {-| A corner of a wall: where it is as part of a block standing on the surface, the point it stands
-on (`base`), the surface's outward normal there (`up`), and how far from `base` it can be drawn
-while staying on the surface (see `Surface.flatReach`).
+on (`base`), and the surface's outward normal there (`up`).
 -}
 type alias WallVertex =
     { position : Vec3
@@ -52,7 +43,6 @@ type alias WallVertex =
     , color : Vec3
     , base : Vec3
     , up : Vec3
-    , reach : Float
     }
 
 
@@ -162,12 +152,8 @@ mesh surface pavings =
 -}
 wallMesh : Surface coordinates -> List (List ( Float, Float, Float )) -> WebGL.Mesh WallVertex
 wallMesh surface walls =
-    let
-        reach p =
-            Surface.flatReach wallImageTolerance (Point3d.fromMeters p) surface
-    in
     wallsTriangles surface wallColor walls
-        ++ List.concatMap (stairsTriangles (snap surface) reach) Buildings.stairs
+        ++ List.concatMap (stairsTriangles (snap surface)) Buildings.stairs
         |> WebGL.triangles
 
 
@@ -189,23 +175,15 @@ placedWallMesh surface { preview } walls =
 
 wallsTriangles : Surface coordinates -> Vec3 -> List (List ( Float, Float, Float )) -> List ( WallVertex, WallVertex, WallVertex )
 wallsTriangles surface color walls =
-    let
-        reach p =
-            Surface.flatReach wallImageTolerance (Point3d.fromMeters p) surface
-    in
-    List.concatMap (\wall -> List.map (\( x, y, z ) -> { x = x, y = y, z = z }) wall |> wallTriangles (snap surface) reach color) walls
+    List.concatMap (\wall -> List.map (\( x, y, z ) -> { x = x, y = y, z = z }) wall |> wallTriangles (snap surface) color) walls
 
 
 {-| The roofs. They're drawn over everything else that's flat, as nothing under a roof shows.
 -}
 roofMesh : Surface coordinates -> WebGL.Mesh WallVertex
 roofMesh surface =
-    let
-        reach p =
-            Surface.flatReach wallImageTolerance (Point3d.fromMeters p) surface
-    in
     Buildings.roofs
-        |> List.concatMap (\roof -> block (snap surface) reach roofColor { sides = False } roof.height roof.corners)
+        |> List.concatMap (\roof -> block (snap surface) roofColor { sides = False } roof.height roof.corners)
         |> WebGL.triangles
 
 
@@ -218,9 +196,6 @@ playerMesh =
     let
         onGround p =
             { position = { p | z = 0 }, normal = { x = 0, y = 0, z = 1 } }
-
-        reach _ =
-            1
 
         body =
             List.range 0 (playerSides - 1)
@@ -240,8 +215,8 @@ playerMesh =
             , { x = -0.012, y = 0.045, z = 0 }
             ]
     in
-    block onGround reach noseColor { sides = True } 0.06 nose
-        ++ block onGround reach playerColor { sides = True } playerHeight body
+    block onGround noseColor { sides = True } 0.06 nose
+        ++ block onGround playerColor { sides = True } playerHeight body
         |> WebGL.triangles
 
 
@@ -275,8 +250,8 @@ playerSides =
 
 {-| Each step is a block, as high as the step, from the step's front to the next step.
 -}
-stairsTriangles : (Vec -> OnSurface) -> (Vec -> Float) -> Buildings.Stairs -> List ( WallVertex, WallVertex, WallVertex )
-stairsTriangles onSurface reach flight =
+stairsTriangles : (Vec -> OnSurface) -> Buildings.Stairs -> List ( WallVertex, WallVertex, WallVertex )
+stairsTriangles onSurface flight =
     let
         run =
             sub flight.top flight.bottom
@@ -296,21 +271,21 @@ stairsTriangles onSurface reach flight =
                     toFloat i / toFloat flight.steps
             in
             [ at t0 -1, at t1 -1, at t1 1, at t0 1 ]
-                |> block onSurface reach stairsColor { sides = True } (flight.height * t1)
+                |> block onSurface stairsColor { sides = True } (flight.height * t1)
     in
     List.range 1 flight.steps |> List.concatMap step
 
 
 {-| A block standing on the surface: a top `height` above its corners, and sides down to them.
 -}
-block : (Vec -> OnSurface) -> (Vec -> Float) -> Vec3 -> { sides : Bool } -> Float -> List Vec -> List ( WallVertex, WallVertex, WallVertex )
-block onSurface reach color { sides } height corners =
+block : (Vec -> OnSurface) -> Vec3 -> { sides : Bool } -> Float -> List Vec -> List ( WallVertex, WallVertex, WallVertex )
+block onSurface color { sides } height corners =
     let
         bases =
             List.map onSurface corners
 
         corner base =
-            { base = base, reach = reach base.position, top = along height base.normal base.position }
+            { base = base, top = along height base.normal base.position }
 
         withTops =
             List.map corner bases
@@ -321,7 +296,6 @@ block onSurface reach color { sides } height corners =
             , color = color
             , base = Vec3.fromRecord c.base.position
             , up = Vec3.fromRecord c.base.normal
-            , reach = c.reach
             }
 
         topTriangles =
@@ -405,8 +379,8 @@ pavingTriangles onSurface pavings =
 
 {-| A wall standing on the surface along a line of points: two sides, a top and two ends.
 -}
-wallTriangles : (Vec -> OnSurface) -> (Vec -> Float) -> Vec3 -> List Vec -> List ( WallVertex, WallVertex, WallVertex )
-wallTriangles onSurface reach color points =
+wallTriangles : (Vec -> OnSurface) -> Vec3 -> List Vec -> List ( WallVertex, WallVertex, WallVertex )
+wallTriangles onSurface color points =
     let
         onWall =
             Shapes.alongWall wallStep points |> List.map onSurface |> Array.fromList
@@ -438,7 +412,6 @@ wallTriangles onSurface reach color points =
             , up = p.normal
             , along = along_
             , base = p
-            , reach = reach p.position
             , bottomLeft = corner -1 0
             , bottomRight = corner 1 0
             , topLeft = corner -1 wallHeight
@@ -454,7 +427,6 @@ wallTriangles onSurface reach color points =
             , color = color
             , base = Vec3.fromRecord s.base.position
             , up = Vec3.fromRecord s.base.normal
-            , reach = s.reach
             }
 
         -- Corners are ( position, the section they're in )

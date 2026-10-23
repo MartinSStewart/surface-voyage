@@ -456,9 +456,9 @@ The surface curves, so each wall is drawn as if the ground were flat between the
 player stands `distance` back from where the wall stands, in the direction away from the player along
 the surface there, and the eye is above that. Each corner is drawn where the line from that eye
 through it meets the ground, so walls lean straight away from the player, more the further away they
-are. Corners are kept below 80% of the eye's height, so tall walls don't stretch away forever, and
-are moved no further from where they stand than the surface stays flat (`reach`), so that they don't
-hang off edges or float over curves.
+are. Corners are kept below 80% of the eye's height, so tall walls don't stretch away forever.
+They're drawn in the tangent plane where the wall stands, however far that is from it, so near edges
+and curves they can hang off the surface or sink into it.
 
 Walls overlap on the surface, so their depth is set by how far from the eye they are rather than
 where they're drawn: nearer is on top. All of it is a few millimeters above the surface, so it's
@@ -477,7 +477,6 @@ wallVS =
         attribute vec3 color;
         attribute vec3 base;
         attribute vec3 up;
-        attribute float reach;
         uniform mat4 perspective;
         uniform mat4 camera;
         uniform vec3 player;
@@ -499,10 +498,6 @@ wallVS =
             float k = clamp(height / eyeHeight, 0.0, 0.8);
             vec3 onSurface = corner - height * outward;
             vec3 shift = (onSurface - foot) * k / (1.0 - k);
-            float shiftLength = length(shift);
-            if (shiftLength > reach) {
-                shift *= reach / shiftLength;
-            }
             vec3 image = onSurface + shift + 0.004 * outward;
             vec4 clip = perspective * camera * vec4(image, 1.0);
             clip.z -= 0.0001 * (1.0 + 4.0 / (1.0 + distance(corner, eye))) * clip.w;
