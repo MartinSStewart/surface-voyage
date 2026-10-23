@@ -1,4 +1,4 @@
-module WorldMesh exposing (WallVertex, mesh, roofMesh, wallMesh)
+module WorldMesh exposing (WallVertex, mesh, playerMesh, roofMesh, wallMesh)
 
 {-| What the world looks like: the surface with the paving laid on it, and the walls (see
 `WorldShapes`).
@@ -175,6 +175,70 @@ roofMesh surface =
     Buildings.roofs
         |> List.concatMap (\roof -> block (snap surface) reach roofColor { sides = False } roof.height roof.corners)
         |> WebGL.triangles
+
+
+{-| The player, drawn flat like the walls: a body with a nose on the front to show which way they're
+facing. It's made where the player would stand at the origin, facing y with z up, and moved to where
+they are when drawn (see `View.wallVS`).
+-}
+playerMesh : WebGL.Mesh WallVertex
+playerMesh =
+    let
+        onGround p =
+            { position = { p | z = 0 }, normal = { x = 0, y = 0, z = 1 } }
+
+        reach _ =
+            1
+
+        body =
+            List.range 0 (playerSides - 1)
+                |> List.map
+                    (\i ->
+                        let
+                            angle =
+                                2 * pi * toFloat i / toFloat playerSides
+                        in
+                        { x = playerRadius * cos angle, y = playerRadius * sin angle, z = 0 }
+                    )
+
+        nose =
+            [ { x = -0.012, y = 0.015, z = 0 }
+            , { x = 0.012, y = 0.015, z = 0 }
+            , { x = 0.012, y = 0.045, z = 0 }
+            , { x = -0.012, y = 0.045, z = 0 }
+            ]
+    in
+    block onGround reach noseColor { sides = True } 0.06 nose
+        ++ block onGround reach playerColor { sides = True } playerHeight body
+        |> WebGL.triangles
+
+
+playerColor : Vec3
+playerColor =
+    Vec3.vec3 0.85 0.1 0.1
+
+
+noseColor : Vec3
+noseColor =
+    Vec3.vec3 0.95 0.75 0.3
+
+
+{-| In meters. The player's body fits in the 4 cm walls keep them from (see `WallCollision.clearance`),
+their nose just about.
+-}
+playerRadius : Float
+playerRadius =
+    0.03
+
+
+playerHeight : Float
+playerHeight =
+    0.09
+
+
+playerSides : Int
+playerSides =
+    12
 
 
 {-| Each step is a block, as high as the step, from the step's front to the next step.

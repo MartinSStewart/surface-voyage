@@ -1,7 +1,6 @@
 module Main exposing (Model, Msg(..), init, subscriptions, update, view)
 
 import Angle
-import Axis2d
 import Axis3d exposing (Axis3d)
 import Axis3dEx as Axis3d
 import Browser.Dom
@@ -43,6 +42,7 @@ import Vector3d
 import View
 import Viewpoint3d
 import WallCollision
+import WorldMesh
 
 
 
@@ -56,6 +56,12 @@ type alias LoadedModel_ =
     , mouseLastUp : Maybe { position : Point2d Pixels ScreenCoordinate, time : Duration }
     , mousePosition : Maybe (Point2d Pixels ScreenCoordinate)
     , moveAction : Maybe { direction : Direction2d ScreenCoordinate, endTime : Duration }
+
+    -- Where the mouse was last while the middle button is held to turn the camera
+    , cameraDrag : Maybe (Point2d Pixels ScreenCoordinate)
+
+    -- How far the camera is tilted from looking straight down on the player, in radians
+    , cameraPitch : Float
     , windowSize : Vector2i Pixels ScreenCoordinate
     , surface : Surface WorldCoordinate
     , surfacePoint : SurfacePoint
@@ -101,6 +107,8 @@ initLoadedModel windowSize =
                     , mousePosition = Nothing
                     , mouseLastUp = Nothing
                     , moveAction = Nothing
+                    , cameraDrag = Nothing
+                    , cameraPitch = 0
                     , windowSize = windowSize
                     , surface = surface
                     , surfacePoint = surfacePoint
@@ -158,6 +166,7 @@ type MouseEventType
 type alias MouseEvent_ =
     { position : Point2d Pixels ScreenCoordinate
     , eventType : MouseEventType
+    , button : Html.Events.Extra.Mouse.Button
     }
 
 
@@ -215,14 +224,27 @@ updateLoadedModel msg model =
             )
 
         MouseEvent event ->
-            case event.eventType of
-                MouseEventDown ->
+            case ( event.eventType, event.button ) of
+                ( MouseEventDown, Html.Events.Extra.Mouse.MainButton ) ->
                     { model
                         | mouseLastDown = Just { position = event.position, time = model.time }
                         , moveAction =
                             let
+                                ray =
+                                    View.cameraRay model event.position
+
                                 endPoint =
-                                    View.cameraRay model event.position |> Axis3d.intersectionWithSketchPlane (View.cameraSketchPlane model)
+                                    ray
+                                        |> Axis3d.intersectionWithSketchPlane (View.cameraSketchPlane model)
+                                        -- Clicking above the horizon would otherwise walk the other way
+                                        |> Maybe.andThen
+                                            (\end ->
+                                                if Point3d.signedDistanceAlong ray (Point3d.on (View.cameraSketchPlane model) end) |> Quantity.greaterThan Quantity.zero then
+                                                    Just end
+
+                                                else
+                                                    Nothing
+                                            )
                             in
                             case endPoint of
                                 Just end ->
@@ -233,18 +255,63 @@ updateLoadedModel msg model =
                                         direction =
                                             Direction2d.from Point2d.origin end |> Maybe.withDefault Direction2d.y
                                     in
-                                    Just { direction = direction |> Direction2d.mirrorAcross Axis2d.x, endTime = Quantity.plus model.time endTime }
+                                    Just { direction = direction, endTime = Quantity.plus model.time endTime }
 
                                 Nothing ->
                                     Nothing
                     }
                         |> addCmdNone
 
-                MouseEventMove ->
-                    { model | mousePosition = Just event.position } |> addCmdNone
+                ( MouseEventDown, Html.Events.Extra.Mouse.MiddleButton ) ->
+                    { model | cameraDrag = Just event.position } |> addCmdNone
 
-                MouseEventUp ->
+                ( MouseEventDown, _ ) ->
+                    model |> addCmdNone
+
+                ( MouseEventMove, _ ) ->
+                    { model | mousePosition = Just event.position } |> dragCamera event.position |> addCmdNone
+
+                ( MouseEventUp, Html.Events.Extra.Mouse.MiddleButton ) ->
+                    { model | cameraDrag = Nothing } |> addCmdNone
+
+                ( MouseEventUp, _ ) ->
                     { model | mouseLastUp = Just { position = event.position, time = model.time } } |> addCmdNone
+
+
+{-| Dragging with the middle button held turns the camera around the player: sideways turns the player
+(so the arrow keys and the minimap turn with the camera), up tilts the camera from looking straight
+down on the player towards looking ahead, and down tilts it back.
+-}
+dragCamera : Point2d Pixels ScreenCoordinate -> LoadedModel_ -> LoadedModel_
+dragCamera position model =
+    case model.cameraDrag of
+        Just previous ->
+            let
+                { x, y } =
+                    Vector2d.from previous position |> Vector2d.toPixels
+            in
+            { model
+                | cameraDrag = Just position
+                , surfacePoint = Surface.rotateBy (Angle.radians (-x * cameraDragSpeed)) model.surfacePoint
+                , cameraPitch = clamp 0 maxCameraPitch (model.cameraPitch - y * cameraDragSpeed)
+            }
+
+        Nothing ->
+            model
+
+
+{-| How far the camera turns per pixel dragged, in radians
+-}
+cameraDragSpeed : Float
+cameraDragSpeed =
+    0.006
+
+
+{-| How far the camera can tilt from looking straight down, in radians (75 degrees)
+-}
+maxCameraPitch : Float
+maxCameraPitch =
+    1.3
 
 
 updateLoadingModel : LoadingMsg_ -> LoadingModel_ -> ( Model, Cmd LoadingMsg_ )
@@ -518,9 +585,14 @@ viewSuccessModel : LoadedModel_ -> Element LoadedMsg_
 viewSuccessModel model =
     Element.el
         [ Element.htmlAttribute <| Html.Events.Extra.Touch.onStart touchHandler
+
+        -- Stops the browser scrolling or pasting on a middle click, as that turns the camera
+        , Element.htmlAttribute <|
+            Html.Events.preventDefaultOn "mousedown"
+                (Json.Decode.field "button" Json.Decode.int |> Json.Decode.map (\button -> ( NoOp, button == 1 )))
         , Element.inFront <|
             Element.column [ Element.spacing 6, Element.padding 4 ]
-                [ Element.text "Move with arrow keys or mouse click"
+                [ Element.text "Move with arrow keys or mouse click. Hold the middle mouse button and drag to turn the camera"
                 , if Environment.isDebug then
                     Surface.worldPosition model.surfacePoint model.surface
                         |> Maybe.map Point3d.pointToString
@@ -545,16 +617,17 @@ viewSuccessModel model =
                 ]
                 (Element.html (minimapView model))
         ]
-        (Element.html (View.view model { world = MeshData.webGlMesh, walls = MeshData.wallMesh, roofs = MeshData.roofMesh }))
+        (Element.html (View.view model { world = MeshData.webGlMesh, walls = MeshData.wallMesh, roofs = MeshData.roofMesh, player = WorldMesh.playerMesh }))
 
 
 mouseDecoder : MouseEventType -> Json.Decode.Decoder LoadedMsg_
 mouseDecoder eventType =
     Json.Decode.map
-        (\{ pagePos } ->
+        (\{ pagePos, button } ->
             MouseEvent
                 { position = Point2d.pixels (Tuple.first pagePos) (Tuple.second pagePos)
                 , eventType = eventType
+                , button = button
                 }
         )
         Html.Events.Extra.Mouse.eventDecoder
@@ -568,6 +641,7 @@ touchHandler event =
             (\{ pagePos } ->
                 { position = Point2d.pixels (Tuple.first pagePos) (Tuple.second pagePos)
                 , eventType = MouseEventDown
+                , button = Html.Events.Extra.Mouse.MainButton
                 }
                     |> MouseEvent
             )

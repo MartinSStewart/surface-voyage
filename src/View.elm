@@ -1,7 +1,6 @@
 module View exposing (camera, cameraFocalPoint, cameraRay, cameraSketchPlane, view)
 
 import Angle
-import Axis2d
 import Axis3d exposing (Axis3d)
 import Basics.Extra exposing (flip)
 import Buildings
@@ -50,13 +49,14 @@ type alias Config a =
         , surfacePoint : SurfacePoint
         , cameraNormal : Direction3d WorldCoordinate
         , cameraUp : Direction3d WorldCoordinate
+        , cameraPitch : Float
         , windowSize : Vector2i Pixels ScreenCoordinate
         , moveAction : Maybe { direction : Direction2d ScreenCoordinate, endTime : Duration }
         , height : Float
     }
 
 
-view : Config a -> { world : WebGL.Mesh Vertex, walls : WebGL.Mesh WallVertex, roofs : WebGL.Mesh WallVertex } -> Html msg
+view : Config a -> { world : WebGL.Mesh Vertex, walls : WebGL.Mesh WallVertex, roofs : WebGL.Mesh WallVertex, player : WebGL.Mesh WallVertex } -> Html msg
 view config meshes =
     let
         ( windowWidth, windowHeight ) =
@@ -89,11 +89,9 @@ view config meshes =
                                 , camera = cameraMatrix_
                                 , player = Point3d.toVec3 playerPosition_
                                 , eyeHeight = Length.inMeters wallEyeHeight + config.height
+                                , local = Mat4.identity
+                                , lift = 0
                                 }
-
-                            -- Things up high look bigger from the eye, the player too
-                            playerScale =
-                                (Length.inMeters wallEyeHeight + config.height) / Length.inMeters wallEyeHeight
                         in
                         [ entity wallVS worldFS meshes.walls flatUniforms ]
                             ++ (if Buildings.underRoof config.height (Point3d.toMeters playerPosition_) then
@@ -103,18 +101,13 @@ view config meshes =
                                 else
                                     [ roofEntity wallVS worldFS meshes.roofs flatUniforms ]
                                )
-                            ++ [ entity
-                                    worldVS
-                                    worldFS
-                                    playerMesh
-                                    (uniforms config
-                                        cameraMatrix_
-                                        (Mat4.mul
-                                            (playerPosition_ |> Point3d.toVec3 |> Mat4.makeTranslate)
-                                            (Mat4.makeScale3 playerScale playerScale playerScale)
-                                        )
-                                    )
-                               ]
+                            ++ (case playerFrame config playerPosition_ of
+                                    Just frame ->
+                                        [ entity wallVS worldFS meshes.player { flatUniforms | local = frame, lift = config.height } ]
+
+                                    Nothing ->
+                                        []
+                               )
 
                     Nothing ->
                         []
@@ -150,38 +143,60 @@ uiEntity =
         ]
 
 
-playerMesh : WebGL.Mesh Vertex
-playerMesh =
-    MeshBuilder.cube
-        |> MeshBuilder.map
-            (\a ->
-                { color = Vec3.vec3 0.85 0.1 0.1
-                , position =
-                    Point3d.translateBy (Vector3d.meters -0.5 -0.5 -0.5) a
-                        |> Point3d.scaleAbout Point3d.origin 0.1
-                        |> Point3d.toVec3
-                , normal = Vec3.vec3 0 0 1
-                }
-            )
-        |> MeshBuilder.toWebGlMesh
+{-| Where the player is standing and which way they face: right, forward and the surface's outward
+normal there are x, y and z.
+-}
+playerFrame : Config a -> Point3d Meters WorldCoordinate -> Maybe Mat4
+playerFrame config position =
+    Maybe.map2
+        (\forward up ->
+            let
+                f =
+                    Direction3d.unwrap forward |> Vec3.fromRecord
+
+                u =
+                    Direction3d.unwrap up |> Vec3.fromRecord
+            in
+            Mat4.mul
+                (Point3d.toVec3 position |> Mat4.makeTranslate)
+                (Mat4.makeBasis (Vec3.cross f u) f u)
+        )
+        (Surface.worldDirection config.surface config.surfacePoint)
+        (Surface.normal config.surface config.surfacePoint)
 
 
+{-| The ray from the camera through a point on the screen (in page coordinates, y down)
+-}
 cameraRay : Config a -> Point2d Pixels ScreenCoordinate -> Axis3d Meters WorldCoordinate
 cameraRay config point =
     Camera3d.ray
         (camera config)
         (Rectangle2d.positionAndSize Point2d.origin (Vector2i.toVector2d config.windowSize))
-        point
+        (flipScreenY config point)
 
 
-{-| A plane in front of the camera in world coordinates that's the same distance from the camera as the player
+{-| Page coordinates have y down, `Camera3d` screen coordinates have it up
+-}
+flipScreenY : Config a -> Point2d Pixels ScreenCoordinate -> Point2d Pixels ScreenCoordinate
+flipScreenY config point =
+    Point2d.xy
+        (Point2d.xCoordinate point)
+        (Vector2i.toVector2d config.windowSize |> Vector2d.yComponent |> Quantity.minus (Point2d.yCoordinate point))
+
+
+{-| The ground plane under the camera in world coordinates: through the player, with x to the right on
+screen and y forward. Looking straight down, it's the camera's view plane moved to the player.
 -}
 cameraSketchPlane : Config a -> SketchPlane3d.SketchPlane3d Meters WorldCoordinate defines2
 cameraSketchPlane config =
-    camera config
-        |> Camera3d.viewpoint
-        |> Viewpoint3d.viewPlane
-        |> SketchPlane3d.translateAlongOwn SketchPlane3d.normalAxis (Length.meters -2)
+    let
+        plane =
+            camera config
+                |> Camera3d.viewpoint
+                |> Viewpoint3d.viewPlane
+                |> SketchPlane3d.translateAlongOwn SketchPlane3d.normalAxis (Quantity.negate cameraDistance)
+    in
+    plane |> SketchPlane3d.rotateAround (SketchPlane3d.xAxis plane) (Angle.radians -config.cameraPitch)
 
 
 uniforms : Config a -> Mat4 -> Mat4 -> Uniforms
@@ -214,19 +229,39 @@ cameraFocalPoint config =
     Surface.worldPosition config.surfacePoint config.surface
 
 
+cameraDistance : Length
+cameraDistance =
+    Length.meters 2
+
+
+{-| The camera looks at the player from `cameraDistance` away: straight down at them, or tilted
+back by `cameraPitch` to look ahead.
+-}
 camera : Config a -> Camera3d Meters WorldCoordinate
 camera config =
     let
-        distance =
-            Length.meters 2
-
         viewpoint =
             case cameraFocalPoint config of
                 Just playerPosition_ ->
+                    let
+                        n =
+                            Direction3d.toVector config.cameraNormal
+
+                        u =
+                            Direction3d.toVector config.cameraUp
+
+                        tilted a b =
+                            Vector3d.plus (Vector3d.scaleBy (cos config.cameraPitch) a) (Vector3d.scaleBy (sin config.cameraPitch) b)
+                                |> Vector3d.direction
+                    in
                     Viewpoint3d.lookAt
-                        { eyePoint = Point3d.translateIn config.cameraNormal distance playerPosition_
+                        { eyePoint =
+                            Point3d.translateIn
+                                (tilted n (Vector3d.reverse u) |> Maybe.withDefault config.cameraNormal)
+                                cameraDistance
+                                playerPosition_
                         , focalPoint = playerPosition_
-                        , upDirection = config.cameraUp
+                        , upDirection = tilted u n |> Maybe.withDefault config.cameraUp
                         }
 
                 _ ->
@@ -288,10 +323,11 @@ drawMoveAction config camera_ =
 
                 endPoint =
                     Point2d.origin
-                        |> Point2d.translateIn (moveAction.direction |> Direction2d.mirrorAcross Axis2d.x) distance
+                        |> Point2d.translateIn moveAction.direction distance
                         |> Point3d.on (cameraSketchPlane config)
                         |> Point3d.Projection.toScreenSpace camera_ (Rectangle2d.positionAndSize Point2d.origin (Vector2i.toVector2d config.windowSize))
                         |> Maybe.withDefault Point2d.origin
+                        |> flipScreenY config
                         |> Point2d.toVec2
             in
             uiEntity
@@ -428,8 +464,12 @@ Walls overlap on the surface, so their depth is set by how far from the eye they
 where they're drawn: nearer is on top. All of it is a few millimeters above the surface, so it's
 drawn over the paving.
 
+The player is drawn the same way, from a mesh made where they stand (see `WorldMesh.playerMesh`):
+`local` moves it there and `lift` raises it by how high they are. For everything else they're the
+identity and 0.
+
 -}
-wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float } { color_ : Vec3, normal_ : Vec3 }
+wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float, local : Mat4, lift : Float } { color_ : Vec3, normal_ : Vec3 }
 wallVS =
     [glsl|
         attribute vec3 position;
@@ -442,27 +482,32 @@ wallVS =
         uniform mat4 camera;
         uniform vec3 player;
         uniform float eyeHeight;
+        uniform mat4 local;
+        uniform float lift;
         varying vec3 color_;
         varying vec3 normal_;
         void main () {
-            vec3 fromPlayer = base - player;
-            vec3 away = fromPlayer - dot(fromPlayer, up) * up;
+            vec3 standsOn = (local * vec4(base, 1.0)).xyz;
+            vec3 outward = normalize((local * vec4(up, 0.0)).xyz);
+            vec3 corner = (local * vec4(position, 1.0)).xyz + lift * outward;
+            vec3 fromPlayer = standsOn - player;
+            vec3 away = fromPlayer - dot(fromPlayer, outward) * outward;
             float awayLength = length(away);
-            vec3 foot = awayLength > 0.0 ? base - away * (length(fromPlayer) / awayLength) : base;
-            vec3 eye = foot + eyeHeight * up;
-            float height = dot(position - base, up);
+            vec3 foot = awayLength > 0.0 ? standsOn - away * (length(fromPlayer) / awayLength) : standsOn;
+            vec3 eye = foot + eyeHeight * outward;
+            float height = dot(corner - standsOn, outward);
             float k = clamp(height / eyeHeight, 0.0, 0.8);
-            vec3 onSurface = position - height * up;
+            vec3 onSurface = corner - height * outward;
             vec3 shift = (onSurface - foot) * k / (1.0 - k);
             float shiftLength = length(shift);
             if (shiftLength > reach) {
                 shift *= reach / shiftLength;
             }
-            vec3 image = onSurface + shift + 0.004 * up;
+            vec3 image = onSurface + shift + 0.004 * outward;
             vec4 clip = perspective * camera * vec4(image, 1.0);
-            clip.z -= 0.0001 * (1.0 + 4.0 / (1.0 + distance(position, eye))) * clip.w;
+            clip.z -= 0.0001 * (1.0 + 4.0 / (1.0 + distance(corner, eye))) * clip.w;
             gl_Position = clip;
             color_ = color;
-            normal_ = normal;
+            normal_ = (local * vec4(normal, 0.0)).xyz;
         }
     |]
