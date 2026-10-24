@@ -1,5 +1,6 @@
-module MeshData exposing (ScreenCoordinate, WorldCoordinate, mapShapes, roofMesh, surface, wallCollision, wallMesh, webGlMesh)
+module MeshData exposing (ScreenCoordinate, WorldCoordinate, mapShapes, roofMeshes, surface, wallCollision, wallMesh, webGlMesh)
 
+import Buildings
 import MeshBuilder exposing (Vertex)
 import Shapes exposing (Shapes)
 import Surface exposing (Surface)
@@ -47,16 +48,16 @@ wallCollision =
             WallCollision.none
 
 
-{-| The roofs, drawn flat on the surface (see `WorldMesh`).
+{-| The roofs, each drawn flat on the surface (see `WorldMesh`).
 -}
-roofMesh : WebGL.Mesh WorldMesh.WallVertex
-roofMesh =
+roofMeshes : List ( Buildings.Roof, WebGL.Mesh WorldMesh.WallVertex )
+roofMeshes =
     case surface of
         Ok surface_ ->
-            WorldMesh.roofMesh surface_
+            List.map (\roof -> ( roof, WorldMesh.roofMesh surface_ Nothing roof )) Buildings.default.roofs
 
         Err _ ->
-            WebGL.triangles []
+            []
 
 
 {-| The walls and stairs, drawn flat on the surface (see `WorldMesh`).
@@ -65,7 +66,10 @@ wallMesh : WebGL.Mesh WorldMesh.WallVertex
 wallMesh =
     case surface of
         Ok surface_ ->
-            WorldMesh.wallMesh surface_ WorldShapes.walls
+            WorldMesh.wallMesh surface_
+                { walls = WorldMesh.wallColor, stairs = WorldMesh.stairsColor }
+                (List.map (\points -> { points = points, bottom = 0 }) WorldShapes.walls)
+                Buildings.default.stairs
 
         Err _ ->
             WebGL.triangles []

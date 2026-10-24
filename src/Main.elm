@@ -5,7 +5,7 @@ import Axis3d exposing (Axis3d)
 import Axis3dEx as Axis3d
 import Browser.Dom
 import Browser.Events
-import Buildings
+import Buildings exposing (Buildings)
 import Camera3d
 import Direction2d exposing (Direction2d)
 import Direction3d exposing (Direction3d)
@@ -28,7 +28,9 @@ import Json.Encode
 import Keyboard exposing (Key)
 import KeyboardHelper as Keyboard
 import Length exposing (Meters)
+import LevelEditor exposing (Tool(..))
 import LineSegment3d
+import Math.Vector3
 import MeshBuilder
 import MeshData exposing (ScreenCoordinate, WorldCoordinate)
 import Minimap
@@ -53,6 +55,7 @@ import Viewpoint3d
 import WallCollision
 import WebGL
 import WorldMesh
+import WorldShapes
 
 
 
@@ -86,15 +89,24 @@ type alias LoadedModel_ =
     , cameraUp : Direction3d WorldCoordinate
     , time : Duration
 
-    -- Walls the player has placed, oldest first, how many of them the minimap has been sent, and how
-    -- they're drawn
-    , placedWalls : List (List ( Float, Float, Float ))
-    , placedWallsSent : Int
-    , placedWallMesh : WebGL.Mesh WorldMesh.WallVertex
+    -- Whether the player is making the level (see `LevelEditor`), with which tool, and what they're
+    -- placing with it now
+    , editing : Bool
+    , tool : Tool
+    , placing : Maybe Placing
+
+    -- What the player has placed, what was placed before each change (for undoing), and whether the
+    -- minimap has been sent it yet
+    , placed : LevelEditor.Placed
+    , undo : List LevelEditor.Placed
+    , placedUnsent : Bool
+
+    -- How the level and what's placed in it are drawn (see `View.view`)
+    , layers : List View.Layer
+    , pathMesh : WebGL.Mesh MeshBuilder.Vertex
 
     -- All the walls that stop the player, placed ones included
     , wallCollision : WallCollision.Walls
-    , wallPlacing : Maybe WallPlacing
 
     -- The world being played in: the one made in code, or one imported from a STEP file
     , level : Level
@@ -108,13 +120,16 @@ type alias LoadedModel_ =
     }
 
 
-{-| How a world is drawn, and whether it has the buildings (roofs and stairs, see `Buildings`) in it.
+{-| How a world is drawn, the walls and buildings (roofs and stairs, see `Buildings`) it comes with,
+and the walls that stop the player.
 -}
 type alias Level =
     { world : WebGL.Mesh MeshBuilder.Vertex
     , walls : WebGL.Mesh WorldMesh.WallVertex
-    , roofs : WebGL.Mesh WorldMesh.WallVertex
-    , buildings : Bool
+    , roofs : List ( Buildings.Roof, WebGL.Mesh WorldMesh.WallVertex )
+    , wallLines : List Buildings.Wall
+    , buildings : Buildings
+    , collision : WallCollision.Walls
     }
 
 
@@ -122,24 +137,38 @@ defaultLevel : Level
 defaultLevel =
     { world = MeshData.webGlMesh
     , walls = MeshData.wallMesh
-    , roofs = MeshData.roofMesh
-    , buildings = True
+    , roofs = MeshData.roofMeshes
+    , wallLines = List.map (\points -> { points = points, bottom = 0 }) WorldShapes.walls
+    , buildings = Buildings.default
+    , collision = MeshData.wallCollision
     }
 
 
-{-| A wall the player is placing (pressing W starts one where they stand, Enter finishes it where they
-are, Escape stops). It's the shortest path along the surface between those two points, shown in light
-gray until it's finished.
+{-| Something the player is placing (see `LevelEditor`), shown in lighter colors until it's finished.
+Walls and paths go along the shortest path on the surface from corner to corner (see `ShortestPath`).
 -}
-type alias WallPlacing =
-    { start : SurfacePoint
-    , path : Maybe ShortestPath.Path
-    , mesh : WebGL.Mesh WorldMesh.WallVertex
+type alias Placing =
+    { tool : Tool
 
-    -- Where the player was when the path was last found, and when it was last searched for all
-    -- round rather than followed from the one before (see `ShortestPath.follow`)
+    -- The bottom of the storey the player was in when they started
+    , elevation : Float
+
+    -- Walls and paths: the line up to the last corner. Stairs: the bottom. Roofs: the corners so far.
+    , points : List ( Float, Float, Float )
+
+    -- Walls and paths: where the line goes on from, and the way from there to `target`
+    , from : SurfacePoint
+    , leg : Maybe ShortestPath.Path
+
+    -- Where the next corner (or the end) would go: where the player is, or close by (see `LevelEditor`)
+    , target : Buildings.Vec
+
+    -- Where the player was when `leg` was last found, and when it was last searched for all round
+    -- rather than followed from the one before (see `ShortestPath.follow`)
     , foundFor : Maybe (Point3d.Point3d Meters WorldCoordinate)
-    , searchedFor : Maybe (Point3d.Point3d Meters WorldCoordinate)
+    , searchedFor : Maybe Buildings.Vec
+    , walls : WebGL.Mesh WorldMesh.WallVertex
+    , ground : WebGL.Mesh MeshBuilder.Vertex
     }
 
 
@@ -183,11 +212,15 @@ initLoadedModel windowSize =
                     , cameraNormal = cameraNormal surface surfacePoint |> Maybe.withDefault Direction3d.z
                     , cameraUp = cameraUp surface surfacePoint |> Maybe.withDefault Direction3d.y
                     , time = Quantity.zero
-                    , placedWalls = []
-                    , placedWallsSent = 0
-                    , placedWallMesh = WebGL.triangles []
+                    , editing = False
+                    , tool = WallTool
+                    , placing = Nothing
+                    , placed = LevelEditor.empty
+                    , undo = []
+                    , placedUnsent = False
+                    , layers = layers surface defaultLevel LevelEditor.empty
+                    , pathMesh = WebGL.triangles []
                     , wallCollision = MeshData.wallCollision
-                    , wallPlacing = Nothing
                     , level = defaultLevel
                     , importScale = "1"
                     , importError = Nothing
@@ -233,6 +266,8 @@ type LoadedMsg_
     | ImportFileSelected File
     | ImportFileLoaded String
     | ImportScaleChanged String
+    | EditPressed
+    | ToolPressed Tool
 
 
 type MouseEventType
@@ -303,6 +338,12 @@ updateLoadedModel msg model =
         ImportScaleChanged text ->
             { model | importScale = text } |> addCmdNone
 
+        EditPressed ->
+            toggleEditing model |> addCmdNone
+
+        ToolPressed tool ->
+            selectTool tool model |> addCmdNone
+
         MouseEvent event ->
             mouseEvent event model
 
@@ -351,16 +392,21 @@ importLevel text model =
                 )
     of
         Ok ( surface, surfacePoint ) ->
+            let
+                level =
+                    { world = WorldMesh.mesh surface []
+                    , walls = WebGL.triangles []
+                    , roofs = []
+                    , wallLines = []
+                    , buildings = Buildings.none
+                    , collision = WallCollision.none
+                    }
+            in
             ( { model
                 | surface = surface
                 , surfacePoint = surfacePoint
                 , height = 0
-                , level =
-                    { world = WorldMesh.mesh surface []
-                    , walls = WebGL.triangles []
-                    , roofs = WebGL.triangles []
-                    , buildings = False
-                    }
+                , level = level
                 , importError = Nothing
                 , moveAction = Nothing
                 , minimap = Nothing
@@ -373,11 +419,13 @@ importLevel text model =
                         model.staleMinimaps + 1
                 , cameraNormal = cameraNormal surface surfacePoint |> Maybe.withDefault Direction3d.y
                 , cameraUp = cameraUp surface surfacePoint |> Maybe.withDefault Direction3d.z
-                , placedWalls = []
-                , placedWallsSent = 0
-                , placedWallMesh = WebGL.triangles []
+                , placing = Nothing
+                , placed = LevelEditor.empty
+                , undo = []
+                , placedUnsent = False
+                , layers = layers surface level LevelEditor.empty
+                , pathMesh = WebGL.triangles []
                 , wallCollision = WallCollision.none
-                , wallPlacing = Nothing
               }
             , Json.Encode.object [ ( "step", Json.Encode.string text ), ( "scale", Json.Encode.float scale ) ]
                 |> MinimapPort.drawMinimap
@@ -520,126 +568,510 @@ keyMsgUpdate keyMsg model =
             Keyboard.update keyMsg model.keys
     in
     { model | keys = newKeys, previousKeys = model.keys }
-        |> placeWalls
+        |> editKeys
         |> addCmdNone
 
 
-placeWalls : LoadedModel_ -> LoadedModel_
-placeWalls model =
-    if Keyboard.isPressed model Keyboard.Escape then
-        { model | wallPlacing = Nothing }
+{-| E goes in and out of making the level. While making it, 1 to 4 pick a tool (see
+`LevelEditor.tools`), Space starts placing something or adds a corner to it, Enter finishes it,
+Escape stops placing it, and Backspace (or Ctrl+Z) takes away what was placed last.
+-}
+editKeys : LoadedModel_ -> LoadedModel_
+editKeys model =
+    let
+        pressed =
+            Keyboard.isPressed model
+    in
+    if pressed (Keyboard.Character "E") then
+        toggleEditing model
 
-    else if Keyboard.isPressed model Keyboard.Enter then
-        case model.wallPlacing of
+    else if not model.editing then
+        model
+
+    else if pressed Keyboard.Escape then
+        { model | placing = Nothing }
+
+    else if pressed Keyboard.Enter then
+        finishPlacing model
+
+    else if pressed Keyboard.Spacebar then
+        case model.placing of
             Just placing ->
-                -- Searched for again, in case the path followed isn't the shortest any more
-                case
-                    Surface.worldPosition model.surfacePoint model.surface
-                        |> Maybe.andThen (\position -> ShortestPath.between model.surface placing.start position placing.path)
-                of
-                    Just path ->
-                        let
-                            placedWalls =
-                                model.placedWalls ++ [ path.points ]
-                        in
-                        { model
-                            | wallPlacing = Nothing
-                            , placedWalls = placedWalls
-                            , placedWallMesh = WorldMesh.placedWallMesh model.surface { preview = False } placedWalls
-                            , wallCollision = WallCollision.add model.surface [ path.points ] model.wallCollision
-                        }
+                if placing.tool == StairsTool then
+                    finishPlacing model
 
-                    Nothing ->
-                        { model | wallPlacing = Nothing }
+                else
+                    addCorner placing model
+
+            Nothing ->
+                startPlacing model
+
+    else if pressed Keyboard.Backspace || Keyboard.actionPressed model == Just Keyboard.UndoAction then
+        case ( model.placing, model.undo ) of
+            ( Just _, _ ) ->
+                { model | placing = Nothing }
+
+            ( Nothing, previous :: older ) ->
+                { model | undo = older } |> setPlaced previous
+
+            ( Nothing, [] ) ->
+                model
+
+    else
+        case
+            List.indexedMap Tuple.pair LevelEditor.tools
+                |> List.filter (\( i, _ ) -> pressed (Keyboard.Character (String.fromInt (i + 1))))
+                |> List.head
+        of
+            Just ( _, tool ) ->
+                selectTool tool model
 
             Nothing ->
                 model
 
-    else if Keyboard.isPressed model (Keyboard.Character "W") && not (isPlacingWall model) then
-        { model
-            | wallPlacing =
-                Just
-                    { start = model.surfacePoint
-                    , path = Nothing
-                    , mesh = WebGL.triangles []
-                    , foundFor = Nothing
-                    , searchedFor = Nothing
+
+toggleEditing : LoadedModel_ -> LoadedModel_
+toggleEditing model =
+    { model | editing = not model.editing, placing = Nothing }
+
+
+selectTool : Tool -> LoadedModel_ -> LoadedModel_
+selectTool tool model =
+    { model
+        | editing = True
+        , tool = tool
+        , placing =
+            if Maybe.map .tool model.placing == Just tool then
+                model.placing
+
+            else
+                Nothing
+    }
+
+
+{-| Start placing something with the tool picked, where the player is (or close by, see `target`).
+-}
+startPlacing : LoadedModel_ -> LoadedModel_
+startPlacing model =
+    case Surface.worldPosition model.surfacePoint model.surface of
+        Just position_ ->
+            let
+                position =
+                    Point3d.toMeters position_
+
+                elevation =
+                    LevelEditor.elevationAt model.height
+
+                start =
+                    target model model.tool elevation [] position
+
+                from =
+                    if start == position then
+                        Just model.surfacePoint
+
+                    else
+                        Surface.nearestSurfacePoint (Point3d.fromMeters start) model.surface
+            in
+            case from of
+                Just from_ ->
+                    { model
+                        | placing =
+                            Just
+                                { tool = model.tool
+                                , elevation = elevation
+                                , points = [ toTuple start ]
+                                , from = from_
+                                , leg = Nothing
+                                , target = start
+                                , foundFor = Nothing
+                                , searchedFor = Nothing
+                                , walls = WebGL.triangles []
+                                , ground = WebGL.triangles []
+                                }
                     }
-        }
 
-    else
-        model
-
-
-isPlacingWall : LoadedModel_ -> Bool
-isPlacingWall model =
-    case model.wallPlacing of
-        Just _ ->
-            True
+                Nothing ->
+                    model
 
         Nothing ->
-            False
+            model
 
 
-{-| Keep the wall being placed going from where it started to where the player is.
+{-| Where the next corner or the end of what's being placed goes, with the player at `position`.
 -}
-stepWallPlacing : LoadedModel_ -> LoadedModel_
-stepWallPlacing model =
-    case ( model.wallPlacing, Surface.worldPosition model.surfacePoint model.surface ) of
+target : LoadedModel_ -> Tool -> Float -> List ( Float, Float, Float ) -> Buildings.Vec -> Buildings.Vec
+target model tool elevation points position =
+    case tool of
+        WallTool ->
+            LevelEditor.snapEnd
+                (List.map .points (LevelEditor.wallsAt elevation (model.level.wallLines ++ model.placed.walls))
+                    -- So a wall can go round and end where it started
+                    ++ (if List.length points > 2 then
+                            [ List.take 1 points ]
+
+                        else
+                            []
+                       )
+                )
+                position
+
+        PathTool ->
+            LevelEditor.snapEnd model.placed.paths position
+
+        RoofTool ->
+            LevelEditor.roofCorner (model.level.wallLines ++ model.placed.walls) elevation position
+
+        StairsTool ->
+            LevelEditor.stairsTop (allBuildings model).roofs elevation position
+
+
+{-| Walls and paths: add the way to `target` to the line, and go on from there. Roofs: add a corner.
+-}
+addCorner : Placing -> LoadedModel_ -> LoadedModel_
+addCorner placing model =
+    case placing.tool of
+        RoofTool ->
+            { model | placing = Just { placing | points = withCorner placing.target placing.points, foundFor = Nothing } }
+
+        _ ->
+            case ( legTo model placing, Surface.nearestSurfacePoint (Point3d.fromMeters placing.target) model.surface ) of
+                ( Just leg, Just from ) ->
+                    { model
+                        | placing =
+                            Just
+                                { placing
+                                    | points = alongLeg placing leg
+                                    , from = from
+                                    , leg = Nothing
+                                    , foundFor = Nothing
+                                    , searchedFor = Nothing
+                                }
+                    }
+
+                _ ->
+                    model
+
+
+{-| The corners with another one, unless it's where the last one is.
+-}
+withCorner : Buildings.Vec -> List ( Float, Float, Float ) -> List ( Float, Float, Float )
+withCorner corner corners =
+    if List.any (\c -> distanceBetween (fromTuple c) corner < 0.01) (List.take 1 (List.reverse corners)) then
+        corners
+
+    else
+        corners ++ [ toTuple corner ]
+
+
+{-| The shortest way from where the line being placed goes on from to its target, searched for all
+round, as it's going to stay.
+-}
+legTo : LoadedModel_ -> Placing -> Maybe ShortestPath.Path
+legTo model placing =
+    ShortestPath.between model.surface placing.from (Point3d.fromMeters placing.target) placing.leg
+
+
+{-| The line so far and then a leg of it, ending exactly on the target (it can be a hair off it).
+-}
+alongLeg : Placing -> ShortestPath.Path -> List ( Float, Float, Float )
+alongLeg placing leg =
+    placing.points ++ (List.drop 1 leg.points |> List.reverse |> List.drop 1 |> List.reverse) ++ [ toTuple placing.target ]
+
+
+finishPlacing : LoadedModel_ -> LoadedModel_
+finishPlacing model =
+    case model.placing of
+        Just placing ->
+            let
+                line =
+                    case legTo model placing of
+                        Just leg ->
+                            alongLeg placing leg
+
+                        Nothing ->
+                            placing.points
+
+                placed =
+                    model.placed
+
+                done =
+                    { model | placing = Nothing }
+            in
+            case placing.tool of
+                WallTool ->
+                    if List.length line < 2 then
+                        done
+
+                    else
+                        done |> place { placed | walls = LevelEditor.addWall { points = line, bottom = placing.elevation } placed.walls }
+
+                PathTool ->
+                    if List.length line < 2 then
+                        done
+
+                    else
+                        done |> place { placed | paths = placed.paths ++ [ line ] }
+
+                RoofTool ->
+                    case withCorner placing.target placing.points |> closeRoof of
+                        corners ->
+                            if List.length corners < 3 then
+                                done
+
+                            else
+                                done
+                                    |> place
+                                        { placed
+                                            | roofs =
+                                                placed.roofs
+                                                    ++ [ { corners = List.map fromTuple corners
+                                                         , height = placing.elevation + Buildings.storey
+                                                         , overhang = WorldMesh.wallThickness / 2
+                                                         }
+                                                       ]
+                                        }
+
+                StairsTool ->
+                    case stairsFor placing of
+                        Just stairs ->
+                            done |> place { placed | stairs = placed.stairs ++ [ stairs ] }
+
+                        Nothing ->
+                            done
+
+        Nothing ->
+            model
+
+
+{-| A roof's corners without the last one if it's back on the first.
+-}
+closeRoof : List ( Float, Float, Float ) -> List ( Float, Float, Float )
+closeRoof corners =
+    case ( corners, List.reverse corners ) of
+        ( first :: _ :: _ :: _ :: _, last :: rest ) ->
+            if distanceBetween (fromTuple first) (fromTuple last) < 0.01 then
+                List.reverse rest
+
+            else
+                corners
+
+        _ ->
+            corners
+
+
+{-| Stairs from where the player started placing them to the target, if that's far enough away.
+-}
+stairsFor : Placing -> Maybe Buildings.Stairs
+stairsFor placing =
+    case placing.points of
+        bottom :: _ ->
+            let
+                length =
+                    distanceBetween (fromTuple bottom) placing.target
+            in
+            if length < 0.05 then
+                Nothing
+
+            else
+                Just
+                    { bottom = fromTuple bottom
+                    , top = placing.target
+                    , width = 0.1
+                    , height = Buildings.storey
+                    , steps = LevelEditor.stepsFor length
+                    , elevation = placing.elevation
+                    }
+
+        [] ->
+            Nothing
+
+
+{-| Change what's placed, so it can be undone.
+-}
+place : LevelEditor.Placed -> LoadedModel_ -> LoadedModel_
+place placed model =
+    { model | undo = model.placed :: model.undo } |> setPlaced placed
+
+
+setPlaced : LevelEditor.Placed -> LoadedModel_ -> LoadedModel_
+setPlaced placed model =
+    { model
+        | placed = placed
+        , placedUnsent = True
+        , layers = layers model.surface model.level placed
+        , pathMesh = WorldMesh.pathMesh model.surface { preview = False } placed.paths
+        , wallCollision = WallCollision.add model.surface placed.walls model.level.collision
+    }
+
+
+{-| The level's buildings and the ones placed.
+-}
+allBuildings : LoadedModel_ -> Buildings
+allBuildings model =
+    Buildings.append model.level.buildings (LevelEditor.buildings model.placed)
+
+
+{-| What's drawn flat on the surface, storey by storey (see `View.Layer`): the level's own walls and
+roofs, then what's been placed.
+-}
+layers : Surface WorldCoordinate -> Level -> LevelEditor.Placed -> List View.Layer
+layers surface level placed =
+    let
+        storeyOf height =
+            round (height / Buildings.storey)
+
+        top =
+            (List.map (.bottom >> storeyOf) placed.walls
+                ++ List.map (.elevation >> storeyOf) placed.stairs
+                ++ List.map (\roof -> storeyOf roof.height - 1) (placed.roofs ++ List.map Tuple.first level.roofs)
+            )
+                |> List.maximum
+                |> Maybe.withDefault 0
+
+        layer i =
+            { walls =
+                (if i == 0 then
+                    [ level.walls ]
+
+                 else
+                    []
+                )
+                    ++ [ WorldMesh.wallMesh surface
+                            { walls = WorldMesh.wallColor, stairs = WorldMesh.stairsColor }
+                            (List.filter (\wall -> storeyOf wall.bottom == i) placed.walls)
+                            (List.filter (\stairs -> storeyOf stairs.elevation == i) placed.stairs)
+                       ]
+            , roofs =
+                List.filter (\( roof, _ ) -> storeyOf roof.height == i + 1) level.roofs
+                    ++ (placed.roofs
+                            |> List.filter (\roof -> storeyOf roof.height == i + 1)
+                            |> List.map (\roof -> ( roof, WorldMesh.roofMesh surface Nothing roof ))
+                       )
+            }
+    in
+    List.range 0 (max 0 top) |> List.map layer
+
+
+{-| Keep what's being placed going to where the player is.
+-}
+stepPlacing : LoadedModel_ -> LoadedModel_
+stepPlacing model =
+    case ( model.placing, Surface.worldPosition model.surfacePoint model.surface ) of
         ( Just placing, Just position ) ->
             if placing.foundFor == Just position then
                 model
 
             else
                 let
-                    searchAgain =
-                        case ( placing.path, placing.searchedFor ) of
-                            ( Just _, Just lastSearch ) ->
-                                Point3d.distanceFrom lastSearch position |> Quantity.greaterThan searchEvery
+                    goal =
+                        target model placing.tool placing.elevation placing.points (Point3d.toMeters position)
 
-                            _ ->
-                                True
-
-                    followed =
-                        if searchAgain then
-                            Nothing
-
-                        else
-                            placing.path |> Maybe.andThen (ShortestPath.follow model.surface placing.start position)
-
-                    ( path, searchedFor ) =
-                        case followed of
-                            Just _ ->
-                                ( followed, placing.searchedFor )
-
-                            Nothing ->
-                                ( ShortestPath.between model.surface placing.start position placing.path, Just position )
+                    moved =
+                        { placing | target = goal, foundFor = Just position }
                 in
-                { model
-                    | wallPlacing =
-                        Just
-                            { placing
-                                | path = path
-                                , mesh =
-                                    WorldMesh.placedWallMesh model.surface
-                                        { preview = True }
-                                        (Maybe.map (.points >> List.singleton) path |> Maybe.withDefault [])
-                                , foundFor = Just position
-                                , searchedFor = searchedFor
-                            }
-                }
+                { model | placing = Just (preview model moved) }
 
         _ ->
             model
 
 
-{-| How far the player moves between looking all round for the shortest path for the wall they're
-placing. In between, the path found last is followed, which is quicker, but stays the same side of
-the hole even if the other side gets shorter.
+{-| What's being placed, drawn in lighter colors, with the way to its target found again for walls and
+paths.
+-}
+preview : LoadedModel_ -> Placing -> Placing
+preview model placing =
+    let
+        previewWalls walls stairs =
+            WorldMesh.wallMesh model.surface { walls = previewColor, stairs = previewColor } walls stairs
+    in
+    case placing.tool of
+        RoofTool ->
+            let
+                corners =
+                    withCorner placing.target placing.points
+            in
+            { placing
+                | ground = WorldMesh.pathMesh model.surface { preview = True } [ corners ++ List.take 1 corners ]
+                , walls =
+                    if List.length corners >= 3 then
+                        WorldMesh.roofMesh model.surface
+                            (Just previewColor)
+                            { corners = List.map fromTuple corners, height = placing.elevation + Buildings.storey, overhang = WorldMesh.wallThickness / 2 }
+
+                    else
+                        WebGL.triangles []
+            }
+
+        StairsTool ->
+            { placing | walls = previewWalls [] (stairsFor placing |> Maybe.map List.singleton |> Maybe.withDefault []) }
+
+        _ ->
+            let
+                searchAgain =
+                    case ( placing.leg, placing.searchedFor ) of
+                        ( Just _, Just lastSearch ) ->
+                            distanceBetween lastSearch placing.target > Length.inMeters searchEvery
+
+                        _ ->
+                            True
+
+                followed =
+                    if searchAgain then
+                        Nothing
+
+                    else
+                        placing.leg |> Maybe.andThen (ShortestPath.follow model.surface placing.from (Point3d.fromMeters placing.target))
+
+                ( leg, searchedFor ) =
+                    case followed of
+                        Just _ ->
+                            ( followed, placing.searchedFor )
+
+                        Nothing ->
+                            ( legTo model placing, Just placing.target )
+
+                line =
+                    case leg of
+                        Just leg_ ->
+                            alongLeg placing leg_
+
+                        Nothing ->
+                            placing.points
+            in
+            if placing.tool == PathTool then
+                { placing | leg = leg, searchedFor = searchedFor, ground = WorldMesh.pathMesh model.surface { preview = True } [ line ] }
+
+            else
+                { placing | leg = leg, searchedFor = searchedFor, walls = previewWalls [ { points = line, bottom = placing.elevation } ] [] }
+
+
+previewColor : Math.Vector3.Vec3
+previewColor =
+    Math.Vector3.vec3 0.82 0.82 0.82
+
+
+{-| How far the player moves between looking all round for the shortest way for the wall or path
+they're placing. In between, the way found last is followed, which is quicker, but stays the same side
+of the hole even if the other side gets shorter.
 -}
 searchEvery : Length.Length
 searchEvery =
     Length.centimeters 15
+
+
+toTuple : Buildings.Vec -> ( Float, Float, Float )
+toTuple v =
+    ( v.x, v.y, v.z )
+
+
+fromTuple : ( Float, Float, Float ) -> Buildings.Vec
+fromTuple ( x, y, z ) =
+    { x = x, y = y, z = z }
+
+
+distanceBetween : Buildings.Vec -> Buildings.Vec -> Float
+distanceBetween a b =
+    sqrt ((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2)
 
 
 step : LoadedModel_ -> LoadedModel_
@@ -648,7 +1080,7 @@ step model =
         |> stepMovement
         |> stepHeight
         |> stepCamera
-        |> stepWallPlacing
+        |> stepPlacing
 
 
 frameDuration =
@@ -660,21 +1092,57 @@ stepMovement model =
         movement =
             Keyboard.arrowDown model |> Vector2d.direction
 
+        crouching =
+            isCrouching model
+
+        speed =
+            if crouching then
+                Quantity.multiplyBy crouchSpeed GameLogic.playerSpeed
+
+            else
+                GameLogic.playerSpeed
+
+        buildings =
+            allBuildings model
+
+        supportAt point =
+            Surface.worldPosition point model.surface
+                |> Maybe.map (Point3d.toMeters >> Buildings.standingHeight buildings model.height)
+
+        support =
+            supportAt model.surfacePoint |> Maybe.withDefault 0
+
+        -- Crouching, the player doesn't step off anything they'd drop down from
+        keepsFooting point =
+            not crouching || (supportAt point |> Maybe.map (\h -> h >= support - Buildings.maxStepUp) |> Maybe.withDefault False)
+
+        walkBy angle distance =
+            if model.editing then
+                -- Making the level, the player goes through walls
+                Surface.move model.surface angle distance model.surfacePoint
+                    |> Maybe.map Surface.pathEnd
+                    |> Maybe.withDefault model.surfacePoint
+
+            else
+                WallCollision.move model.surface model.wallCollision model.height angle distance model.surfacePoint
+
         walk direction =
             let
                 angle =
                     Direction2d.angleFrom Direction2d.y direction
 
                 distance =
-                    GameLogic.playerSpeed |> Quantity.for frameDuration
-            in
-            if model.height < WallCollision.blocksBelow then
-                WallCollision.move model.surface model.wallCollision angle distance model.surfacePoint
+                    speed |> Quantity.for frameDuration
 
-            else
-                Surface.move model.surface angle distance model.surfacePoint
-                    |> Maybe.map Surface.pathEnd
-                    |> Maybe.withDefault model.surfacePoint
+                -- At an edge, sliding along it if the player is going along it as well as over it
+                slides =
+                    [ 1, -1 ]
+                        |> List.map (\side -> walkBy (Quantity.plus angle (Angle.degrees (45 * side))) (Quantity.multiplyBy (sqrt 0.5) distance))
+            in
+            (walkBy angle distance :: slides)
+                |> List.filter keepsFooting
+                |> List.head
+                |> Maybe.withDefault model.surfacePoint
     in
     { model
         | surfacePoint =
@@ -703,6 +1171,19 @@ stepMovement model =
     }
 
 
+{-| Holding Shift, the player crouches: they walk slower and don't step off ledges, which makes it
+easier to walk right up to a roof's edge to place a wall on it, over the wall under it.
+-}
+isCrouching : LoadedModel_ -> Bool
+isCrouching model =
+    Keyboard.isDown model Keyboard.Shift
+
+
+crouchSpeed : Float
+crouchSpeed =
+    0.5
+
+
 {-| Laying out the minimap takes a while, so a web worker does it (see `MinimapWorker`), one layout at
 a time. A new one is asked for once the player has moved far enough from where the last one was laid
 out from for it to show. In between, the minimap is moved and turned to keep up (see `minimapView`).
@@ -722,18 +1203,19 @@ stepMinimap model =
                 Nothing ->
                     True
 
-        placedWallsUnsent =
-            List.length model.placedWalls > model.placedWallsSent
+        encodeLines =
+            Json.Encode.list (Json.Encode.list (\( x, y, z ) -> Json.Encode.list Json.Encode.float [ x, y, z ]))
     in
-    if model.minimapRequest == Nothing && (movedFar || placedWallsUnsent) then
-        ( { model | minimapRequest = Just model.surfacePoint, placedWallsSent = List.length model.placedWalls }
+    if model.minimapRequest == Nothing && (movedFar || model.placedUnsent) then
+        ( { model | minimapRequest = Just model.surfacePoint, placedUnsent = False }
         , Json.Encode.object
             (( "point", Surface.encodeSurfacePoint model.surfacePoint )
-                :: (if placedWallsUnsent then
-                        [ ( "placedWalls"
-                          , Json.Encode.list
-                                (Json.Encode.list (\( x, y, z ) -> Json.Encode.list Json.Encode.float [ x, y, z ]))
-                                (List.drop model.placedWallsSent model.placedWalls)
+                :: (if model.placedUnsent then
+                        [ ( "placed"
+                          , Json.Encode.object
+                                [ ( "walls", encodeLines (List.map .points model.placed.walls) )
+                                , ( "paths", encodeLines model.placed.paths )
+                                ]
                           )
                         ]
 
@@ -806,11 +1288,7 @@ stepHeight : LoadedModel_ -> LoadedModel_
 stepHeight model =
     case Surface.worldPosition model.surfacePoint model.surface of
         Just position ->
-            if not model.level.buildings then
-                model
-
-            else
-                { model | height = Buildings.heightAfter (Duration.inSeconds frameDuration) model.height (Point3d.toMeters position) }
+            { model | height = Buildings.heightAfter (allBuildings model) (Duration.inSeconds frameDuration) model.height (Point3d.toMeters position) }
 
         Nothing ->
             model
@@ -926,15 +1404,8 @@ viewSuccessModel model =
                 (Json.Decode.field "button" Json.Decode.int |> Json.Decode.map (\button -> ( NoOp, button == 1 )))
         , Element.inFront <|
             Element.column [ Element.spacing 6, Element.padding 4 ]
-                [ Element.text "Move with arrow keys or mouse click. Hold the middle mouse button and drag to turn the camera"
-                , Element.text
-                    (case model.wallPlacing of
-                        Just _ ->
-                            "Move to where the wall should end and press Enter, or Escape to cancel"
-
-                        Nothing ->
-                            "Press W to start a wall where you're standing"
-                    )
+                [ Element.text "Move with arrow keys or mouse click, hold Shift to crouch. Hold the middle mouse button and drag to turn the camera"
+                , editorControls model
                 , importControls model
                 , if Environment.isDebug then
                     Surface.worldPosition model.surfacePoint model.surface
@@ -962,12 +1433,56 @@ viewSuccessModel model =
         ]
         (Element.html
             (View.view model
-                { world = model.level.world
-                , walls = model.level.walls :: model.placedWallMesh :: (Maybe.map (.mesh >> List.singleton) model.wallPlacing |> Maybe.withDefault [])
-                , roofs = model.level.roofs
+                { world = model.level.world :: model.pathMesh :: (Maybe.map (.ground >> List.singleton) model.placing |> Maybe.withDefault [])
+                , layers = model.layers
+                , preview = Maybe.map (.walls >> List.singleton) model.placing |> Maybe.withDefault []
                 , player = WorldMesh.playerMesh
+                , crouching = isCrouching model
                 }
             )
+        )
+
+
+{-| A button to start and stop making the level, and while making it, the tools to pick from (see
+`LevelEditor`) and what to do with the one picked. Mouse presses on them don't walk the player there,
+and don't focus the buttons, as Space and Enter would press a focused button again.
+-}
+editorControls : LoadedModel_ -> Element LoadedMsg_
+editorControls model =
+    let
+        button selected onPress label =
+            Element.Input.button
+                [ Element.Background.color
+                    (if selected then
+                        Element.rgb 0.75 0.85 1
+
+                     else
+                        Element.rgb 0.95 0.95 0.95
+                    )
+                , Element.Border.rounded 4
+                , Element.Border.width 1
+                , Element.Border.color (Element.rgb 0.6 0.6 0.6)
+                , Element.paddingXY 8 4
+                ]
+                { onPress = Just onPress, label = Element.text label }
+    in
+    Element.column
+        [ Element.spacing 4
+        , Element.htmlAttribute <| Html.Events.custom "mousedown" (Json.Decode.succeed { message = NoOp, stopPropagation = True, preventDefault = True })
+        ]
+        (if model.editing then
+            [ Element.row [ Element.spacing 8 ]
+                (button True EditPressed "Stop editing (E)"
+                    :: List.indexedMap
+                        (\i tool -> button (tool == model.tool) (ToolPressed tool) (String.fromInt (i + 1) ++ " " ++ LevelEditor.toolName tool))
+                        LevelEditor.tools
+                )
+            , Element.text (LevelEditor.toolHint model.tool { placing = model.placing /= Nothing })
+            , Element.text "You go through walls while editing. Escape stops placing, Backspace takes away what you placed last"
+            ]
+
+         else
+            [ button False EditPressed "Edit level (E)" ]
         )
 
 

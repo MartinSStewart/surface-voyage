@@ -1,4 +1,4 @@
-module Shapes exposing (Paving, ShapePoint, Shapes, addWalls, alongWall, empty, foldWithin, prepare, splitPavings)
+module Shapes exposing (Paving, ShapePoint, Shapes, alongWall, empty, foldWithin, isClosed, pathPaving, pathWidth, prepare, sections, splitPavings)
 
 {-| Shapes drawn on the surface: walls as lines and paving (paths and floors) as filled areas.
 
@@ -9,6 +9,7 @@ close enough together that straight lines between them on the map follow the sur
 
 import Array exposing (Array)
 import Dict exposing (Dict)
+import Direction3d
 import Point3d
 import Surface exposing (Surface)
 
@@ -192,7 +193,7 @@ prepare surface walls pavings =
         |> addWalls surface walls
 
 
-{-| Add walls to shapes, like the ones the player places.
+{-| Add walls to shapes.
 -}
 addWalls : Surface coordinates -> List (List ( Float, Float, Float )) -> Shapes -> Shapes
 addWalls surface walls shapes =
@@ -261,6 +262,144 @@ alongWall step points =
 
         _ ->
             points
+
+
+{-| Whether a line of points comes back round to where it started, like the walls round a room.
+-}
+isClosed : List Vec -> Bool
+isClosed points =
+    case ( points, List.reverse points ) of
+        ( first :: _ :: _ :: _, last :: _ ) ->
+            distance first last < 1.0e-4
+
+        _ ->
+            False
+
+
+{-| Points along a line (from `alongWall`) on the surface, and the way across the line at each of them,
+to its right going along it. Where the line turns a corner, the way across is mitred: it points
+along the corner's bisector and is longer, so that something drawn `w` either side of the line is `w`
+thick everywhere. A closed line (see `isClosed`) is mitred where its ends meet too.
+-}
+sections : (Vec -> { position : Vec, normal : Vec }) -> List Vec -> List { position : Vec, normal : Vec, along : Vec, right : Vec }
+sections onSurface points =
+    let
+        closed =
+            isClosed points
+
+        onLine =
+            (if closed then
+                List.take (List.length points - 1) points
+
+             else
+                points
+            )
+                |> List.map onSurface
+                |> Array.fromList
+
+        count =
+            Array.length onLine
+
+        at i =
+            Array.get
+                (if closed then
+                    modBy count i
+
+                 else
+                    clamp 0 (count - 1) i
+                )
+                onLine
+                |> Maybe.withDefault { position = { x = 0, y = 0, z = 0 }, normal = { x = 0, y = 1, z = 0 } }
+
+        section i =
+            let
+                p =
+                    at i
+
+                towards j =
+                    normalize (sub (at j).position p.position)
+
+                -- Going in and out of the point, so the ends of an open line just go one way
+                ( into, out ) =
+                    if not closed && i == 0 then
+                        ( towards 1, towards 1 )
+
+                    else if not closed && i == count - 1 then
+                        ( scale -1 (towards (i - 1)), scale -1 (towards (i - 1)) )
+
+                    else
+                        ( scale -1 (towards (i - 1)), towards (i + 1) )
+
+                rightOf d =
+                    normalize (cross d p.normal)
+
+                bisector =
+                    normalize (add (rightOf into) (rightOf out))
+
+                -- How much longer the way across is at a corner, kept from going far out at sharp ones
+                mitre =
+                    1 / clampFloat 0.35 1 (dot bisector (rightOf into))
+            in
+            { position = p.position
+            , normal = p.normal
+            , along = normalize (add into out)
+            , right = scale mitre bisector
+            }
+    in
+    List.range 0 (count - 1)
+        |> List.map section
+        |> (\all ->
+                if closed then
+                    all ++ List.take 1 all
+
+                else
+                    all
+           )
+
+
+{-| A dirt path along a line of points, `width` wide, as paving.
+-}
+pathPaving : Surface coordinates -> Float -> List ( Float, Float, Float ) -> Paving
+pathPaving surface width points =
+    let
+        onSurface p =
+            case Surface.nearestPoint (Point3d.meters p.x p.y p.z) surface of
+                Just nearest ->
+                    { position = Point3d.toMeters nearest.position, normal = Direction3d.unwrap nearest.normal }
+
+                Nothing ->
+                    { position = p, normal = { x = 0, y = 1, z = 0 } }
+
+        across =
+            List.map fromTuple points
+                |> alongWall pathStep
+                |> sections onSurface
+
+        toTuple v =
+            ( v.x, v.y, v.z )
+
+        sides s =
+            [ toTuple (add s.position (scale (-width / 2) s.right)), toTuple (add s.position (scale (width / 2) s.right)) ]
+    in
+    { points = List.concatMap sides across
+    , triangles =
+        List.range 0 (List.length across - 2)
+            |> List.concatMap (\i -> [ ( 2 * i, 2 * i + 1, 2 * i + 2 ), ( 2 * i + 1, 2 * i + 3, 2 * i + 2 ) ])
+    }
+
+
+{-| How wide dirt paths are, in meters.
+-}
+pathWidth : Float
+pathWidth =
+    0.07
+
+
+{-| Paths get a point at least this often, in meters, so they follow the surface round curves.
+-}
+pathStep : Float
+pathStep =
+    0.04
 
 
 {-| All the pavings' corners and triangles, with the triangles split until no edge is `tooLong`
@@ -367,3 +506,56 @@ lerp t a b =
 distance : Vec -> Vec -> Float
 distance a b =
     sqrt ((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2)
+
+
+add : Vec -> Vec -> Vec
+add a b =
+    { x = a.x + b.x, y = a.y + b.y, z = a.z + b.z }
+
+
+sub : Vec -> Vec -> Vec
+sub a b =
+    { x = a.x - b.x, y = a.y - b.y, z = a.z - b.z }
+
+
+scale : Float -> Vec -> Vec
+scale s a =
+    { x = s * a.x, y = s * a.y, z = s * a.z }
+
+
+dot : Vec -> Vec -> Float
+dot a b =
+    a.x * b.x + a.y * b.y + a.z * b.z
+
+
+cross : Vec -> Vec -> Vec
+cross a b =
+    { x = a.y * b.z - a.z * b.y
+    , y = a.z * b.x - a.x * b.z
+    , z = a.x * b.y - a.y * b.x
+    }
+
+
+normalize : Vec -> Vec
+normalize a =
+    let
+        length =
+            sqrt (dot a a)
+    in
+    if length > 0 then
+        scale (1 / length) a
+
+    else
+        a
+
+
+clampFloat : Float -> Float -> Float -> Float
+clampFloat low high x =
+    if x - low < 0 then
+        low
+
+    else if x - high > 0 then
+        high
+
+    else
+        x
