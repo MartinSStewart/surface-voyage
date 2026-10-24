@@ -1,4 +1,4 @@
-module WallCollision exposing (Walls, add, blocksBelow, fromShapes, move, none)
+module WallCollision exposing (Walls, add, fromShapes, move, none)
 
 {-| Walls stop the player, who slides along them instead of walking through.
 
@@ -10,6 +10,7 @@ slide.
 -}
 
 import Angle
+import Buildings
 import Direction3d
 import Length
 import Point3d
@@ -21,10 +22,15 @@ type alias Vec =
     { x : Float, y : Float, z : Float }
 
 
-{-| The walls' center lines, as short segments on the surface.
+{-| The walls' center lines, as short segments on the surface, and how high above the surface each
+wall stands.
 -}
 type Walls
-    = Walls (List { a : Vec, b : Vec })
+    = Walls (List Segment)
+
+
+type alias Segment =
+    { a : Vec, b : Vec, bottom : Float }
 
 
 {-| How far from a wall's center line the player's center is kept, in meters: half the wall's
@@ -35,12 +41,18 @@ clearance =
     0.0125 + 0.04
 
 
-{-| Walls only stop the player below this height above the surface, in meters: higher up (on a roof,
-or near the top of the stairs) they can step over them.
+{-| Walls only stop the player below this height above their bottom, in meters: higher up (on a roof,
+or near the top of the stairs) they can step over them. Nor do they stop a player more than
+`Buildings.maxStepUp` below them, under the roof they stand on.
 -}
 blocksBelow : Float
 blocksBelow =
     0.05
+
+
+blocks : Float -> Segment -> Bool
+blocks height segment =
+    height > segment.bottom - Buildings.maxStepUp && height < segment.bottom + blocksBelow
 
 
 {-| How often to put a point along the walls, in meters, so that the segments between them follow
@@ -56,42 +68,53 @@ none =
     Walls []
 
 
+{-| Walls on the surface, like the ones in `WorldShapes`.
+-}
 fromShapes : Surface coordinates -> List (List ( Float, Float, Float )) -> Walls
 fromShapes surface walls =
+    fromWalls surface (List.map (\points -> { points = points, bottom = 0 }) walls)
+
+
+fromWalls : Surface coordinates -> List Buildings.Wall -> Walls
+fromWalls surface walls =
     let
         snap p =
             Surface.nearestPoint (Point3d.meters p.x p.y p.z) surface
                 |> Maybe.map (.position >> Point3d.toMeters)
                 |> Maybe.withDefault p
 
-        segments points =
-            List.map2 (\a b -> { a = a, b = b }) points (List.drop 1 points)
+        segments bottom points =
+            List.map2 (\a b -> { a = a, b = b, bottom = bottom }) points (List.drop 1 points)
     in
     walls
         |> List.concatMap
             (\wall ->
-                List.map (\( x, y, z ) -> { x = x, y = y, z = z }) wall
+                List.map (\( x, y, z ) -> { x = x, y = y, z = z }) wall.points
                     |> Shapes.alongWall step
                     |> List.map snap
-                    |> segments
+                    |> segments wall.bottom
             )
         |> Walls
 
 
 {-| More walls, like the ones the player places.
 -}
-add : Surface coordinates -> List (List ( Float, Float, Float )) -> Walls -> Walls
+add : Surface coordinates -> List Buildings.Wall -> Walls -> Walls
 add surface walls (Walls existing) =
-    case fromShapes surface walls of
+    case fromWalls surface walls of
         Walls added ->
             Walls (added ++ existing)
 
 
-{-| Walk like `Surface.move`, but kept out of the walls. If that can't be done (squeezed between
-walls), the player stays where they were.
+{-| Walk like `Surface.move`, but kept out of the walls at the height the player is at. If that can't
+be done (squeezed between walls), the player stays where they were.
 -}
-move : Surface coordinates -> Walls -> Angle.Angle -> Length.Length -> SurfacePoint -> SurfacePoint
-move surface walls angle distance start =
+move : Surface coordinates -> Walls -> Float -> Angle.Angle -> Length.Length -> SurfacePoint -> SurfacePoint
+move surface (Walls all) height angle distance start =
+    let
+        walls =
+            Walls (List.filter (blocks height) all)
+    in
     case Surface.move surface angle distance start of
         Just path ->
             let
@@ -157,7 +180,7 @@ pushOut surface walls tries point =
 {-| The wall the player is furthest into, if any: how far, the closest point on its center line, and
 where the player is.
 -}
-deepest : Surface coordinates -> Walls -> SurfacePoint -> Maybe { depth : Float, closest : Vec, position : Vec, segment : { a : Vec, b : Vec } }
+deepest : Surface coordinates -> Walls -> SurfacePoint -> Maybe { depth : Float, closest : Vec, position : Vec, segment : Segment }
 deepest surface (Walls segments) point =
     case Surface.worldPosition point surface of
         Just position_ ->
@@ -190,7 +213,7 @@ deepest surface (Walls segments) point =
             Nothing
 
 
-closestOnSegment : { a : Vec, b : Vec } -> Vec -> Vec
+closestOnSegment : Segment -> Vec -> Vec
 closestOnSegment { a, b } p =
     let
         ab =

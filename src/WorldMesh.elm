@@ -1,4 +1,4 @@
-module WorldMesh exposing (WallVertex, mesh, placedWallMesh, playerMesh, roofMesh, wallMesh)
+module WorldMesh exposing (WallVertex, mesh, pathMesh, playerMesh, roofMesh, stairsColor, wallColor, wallMesh, wallThickness)
 
 {-| What the world looks like: the surface with the paving laid on it, and the walls (see
 `WorldShapes`).
@@ -10,7 +10,7 @@ also knows the point on the surface it stands on and the surface's normal there.
 -}
 
 import Array
-import Buildings
+import Buildings exposing (Roof, Stairs, Wall)
 import Direction3d
 import Math.Vector3 as Vec3 exposing (Vec3)
 import MeshBuilder exposing (Vertex)
@@ -66,16 +66,21 @@ roofColor =
     Vec3.vec3 0.62 0.3 0.24
 
 
-{-| A wall the player is placing, before it's finished (see `Main.WallPlacing`).
--}
-previewColor : Vec3
-previewColor =
-    Vec3.vec3 0.82 0.82 0.82
-
-
 stairsColor : Vec3
 stairsColor =
     Vec3.vec3 0.55 0.52 0.48
+
+
+dirtColor : Vec3
+dirtColor =
+    Vec3.vec3 (140 / 255) (100 / 255) (62 / 255)
+
+
+{-| Dirt paths are drawn this much higher than the paving, so they show on top of it.
+-}
+dirtHeight : Float
+dirtHeight =
+    0.0035
 
 
 {-| The surface is drawn with a point at least every this many radians round its curves. It divides
@@ -148,42 +153,88 @@ mesh surface pavings =
         |> WebGL.triangles
 
 
-{-| The walls and the stairs.
+{-| Walls and stairs, in the colors given (lighter ones for things being placed).
 -}
-wallMesh : Surface coordinates -> List (List ( Float, Float, Float )) -> WebGL.Mesh WallVertex
-wallMesh surface walls =
-    wallsTriangles surface wallColor walls
-        ++ List.concatMap (stairsTriangles (snap surface)) Buildings.stairs
+wallMesh : Surface coordinates -> { walls : Vec3, stairs : Vec3 } -> List Wall -> List Stairs -> WebGL.Mesh WallVertex
+wallMesh surface colors walls stairs =
+    List.concatMap (\wall -> List.map (\( x, y, z ) -> { x = x, y = y, z = z }) wall.points |> wallTriangles (snap surface) colors.walls wall.bottom) walls
+        ++ List.concatMap (stairsTriangles (snap surface) colors.stairs) stairs
         |> WebGL.triangles
 
 
-{-| Walls the player has placed, drawn like the others, or in light gray while they're being placed.
+{-| A roof, in `roofColor` or another color. Roofs are drawn over everything else that's flat, as
+nothing under a roof shows.
 -}
-placedWallMesh : Surface coordinates -> { preview : Bool } -> List (List ( Float, Float, Float )) -> WebGL.Mesh WallVertex
-placedWallMesh surface { preview } walls =
-    wallsTriangles
-        surface
-        (if preview then
-            previewColor
+roofMesh : Surface coordinates -> Maybe Vec3 -> Roof -> WebGL.Mesh WallVertex
+roofMesh surface color roof =
+    block (snap surface) (Maybe.withDefault roofColor color) { sides = False } 0 roof.height (overhung roof)
+        |> WebGL.triangles
 
-         else
-            wallColor
+
+{-| A roof's corners moved out by its overhang, keeping its edges parallel.
+-}
+overhung : Roof -> List Vec
+overhung roof =
+    if roof.overhang == 0 then
+        roof.corners
+
+    else
+        let
+            normal =
+                Buildings.roofNormal roof.corners
+
+            count =
+                List.length roof.corners
+
+            corners =
+                Array.fromList roof.corners
+
+            at i =
+                Array.get (modBy count i) corners |> Maybe.withDefault { x = 0, y = 0, z = 0 }
+
+            -- Out from the edge from corner i to i + 1
+            outOf i =
+                cross (sub (at (i + 1)) (at i)) normal |> normalize
+        in
+        List.range 0 (count - 1)
+            |> List.map
+                (\i ->
+                    let
+                        a =
+                            outOf (i - 1)
+
+                        b =
+                            outOf i
+                    in
+                    along (roof.overhang / max 0.3 (1 + dot a b)) (add a b) (at i)
+                )
+
+
+{-| Dirt paths along lines of points, or lighter while one is being placed.
+-}
+pathMesh : Surface coordinates -> { preview : Bool } -> List (List ( Float, Float, Float )) -> WebGL.Mesh Vertex
+pathMesh surface { preview } paths =
+    let
+        color =
+            if preview then
+                Vec3.add (Vec3.scale 0.5 dirtColor) (Vec3.vec3 0.45 0.45 0.45)
+
+            else
+                dirtColor
+
+        ( points, triangles ) =
+            List.map (Shapes.pathPaving surface Shapes.pathWidth) paths
+                |> Shapes.splitPavings pavingEdgeTooLong (snap surface) .position
+
+        at index =
+            Array.get index points
+                |> Maybe.map (\p -> vertex color (along dirtHeight p.normal p.position) p.normal)
+    in
+    List.filterMap
+        (\( i, j, k ) ->
+            Maybe.map3 (\a b c -> facing (Vec3.add a.normal (Vec3.add b.normal c.normal)) a b c) (at i) (at j) (at k)
         )
-        walls
-        |> WebGL.triangles
-
-
-wallsTriangles : Surface coordinates -> Vec3 -> List (List ( Float, Float, Float )) -> List ( WallVertex, WallVertex, WallVertex )
-wallsTriangles surface color walls =
-    List.concatMap (\wall -> List.map (\( x, y, z ) -> { x = x, y = y, z = z }) wall |> wallTriangles (snap surface) color) walls
-
-
-{-| The roofs. They're drawn over everything else that's flat, as nothing under a roof shows.
--}
-roofMesh : Surface coordinates -> WebGL.Mesh WallVertex
-roofMesh surface =
-    Buildings.roofs
-        |> List.concatMap (\roof -> block (snap surface) roofColor { sides = False } roof.height roof.corners)
+        triangles
         |> WebGL.triangles
 
 
@@ -215,8 +266,8 @@ playerMesh =
             , { x = -0.012, y = 0.045, z = 0 }
             ]
     in
-    block onGround noseColor { sides = True } 0.06 nose
-        ++ block onGround playerColor { sides = True } playerHeight body
+    block onGround noseColor { sides = True } 0 0.06 nose
+        ++ block onGround playerColor { sides = True } 0 playerHeight body
         |> WebGL.triangles
 
 
@@ -250,8 +301,8 @@ playerSides =
 
 {-| Each step is a block, as high as the step, from the step's front to the next step.
 -}
-stairsTriangles : (Vec -> OnSurface) -> Buildings.Stairs -> List ( WallVertex, WallVertex, WallVertex )
-stairsTriangles onSurface flight =
+stairsTriangles : (Vec -> OnSurface) -> Vec3 -> Stairs -> List ( WallVertex, WallVertex, WallVertex )
+stairsTriangles onSurface color flight =
     let
         run =
             sub flight.top flight.bottom
@@ -271,21 +322,21 @@ stairsTriangles onSurface flight =
                     toFloat i / toFloat flight.steps
             in
             [ at t0 -1, at t1 -1, at t1 1, at t0 1 ]
-                |> block onSurface stairsColor { sides = True } (flight.height * t1)
+                |> block onSurface color { sides = True } flight.elevation (flight.elevation + flight.height * t1)
     in
     List.range 1 flight.steps |> List.concatMap step
 
 
-{-| A block standing on the surface: a top `height` above its corners, and sides down to them.
+{-| A block over the surface: a top `height` above its corners, and sides down to `bottom` above them.
 -}
-block : (Vec -> OnSurface) -> Vec3 -> { sides : Bool } -> Float -> List Vec -> List ( WallVertex, WallVertex, WallVertex )
-block onSurface color { sides } height corners =
+block : (Vec -> OnSurface) -> Vec3 -> { sides : Bool } -> Float -> Float -> List Vec -> List ( WallVertex, WallVertex, WallVertex )
+block onSurface color { sides } bottom height corners =
     let
         bases =
             List.map onSurface corners
 
         corner base =
-            { base = base, top = along height base.normal base.position }
+            { base = base, low = along bottom base.normal base.position, top = along height base.normal base.position }
 
         withTops =
             List.map corner bases
@@ -300,16 +351,19 @@ block onSurface color { sides } height corners =
 
         topTriangles =
             case withTops of
-                first :: rest ->
-                    List.map2
-                        (\b c ->
-                            wallFacing (Vec3.fromRecord first.base.normal)
-                                (blockVertex first.base.normal first.top first)
-                                (blockVertex first.base.normal b.top b)
-                                (blockVertex first.base.normal c.top c)
-                        )
-                        rest
-                        (List.drop 1 rest)
+                first :: _ ->
+                    let
+                        tops =
+                            Array.fromList withTops
+
+                        topVertex i =
+                            Array.get i tops |> Maybe.map (\c -> blockVertex first.base.normal c.top c)
+                    in
+                    triangulate first.base.normal corners
+                        |> List.filterMap
+                            (\( i, j, k ) ->
+                                Maybe.map3 (wallFacing (Vec3.fromRecord first.base.normal)) (topVertex i) (topVertex j) (topVertex k)
+                            )
 
                 [] ->
                     []
@@ -329,8 +383,8 @@ block onSurface color { sides } height corners =
                     else
                         outward
             in
-            [ wallFacing (Vec3.fromRecord facingOut) (blockVertex facingOut c.base.position c) (blockVertex facingOut d.base.position d) (blockVertex facingOut d.top d)
-            , wallFacing (Vec3.fromRecord facingOut) (blockVertex facingOut c.base.position c) (blockVertex facingOut d.top d) (blockVertex facingOut c.top c)
+            [ wallFacing (Vec3.fromRecord facingOut) (blockVertex facingOut c.low c) (blockVertex facingOut d.low d) (blockVertex facingOut d.top d)
+            , wallFacing (Vec3.fromRecord facingOut) (blockVertex facingOut c.low c) (blockVertex facingOut d.top d) (blockVertex facingOut c.top c)
             ]
 
         sideTriangles =
@@ -377,49 +431,35 @@ pavingTriangles onSurface pavings =
         triangles
 
 
-{-| A wall standing on the surface along a line of points: two sides, a top and two ends.
+{-| A wall standing `bottom` above the surface along a line of points: two sides, a top and two ends
+(none if it goes round in a loop). It's mitred where it turns corners, so it's as thick all along.
 -}
-wallTriangles : (Vec -> OnSurface) -> Vec3 -> List Vec -> List ( WallVertex, WallVertex, WallVertex )
-wallTriangles onSurface color points =
+wallTriangles : (Vec -> OnSurface) -> Vec3 -> Float -> List Vec -> List ( WallVertex, WallVertex, WallVertex )
+wallTriangles onSurface color bottom points =
     let
         onWall =
-            Shapes.alongWall wallStep points |> List.map onSurface |> Array.fromList
-
-        count =
-            Array.length onWall
-
-        at i =
-            Array.get (clamp 0 (count - 1) i) onWall |> Maybe.withDefault { position = { x = 0, y = 0, z = 0 }, normal = { x = 0, y = 1, z = 0 } }
+            Shapes.alongWall wallStep points
 
         -- Across the wall at a point, to its right going along it
-        section i =
+        section p =
             let
-                p =
-                    at i
-
-                along_ =
-                    normalize (sub (at (i + 1)).position (at (i - 1)).position)
-
-                right =
-                    normalize (cross along_ p.normal)
-
                 corner side up =
                     p.position
-                        |> along (side * wallThickness / 2) right
+                        |> along (side * wallThickness / 2) p.right
                         |> along up p.normal
             in
-            { right = right
+            { right = normalize p.right
             , up = p.normal
-            , along = along_
+            , along = p.along
             , base = p
-            , bottomLeft = corner -1 0
-            , bottomRight = corner 1 0
-            , topLeft = corner -1 wallHeight
-            , topRight = corner 1 wallHeight
+            , bottomLeft = corner -1 bottom
+            , bottomRight = corner 1 bottom
+            , topLeft = corner -1 (bottom + wallHeight)
+            , topRight = corner 1 (bottom + wallHeight)
             }
 
         sections =
-            List.range 0 (count - 1) |> List.map section
+            Shapes.sections onSurface onWall |> List.map section
 
         wallVertex normal ( position, s ) =
             { position = Vec3.fromRecord position
@@ -448,10 +488,77 @@ wallTriangles onSurface color points =
     in
     case ( sections, List.reverse sections ) of
         ( first :: _ :: _, last :: _ ) ->
-            sides ++ end first (scale -1 first.along) ++ end last last.along
+            if Shapes.isClosed onWall then
+                sides
+
+            else
+                sides ++ end first (scale -1 first.along) ++ end last last.along
 
         _ ->
             []
+
+
+{-| Triangles covering a polygon (convex or not), as indices into its corners, by cutting off ears:
+corners whose triangle with their neighbours is inside the polygon and has no other corner in it.
+`normal` is roughly the way the polygon faces.
+-}
+triangulate : Vec -> List Vec -> List ( Int, Int, Int )
+triangulate normal corners =
+    let
+        u =
+            case corners of
+                a :: b :: _ ->
+                    let
+                        d =
+                            sub b a
+                    in
+                    normalize (sub d (scale (dot d normal) normal))
+
+                _ ->
+                    { x = 1, y = 0, z = 0 }
+
+        v =
+            cross normal u
+
+        flat =
+            List.indexedMap (\i p -> { i = i, x = dot p u, y = dot p v }) corners
+
+        area =
+            List.map2 (\a b -> a.x * b.y - b.x * a.y) flat (List.drop 1 flat ++ List.take 1 flat) |> List.sum
+
+        counterclockwise =
+            if area < 0 then
+                List.reverse flat
+
+            else
+                flat
+
+        turn a b c =
+            (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+
+        inside a b c p =
+            turn a b p >= 0 && turn b c p >= 0 && turn c a p >= 0
+
+        clip remaining tries acc =
+            case remaining of
+                a :: b :: c :: rest ->
+                    if List.isEmpty rest then
+                        ( a.i, b.i, c.i ) :: acc
+
+                    else if tries <= 0 then
+                        -- Not a simple polygon: fan out what's left
+                        List.map2 (\p q -> ( a.i, p.i, q.i )) (b :: c :: rest) (c :: rest) ++ acc
+
+                    else if turn a b c > 0 && not (List.any (inside a b c) rest) then
+                        clip (a :: c :: rest) (List.length rest + 2) (( a.i, b.i, c.i ) :: acc)
+
+                    else
+                        clip (b :: c :: rest ++ [ a ]) (tries - 1) acc
+
+                _ ->
+                    acc
+    in
+    clip counterclockwise (List.length corners) []
 
 
 {-| A triangle turned to go counterclockwise seen from the side `normal` points to, so that it isn't
@@ -473,6 +580,11 @@ wallFacing normal a b c =
 
     else
         ( a, c, b )
+
+
+add : Vec -> Vec -> Vec
+add a b =
+    { x = a.x + b.x, y = a.y + b.y, z = a.z + b.z }
 
 
 along : Float -> Vec -> Vec -> Vec

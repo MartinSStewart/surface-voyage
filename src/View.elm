@@ -1,4 +1,4 @@
-module View exposing (camera, cameraFocalPoint, cameraRay, cameraSketchPlane, view)
+module View exposing (Layer, camera, cameraFocalPoint, cameraRay, cameraSketchPlane, view)
 
 import Angle
 import Axis3d exposing (Axis3d)
@@ -56,7 +56,29 @@ type alias Config a =
     }
 
 
-view : Config a -> { world : WebGL.Mesh Vertex, walls : List (WebGL.Mesh WallVertex), roofs : WebGL.Mesh WallVertex, player : WebGL.Mesh WallVertex } -> Html msg
+{-| What's drawn flat on the surface in one storey (see `Buildings.storey`): the walls and stairs that
+stand on it, and the roofs on top of them.
+-}
+type alias Layer =
+    { walls : List (WebGL.Mesh WallVertex)
+    , roofs : List ( Buildings.Roof, WebGL.Mesh WallVertex )
+    }
+
+
+{-| The world and what's on it (paths, say), then each storey from the ground up, so that each roof
+covers what's under it and what stands on it shows over it. Then what's being placed, and the
+player, squashed down when they're crouching.
+-}
+view :
+    Config a
+    ->
+        { world : List (WebGL.Mesh Vertex)
+        , layers : List Layer
+        , preview : List (WebGL.Mesh WallVertex)
+        , player : WebGL.Mesh WallVertex
+        , crouching : Bool
+        }
+    -> Html msg
 view config meshes =
     let
         ( windowWidth, windowHeight ) =
@@ -75,12 +97,7 @@ view config meshes =
         [ Html.Attributes.width windowWidth
         , Html.Attributes.height windowHeight
         ]
-        ([ entity
-            worldVS
-            worldFS
-            meshes.world
-            (uniforms config cameraMatrix_ Mat4.identity)
-         ]
+        (List.map (\mesh -> entity worldVS worldFS mesh (uniforms config cameraMatrix_ Mat4.identity)) meshes.world
             ++ (case playerPosition of
                     Just playerPosition_ ->
                         let
@@ -88,23 +105,45 @@ view config meshes =
                                 { perspective = perspective config.windowSize
                                 , camera = cameraMatrix_
                                 , player = Point3d.toVec3 playerPosition_
+                                , playerUp =
+                                    Surface.normal config.surface config.surfacePoint
+                                        |> Maybe.map (Direction3d.unwrap >> Vec3.fromRecord)
+                                        |> Maybe.withDefault Vec3.j
                                 , eyeHeight = Length.inMeters wallEyeHeight + config.height
                                 , maxShift = Length.inMeters wallMaxShift
                                 , local = Mat4.identity
                                 , lift = 0
+                                , layer = 0
                                 }
                         in
-                        List.map (\walls -> entity wallVS worldFS walls flatUniforms) meshes.walls
-                            ++ (if Buildings.underRoof config.height (Point3d.toMeters playerPosition_) then
-                                    -- So the player can see inside
-                                    []
+                        List.concatMap
+                            (\( index, layer ) ->
+                                List.map (\walls -> entity wallVS worldFS walls { flatUniforms | layer = toFloat index }) layer.walls
+                                    ++ List.filterMap
+                                        (\( roof, mesh ) ->
+                                            if Buildings.underRoof config.height (Point3d.toMeters playerPosition_) roof then
+                                                -- So the player can see inside
+                                                Nothing
 
-                                else
-                                    [ roofEntity wallVS worldFS meshes.roofs flatUniforms ]
-                               )
+                                            else
+                                                Just (roofEntity wallVS worldFS mesh flatUniforms)
+                                        )
+                                        layer.roofs
+                            )
+                            (List.indexedMap Tuple.pair meshes.layers)
+                            -- What's being placed shows over everything
+                            ++ List.map (\mesh -> entity wallVS worldFS mesh { flatUniforms | layer = toFloat (List.length meshes.layers) }) meshes.preview
                             ++ (case playerFrame config playerPosition_ of
                                     Just frame ->
-                                        [ entity wallVS worldFS meshes.player { flatUniforms | local = frame, lift = config.height } ]
+                                        let
+                                            squashed =
+                                                if meshes.crouching then
+                                                    Mat4.scale3 1 1 crouchHeight frame
+
+                                                else
+                                                    frame
+                                        in
+                                        [ entity wallVS worldFS meshes.player { flatUniforms | local = squashed, lift = config.height, layer = toFloat (round (config.height / Buildings.storey)) } ]
 
                                     Nothing ->
                                         []
@@ -142,6 +181,13 @@ uiEntity =
         [ Blend.add Blend.one Blend.oneMinusSrcAlpha
         , WebGL.Settings.DepthTest.always { write = False, near = 0.001, far = 10000 }
         ]
+
+
+{-| How much shorter the player is while crouching
+-}
+crouchHeight : Float
+crouchHeight =
+    0.6
 
 
 {-| Where the player is standing and which way they face: right, forward and the surface's outward
@@ -465,12 +511,15 @@ The surface curves, so each wall is drawn as if the ground were flat between the
 player stands `distance` back from where the wall stands, in the direction away from the player along
 the surface there, and the eye is above that. Each corner is drawn where the line from that eye
 through it meets the ground, so walls lean straight away from the player, more the further away they
-are. Corners are kept below 80% of the eye's height, so tall walls don't stretch away forever, and
+are. Where the surface faces the player, though, they look down onto it: the eye is never lower over
+the wall's ground than the player's eye really is, so the further the surface turns towards the
+player, the higher the eye and the less the wall leans. Corners are kept below 80% of the eye's height, so tall walls don't stretch away forever, and
 are moved no more than `maxShift`, so far away walls don't either. They're drawn in the tangent plane where the wall stands, however far that is from it, so near edges
 and curves they can hang off the surface or sink into it.
 
 Walls overlap on the surface, so their depth is set by how far from the eye they are rather than
-where they're drawn: nearer is on top. All of it is a few millimeters above the surface, so it's
+where they're drawn: nearer is on top. And each storey (`layer`, see `Layer`) is on top of the ones
+below it, as the walls under a roof would otherwise poke through the walls standing on it. All of it is a few millimeters above the surface, so it's
 drawn over the paving.
 
 The player is drawn the same way, from a mesh made where they stand (see `WorldMesh.playerMesh`):
@@ -478,7 +527,7 @@ The player is drawn the same way, from a mesh made where they stand (see `WorldM
 identity and 0.
 
 -}
-wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float, maxShift : Float, local : Mat4, lift : Float } { color_ : Vec3, normal_ : Vec3 }
+wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, playerUp : Vec3, eyeHeight : Float, maxShift : Float, local : Mat4, lift : Float, layer : Float } { color_ : Vec3, normal_ : Vec3 }
 wallVS =
     [glsl|
         attribute vec3 position;
@@ -489,9 +538,11 @@ wallVS =
         uniform mat4 perspective;
         uniform mat4 camera;
         uniform vec3 player;
+        uniform vec3 playerUp;
         uniform float eyeHeight;
         uniform mat4 local;
         uniform float lift;
+        uniform float layer;
         uniform float maxShift;
         varying vec3 color_;
         varying vec3 normal_;
@@ -502,10 +553,16 @@ wallVS =
             vec3 fromPlayer = standsOn - player;
             vec3 away = fromPlayer - dot(fromPlayer, outward) * outward;
             float awayLength = length(away);
-            vec3 foot = awayLength > 0.0 ? standsOn - away * (length(fromPlayer) / awayLength) : standsOn;
-            vec3 eye = foot + eyeHeight * outward;
+            // The eye is at least as high over the plane the wall stands on as the player's eye
+            // really is. Where the surface faces the player, the player looks down onto it, and
+            // the eye comes over the wall rather than off to the side of it.
+            vec3 toEye = player + eyeHeight * playerUp - standsOn;
+            float eyeAbove = max(dot(toEye, outward), eyeHeight);
+            float eyeOut = sqrt(max(dot(toEye, toEye) - eyeAbove * eyeAbove, 0.0));
+            vec3 foot = awayLength > 0.0 ? standsOn - away * (eyeOut / awayLength) : standsOn;
+            vec3 eye = foot + eyeAbove * outward;
             float height = dot(corner - standsOn, outward);
-            float k = clamp(height / eyeHeight, 0.0, 0.8);
+            float k = clamp(height / eyeAbove, 0.0, 0.8);
             vec3 onSurface = corner - height * outward;
             vec3 shift = (onSurface - foot) * k / (1.0 - k);
             float shiftLength = length(shift);
@@ -514,7 +571,7 @@ wallVS =
             }
             vec3 image = onSurface + shift + 0.004 * outward;
             vec4 clip = perspective * camera * vec4(image, 1.0);
-            clip.z -= 0.0001 * (1.0 + 4.0 / (1.0 + distance(corner, eye))) * clip.w;
+            clip.z -= (0.0001 * (1.0 + 4.0 / (1.0 + distance(corner, eye))) + 0.001 * layer) * clip.w;
             gl_Position = clip;
             color_ = color;
             normal_ = (local * vec4(normal, 0.0)).xyz;
