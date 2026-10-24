@@ -501,7 +501,7 @@ far from the player don't stretch out too far.
 -}
 wallMaxShift : Length
 wallMaxShift =
-    Length.meters 0.2
+    Length.meters 1
 
 
 {-| The walls are drawn flat on the surface, like a picture painted on the ground that looks 3D from
