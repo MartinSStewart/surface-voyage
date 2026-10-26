@@ -1,4 +1,4 @@
-module WorldMesh exposing (WallVertex, mesh, pathMesh, playerMesh, roofMesh, stairsColor, wallColor, wallMesh, wallThickness)
+module WorldMesh exposing (WallVertex, groundPreview, mesh, pathMesh, playerMesh, roofMesh, stairsColor, wallColor, wallMesh, wallThickness)
 
 {-| What the world looks like: the surface with the paving laid on it, and the walls (see
 `WorldShapes`).
@@ -403,15 +403,59 @@ vertex color position normal =
 
 
 surfaceTriangles : Surface coordinates -> List Triangle
-surfaceTriangles surface =
+surfaceTriangles =
+    coloredSurface grassColor
+
+
+coloredSurface : Vec3 -> Surface coordinates -> List Triangle
+coloredSurface color surface =
     Surface.tessellate surfaceStep surface
         |> List.map
             (\( a, b, c ) ->
-                ( vertex grassColor a.position a.normal
-                , vertex grassColor b.position b.normal
-                , vertex grassColor c.position c.normal
+                ( vertex color a.position a.normal
+                , vertex color b.position b.normal
+                , vertex color c.position c.normal
                 )
             )
+
+
+{-| Ground about to be put on (see `GridLevel`), pale, or red if it can't go there, and a strip
+along the edges it goes on, on the surface already there.
+-}
+groundPreview : Maybe (Surface coordinates) -> Bool -> List (List { position : Vec, normal : Vec, inward : Vec }) -> WebGL.Mesh Vertex
+groundPreview pieces fits edges =
+    let
+        ( pieceColor, edgeColor ) =
+            if fits then
+                ( Vec3.vec3 0.8 0.88 0.8, Vec3.vec3 0.95 0.75 0.2 )
+
+            else
+                ( Vec3.vec3 0.9 0.55 0.5, Vec3.vec3 0.85 0.2 0.15 )
+
+        strip samples =
+            let
+                inner p =
+                    vertex edgeColor (along pavingHeight p.normal (along edgeStripWidth p.inward p.position)) p.normal
+
+                outer p =
+                    vertex edgeColor (along pavingHeight p.normal p.position) p.normal
+            in
+            List.map2
+                (\p q -> [ facing (Vec3.fromRecord p.normal) (outer p) (outer q) (inner q), facing (Vec3.fromRecord p.normal) (outer p) (inner q) (inner p) ])
+                samples
+                (List.drop 1 samples)
+                |> List.concat
+    in
+    (Maybe.map (coloredSurface pieceColor) pieces |> Maybe.withDefault [])
+        ++ List.concatMap strip edges
+        |> WebGL.triangles
+
+
+{-| How wide the strip along the edge a piece goes on is, in meters.
+-}
+edgeStripWidth : Float
+edgeStripWidth =
+    0.02
 
 
 pavingTriangles : (Vec -> OnSurface) -> List Paving -> List Triangle

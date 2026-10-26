@@ -600,11 +600,11 @@ function _Debug_crash_UNUSED(identifier, fact1, fact2, fact3, fact4)
 
 function _Debug_regionToString(region)
 {
-	if (region.c.d_ === region.h.d_)
+	if (region.fz.d5 === region.f_.d5)
 	{
-		return 'on line ' + region.c.d_;
+		return 'on line ' + region.fz.d5;
 	}
-	return 'on lines ' + region.c.d_ + ' through ' + region.h.d_;
+	return 'on lines ' + region.fz.d5 + ' through ' + region.f_.d5;
 }
 
 
@@ -1894,9 +1894,9 @@ var _Platform_worker = F4(function(impl, flagDecoder, debugMetadata, args)
 	return _Platform_initialize(
 		flagDecoder,
 		args,
-		impl.h1,
-		impl.ju,
-		impl.i7,
+		impl.ia,
+		impl.jB,
+		impl.jf,
 		function() { return function() {} }
 	);
 });
@@ -2402,8 +2402,8 @@ var _Regex_never = /.^/;
 var _Regex_fromStringWith = F2(function(options, string)
 {
 	var flags = 'g';
-	if (options.ij) { flags += 'm'; }
-	if (options.hq) { flags += 'i'; }
+	if (options.it) { flags += 'm'; }
+	if (options.hz) { flags += 'i'; }
 
 	try
 	{
@@ -2886,23 +2886,23 @@ var $elm$core$Array$treeFromBuilder$ = function (nodeList, nodeListSize) {
 };
 var $elm$core$Array$treeFromBuilder = F2($elm$core$Array$treeFromBuilder$);
 var $elm$core$Array$builderToArray$ = function (reverseNodeList, builder) {
-	if (!builder.C) {
+	if (!builder.G) {
 		return $elm$core$Array$Array_elm_builtin$(
-			$elm$core$Elm$JsArray$length(builder.I),
+			$elm$core$Elm$JsArray$length(builder.M),
 			$elm$core$Array$shiftStep,
 			$elm$core$Elm$JsArray$empty,
-			builder.I);
+			builder.M);
 	} else {
-		var treeLen = builder.C * $elm$core$Array$branchFactor;
+		var treeLen = builder.G * $elm$core$Array$branchFactor;
 		var depth = $elm$core$Basics$floor(
 			$elm$core$Basics$logBase$($elm$core$Array$branchFactor, treeLen - 1));
-		var correctNodeList = reverseNodeList ? $elm$core$List$reverse(builder.M) : builder.M;
-		var tree = $elm$core$Array$treeFromBuilder$(correctNodeList, builder.C);
+		var correctNodeList = reverseNodeList ? $elm$core$List$reverse(builder.Q) : builder.Q;
+		var tree = $elm$core$Array$treeFromBuilder$(correctNodeList, builder.G);
 		return $elm$core$Array$Array_elm_builtin$(
-			$elm$core$Elm$JsArray$length(builder.I) + treeLen,
+			$elm$core$Elm$JsArray$length(builder.M) + treeLen,
 			$elm$core$Basics$max$(5, depth * $elm$core$Array$shiftStep),
 			tree,
-			builder.I);
+			builder.M);
 	}
 };
 var $elm$core$Array$builderToArray = F2($elm$core$Array$builderToArray$);
@@ -2914,7 +2914,7 @@ var $elm$core$Array$initializeHelp$ = function (fn, fromIndex, len, nodeList, ta
 		if (fromIndex < 0) {
 			return $elm$core$Array$builderToArray$(
 				false,
-				{M: nodeList, C: (len / $elm$core$Array$branchFactor) | 0, I: tail});
+				{Q: nodeList, G: (len / $elm$core$Array$branchFactor) | 0, M: tail});
 		} else {
 			var leaf = $elm$core$Array$Leaf(
 				A3($elm$core$Elm$JsArray$initialize, $elm$core$Array$branchFactor, fromIndex, fn));
@@ -2950,10 +2950,10 @@ var $elm$core$Result$isOk = function (result) {
 var $elm$json$Json$Decode$value = _Json_decodeValue;
 var $author$project$MinimapWorker$drawMinimap = _Platform_incomingPort('drawMinimap', $elm$json$Json$Decode$value);
 var $author$project$Shapes$empty = {
-	bM: {b7: $elm$core$Array$empty, bQ: 0, bx: 0, by: 0, b3: 0, b4: 0, b5: 0},
-	iD: _List_Nil,
-	fg: $elm$core$Array$empty,
-	jx: _List_Nil
+	bU: {V: $elm$core$Array$empty, b_: 0, bD: 0, bE: 0, cc: 0, cd: 0, ce: 0},
+	iM: _List_Nil,
+	fn: $elm$core$Array$empty,
+	jE: _List_Nil
 };
 var $elm$core$Basics$negate = function (n) {
 	return -n;
@@ -2961,7 +2961,7 @@ var $elm$core$Basics$negate = function (n) {
 var $author$project$WorldShapes$pavings = _List_fromArray(
 	[
 		{
-		fg: _List_fromArray(
+		fn: _List_fromArray(
 			[
 				_Utils_Tuple3(1.051, 0.598, -1.102),
 				_Utils_Tuple3(0.981, 0.598, -1.137),
@@ -3070,7 +3070,7 @@ var $author$project$WorldShapes$pavings = _List_fromArray(
 				_Utils_Tuple3(0.445, 0.598, -0.521),
 				_Utils_Tuple3(0.586, 0.598, -0.732)
 			]),
-		aD: _List_fromArray(
+		aJ: _List_fromArray(
 			[
 				_Utils_Tuple3(0, 1, 2),
 				_Utils_Tuple3(3, 4, 5),
@@ -3179,7 +3179,7 @@ var $author$project$WorldShapes$pavings = _List_fromArray(
 			])
 	},
 		{
-		fg: _List_fromArray(
+		fn: _List_fromArray(
 			[
 				_Utils_Tuple3(1.416, -0.402, -0.958),
 				_Utils_Tuple3(1.416, -0.402, -0.978),
@@ -3429,7 +3429,7 @@ var $author$project$WorldShapes$pavings = _List_fromArray(
 				_Utils_Tuple3(1.886, -0.402, -1.919),
 				_Utils_Tuple3(1.635, -0.043, -2.453)
 			]),
-		aD: _List_fromArray(
+		aJ: _List_fromArray(
 			[
 				_Utils_Tuple3(0, 1, 2),
 				_Utils_Tuple3(2, 3, 4),
@@ -3679,7 +3679,7 @@ var $author$project$WorldShapes$pavings = _List_fromArray(
 			])
 	},
 		{
-		fg: _List_fromArray(
+		fn: _List_fromArray(
 			[
 				_Utils_Tuple3(0.576, -0.402, -0.743),
 				_Utils_Tuple3(0.556, -0.402, -0.743),
@@ -3727,7 +3727,7 @@ var $author$project$WorldShapes$pavings = _List_fromArray(
 				_Utils_Tuple3(0.841, -0.402, -0.917),
 				_Utils_Tuple3(0.714, -0.402, -1.068)
 			]),
-		aD: _List_fromArray(
+		aJ: _List_fromArray(
 			[
 				_Utils_Tuple3(0, 1, 2),
 				_Utils_Tuple3(2, 3, 4),
@@ -3775,7 +3775,7 @@ var $author$project$WorldShapes$pavings = _List_fromArray(
 			])
 	},
 		{
-		fg: _List_fromArray(
+		fn: _List_fromArray(
 			[
 				_Utils_Tuple3(0.254, -0.402, -0.163),
 				_Utils_Tuple3(0.201, -0.402, -0.163),
@@ -3824,7 +3824,7 @@ var $author$project$WorldShapes$pavings = _List_fromArray(
 				_Utils_Tuple3(0.385, -0.402, -0.32),
 				_Utils_Tuple3(0.448, -0.402, -0.525)
 			]),
-		aD: _List_fromArray(
+		aJ: _List_fromArray(
 			[
 				_Utils_Tuple3(0, 1, 2),
 				_Utils_Tuple3(2, 3, 4),
@@ -3873,7 +3873,7 @@ var $author$project$WorldShapes$pavings = _List_fromArray(
 			])
 	},
 		{
-		fg: _List_fromArray(
+		fn: _List_fromArray(
 			[
 				_Utils_Tuple3(0.559, 0.539, -0.243),
 				_Utils_Tuple3(0.563, 0.535, -0.231),
@@ -4048,7 +4048,7 @@ var $author$project$WorldShapes$pavings = _List_fromArray(
 				_Utils_Tuple3(1.219, 0.055, -0.677),
 				_Utils_Tuple3(1.154, 0.296, -0.681)
 			]),
-		aD: _List_fromArray(
+		aJ: _List_fromArray(
 			[
 				_Utils_Tuple3(0, 1, 2),
 				_Utils_Tuple3(3, 4, 5),
@@ -4227,11 +4227,11 @@ var $elm$core$Basics$pow = _Basics_pow;
 var $elm$core$Basics$sqrt = _Basics_sqrt;
 var $author$project$Shapes$distance$ = function (a, b) {
 	return $elm$core$Basics$sqrt(
-		(A2($elm$core$Basics$pow, a.k - b.k, 2) + A2($elm$core$Basics$pow, a.l - b.l, 2)) + A2($elm$core$Basics$pow, a.m - b.m, 2));
+		(A2($elm$core$Basics$pow, a.m - b.m, 2) + A2($elm$core$Basics$pow, a.n - b.n, 2)) + A2($elm$core$Basics$pow, a.o - b.o, 2));
 };
 var $author$project$Shapes$distance = F2($author$project$Shapes$distance$);
 var $author$project$Shapes$lerp$ = function (t, a, b) {
-	return {k: a.k + (t * (b.k - a.k)), l: a.l + (t * (b.l - a.l)), m: a.m + (t * (b.m - a.m))};
+	return {m: a.m + (t * (b.m - a.m)), n: a.n + (t * (b.n - a.n)), o: a.o + (t * (b.o - a.o))};
 };
 var $author$project$Shapes$lerp = F3($author$project$Shapes$lerp$);
 var $elm$core$List$foldrHelper$ = function (fn, acc, ctr, ls) {
@@ -4329,23 +4329,23 @@ var $elm$core$Elm$JsArray$appendN = _JsArray_appendN;
 var $elm$core$Elm$JsArray$slice = _JsArray_slice;
 var $elm$core$Array$appendHelpBuilder$ = function (tail, builder) {
 	var tailLen = $elm$core$Elm$JsArray$length(tail);
-	var notAppended = ($elm$core$Array$branchFactor - $elm$core$Elm$JsArray$length(builder.I)) - tailLen;
-	var appended = A3($elm$core$Elm$JsArray$appendN, $elm$core$Array$branchFactor, builder.I, tail);
+	var notAppended = ($elm$core$Array$branchFactor - $elm$core$Elm$JsArray$length(builder.M)) - tailLen;
+	var appended = A3($elm$core$Elm$JsArray$appendN, $elm$core$Array$branchFactor, builder.M, tail);
 	return (notAppended < 0) ? {
-		M: A2(
+		Q: A2(
 			$elm$core$List$cons,
 			$elm$core$Array$Leaf(appended),
-			builder.M),
-		C: builder.C + 1,
-		I: A3($elm$core$Elm$JsArray$slice, notAppended, tailLen, tail)
+			builder.Q),
+		G: builder.G + 1,
+		M: A3($elm$core$Elm$JsArray$slice, notAppended, tailLen, tail)
 	} : ((!notAppended) ? {
-		M: A2(
+		Q: A2(
 			$elm$core$List$cons,
 			$elm$core$Array$Leaf(appended),
-			builder.M),
-		C: builder.C + 1,
-		I: $elm$core$Elm$JsArray$empty
-	} : {M: builder.M, C: builder.C, I: appended});
+			builder.Q),
+		G: builder.G + 1,
+		M: $elm$core$Elm$JsArray$empty
+	} : {Q: builder.Q, G: builder.G, M: appended});
 };
 var $elm$core$Array$appendHelpBuilder = F2($elm$core$Array$appendHelpBuilder$);
 var $elm$core$Bitwise$and = _Bitwise_and;
@@ -4453,9 +4453,9 @@ var $elm$core$Array$builderFromArray = function (_v0) {
 			}
 		});
 	return {
-		M: A3($elm$core$Elm$JsArray$foldl, helper, _List_Nil, tree),
-		C: (len / $elm$core$Array$branchFactor) | 0,
-		I: tail
+		Q: A3($elm$core$Elm$JsArray$foldl, helper, _List_Nil, tree),
+		G: (len / $elm$core$Array$branchFactor) | 0,
+		M: tail
 	};
 };
 var $elm$core$Array$append$ = function (a, _v0) {
@@ -4516,7 +4516,7 @@ var $elm$core$Array$fromListHelp$ = function (list, nodeList, nodeListSize) {
 			$elm$core$Array$branchFactor) < 0) {
 			return $elm$core$Array$builderToArray$(
 				true,
-				{M: nodeList, C: nodeListSize, I: jsArray});
+				{Q: nodeList, G: nodeListSize, M: jsArray});
 		} else {
 			var $temp$list = remainingItems,
 				$temp$nodeList = A2(
@@ -4543,7 +4543,7 @@ var $author$project$Shapes$fromTuple = function (_v0) {
 	var x = _v0.a;
 	var y = _v0.b;
 	var z = _v0.c;
-	return {k: x, l: y, m: z};
+	return {m: x, n: y, o: z};
 };
 var $author$project$Shapes$cellSize = 0.2;
 var $author$project$Shapes$cellOf = function (coordinate) {
@@ -4672,9 +4672,9 @@ var $author$project$Shapes$gridOf = function (points) {
 	var cells = $elm$core$List$map$(
 		function (p) {
 			return _Utils_Tuple3(
-				$author$project$Shapes$cellOf(p.eb.k),
-				$author$project$Shapes$cellOf(p.eb.l),
-				$author$project$Shapes$cellOf(p.eb.m));
+				$author$project$Shapes$cellOf(p.gQ.m),
+				$author$project$Shapes$cellOf(p.gQ.n),
+				$author$project$Shapes$cellOf(p.gQ.o));
 		},
 		$elm$core$Array$toList(points));
 	var bounds = function (get) {
@@ -4718,7 +4718,7 @@ var $author$project$Shapes$gridOf = function (points) {
 	var ny = _v7.b;
 	var nz = _v7.c;
 	return {
-		b7: $elm$core$List$foldl$(
+		V: $elm$core$List$foldl$(
 			F2(
 				function (_v8, _v9) {
 					var x = _v8.a;
@@ -4743,12 +4743,12 @@ var $author$project$Shapes$gridOf = function (points) {
 				0,
 				$elm$core$Array$repeat$((nx * ny) * nz, _List_Nil)),
 			cells).b,
-		bQ: nx,
-		bx: ny,
-		by: nz,
-		b3: x0,
-		b4: y0,
-		b5: z0
+		b_: nx,
+		bD: ny,
+		bE: nz,
+		cc: x0,
+		cd: y0,
+		ce: z0
 	};
 };
 var $elm$core$Array$length = function (_v0) {
@@ -4764,13 +4764,13 @@ var $author$project$Surface$fromPoint = function (point) {
 };
 var $author$project$Surface$getPiece$ = function (index, _v0) {
 	var surface = _v0;
-	return $elm$core$Array$get$(index, surface.v);
+	return $elm$core$Array$get$(index, surface.A);
 };
 var $author$project$Surface$getPiece = F2($author$project$Surface$getPiece$);
 var $elm$core$Basics$atan2 = _Basics_atan2;
 var $elm$core$Basics$cos = _Basics_cos;
 var $author$project$Surface$dot$ = function (a, b) {
-	return ((a.k * b.k) + (a.l * b.l)) + (a.m * b.m);
+	return ((a.m * b.m) + (a.n * b.n)) + (a.o * b.o);
 };
 var $author$project$Surface$dot = F2($author$project$Surface$dot$);
 var $elm$core$Basics$pi = _Basics_pi;
@@ -4784,21 +4784,21 @@ var $author$project$Surface$wrapAngle = function (angle) {
 };
 var $author$project$Surface$closestOnSegment$ = function (segment, r, h) {
 	if (!segment.$) {
-		var dh = segment.a.aJ;
-		var dr = segment.a.J;
-		var h0 = segment.a.cP;
-		var r0 = segment.a.bV;
-		var len = segment.a.aa;
-		var s0 = segment.a.ae;
+		var dh = segment.a.aP;
+		var dr = segment.a.N;
+		var h0 = segment.a.cX;
+		var r0 = segment.a.b2;
+		var len = segment.a.af;
+		var s0 = segment.a.ak;
 		return s0 + $elm$core$Basics$clamp$(0, len, ((r - r0) * dr) + ((h - h0) * dh));
 	} else {
-		var dir = segment.a.cb;
-		var a0 = segment.a.O;
-		var radius = segment.a.gH;
-		var ch = segment.a.b8;
-		var cr = segment.a.bE;
-		var len = segment.a.aa;
-		var s0 = segment.a.ae;
+		var dir = segment.a.cj;
+		var a0 = segment.a.S;
+		var radius = segment.a.p;
+		var ch = segment.a.cg;
+		var cr = segment.a.bM;
+		var len = segment.a.af;
+		var s0 = segment.a.ak;
 		var swept = len / radius;
 		var relative = $author$project$Surface$wrapAngle(
 			dir * (A2($elm$core$Basics$atan2, h - ch, r - cr) - a0));
@@ -4813,28 +4813,28 @@ var $author$project$Surface$clampFloat = F3($author$project$Surface$clampFloat$)
 var $elm$core$Basics$sin = _Basics_sin;
 var $author$project$Surface$segmentAt$ = function (segment, s) {
 	if (!segment.$) {
-		var dh = segment.a.aJ;
-		var dr = segment.a.J;
-		var h0 = segment.a.cP;
-		var r0 = segment.a.bV;
-		var len = segment.a.aa;
-		var s0 = segment.a.ae;
+		var dh = segment.a.aP;
+		var dr = segment.a.N;
+		var h0 = segment.a.cX;
+		var r0 = segment.a.b2;
+		var len = segment.a.af;
+		var s0 = segment.a.ak;
 		var t = $author$project$Surface$clampFloat$(0, len, s - s0);
-		return {aJ: dh, J: dr, bt: h0 + (t * dh), d: r0 + (t * dr)};
+		return {aP: dh, N: dr, bz: h0 + (t * dh), f: r0 + (t * dr)};
 	} else {
-		var dir = segment.a.cb;
-		var a0 = segment.a.O;
-		var radius = segment.a.gH;
-		var ch = segment.a.b8;
-		var cr = segment.a.bE;
-		var len = segment.a.aa;
-		var s0 = segment.a.ae;
+		var dir = segment.a.cj;
+		var a0 = segment.a.S;
+		var radius = segment.a.p;
+		var ch = segment.a.cg;
+		var cr = segment.a.bM;
+		var len = segment.a.af;
+		var s0 = segment.a.ak;
 		var angle = a0 + ((dir * $author$project$Surface$clampFloat$(0, len, s - s0)) / radius);
 		return {
-			aJ: dir * $elm$core$Basics$cos(angle),
-			J: (-dir) * $elm$core$Basics$sin(angle),
-			bt: ch + (radius * $elm$core$Basics$sin(angle)),
-			d: cr + (radius * $elm$core$Basics$cos(angle))
+			aP: dir * $elm$core$Basics$cos(angle),
+			N: (-dir) * $elm$core$Basics$sin(angle),
+			bz: ch + (radius * $elm$core$Basics$sin(angle)),
+			f: cr + (radius * $elm$core$Basics$cos(angle))
 		};
 	}
 };
@@ -4847,28 +4847,28 @@ var $author$project$Surface$closestOnProfile$ = function (feature, r, h) {
 				var bestDistance = _v0.b;
 				var s = $author$project$Surface$closestOnSegment$(segment, r, h);
 				var p = $author$project$Surface$segmentAt$(segment, s);
-				var distance = A2($elm$core$Basics$pow, p.d - r, 2) + A2($elm$core$Basics$pow, p.bt - h, 2);
+				var distance = A2($elm$core$Basics$pow, p.f - r, 2) + A2($elm$core$Basics$pow, p.bz - h, 2);
 				return (_Utils_cmp(distance, bestDistance) < 0) ? _Utils_Tuple2(s, distance) : _Utils_Tuple2(bestS, bestDistance);
 			}),
 		_Utils_Tuple2(0, 1 / 0),
-		feature.gN).a;
+		feature.gX).a;
 };
 var $author$project$Surface$closestOnProfile = F3($author$project$Surface$closestOnProfile$);
 var $author$project$Surface$segLength = function (segment) {
 	if (!segment.$) {
-		var len = segment.a.aa;
+		var len = segment.a.af;
 		return len;
 	} else {
-		var len = segment.a.aa;
+		var len = segment.a.af;
 		return len;
 	}
 };
 var $author$project$Surface$segS0 = function (segment) {
 	if (!segment.$) {
-		var s0 = segment.a.ae;
+		var s0 = segment.a.ak;
 		return s0;
 	} else {
-		var s0 = segment.a.ae;
+		var s0 = segment.a.ak;
 		return s0;
 	}
 };
@@ -4876,7 +4876,7 @@ var $author$project$Surface$profileAtHelper$ = function (segments, s) {
 	profileAtHelper:
 	while (true) {
 		if (!segments.b) {
-			return {aJ: 1, J: 0, bt: 0, d: 0};
+			return {aP: 1, N: 0, bz: 0, f: 0};
 		} else {
 			if (!segments.b.b) {
 				var last = segments.a;
@@ -4897,45 +4897,45 @@ var $author$project$Surface$profileAtHelper$ = function (segments, s) {
 };
 var $author$project$Surface$profileAtHelper = F2($author$project$Surface$profileAtHelper$);
 var $author$project$Surface$profileAt$ = function (feature, s) {
-	return $author$project$Surface$profileAtHelper$(feature.gN, s);
+	return $author$project$Surface$profileAtHelper$(feature.gX, s);
 };
 var $author$project$Surface$profileAt = F2($author$project$Surface$profileAt$);
 var $author$project$Surface$profileParamUnclamped$ = function (feature, r, h) {
 	var s = $author$project$Surface$closestOnProfile$(feature, r, h);
 	var along = function (end) {
 		var p = $author$project$Surface$profileAt$(feature, end);
-		return (end + ((r - p.d) * p.J)) + ((h - p.bt) * p.aJ);
+		return (end + ((r - p.f) * p.N)) + ((h - p.bz) * p.aP);
 	};
 	return (s <= 1.0e-9) ? $elm$core$Basics$min$(
 		0,
-		along(0)) : ((_Utils_cmp(s, feature.aL - 1.0e-9) > -1) ? $elm$core$Basics$max$(
-		feature.aL,
-		along(feature.aL)) : s);
+		along(0)) : ((_Utils_cmp(s, feature.aR - 1.0e-9) > -1) ? $elm$core$Basics$max$(
+		feature.aR,
+		along(feature.aR)) : s);
 };
 var $author$project$Surface$profileParamUnclamped = F3($author$project$Surface$profileParamUnclamped$);
 var $author$project$Surface$sub$ = function (a, b) {
-	return {k: a.k - b.k, l: a.l - b.l, m: a.m - b.m};
+	return {m: a.m - b.m, n: a.n - b.n, o: a.o - b.o};
 };
 var $author$project$Surface$sub = F2($author$project$Surface$sub$);
 var $author$project$Surface$localCoordinatesUnclamped$ = function (piece, point) {
 	if (!piece.$) {
 		var flat = piece.a;
-		var local = $author$project$Surface$sub$(point, flat.u);
+		var local = $author$project$Surface$sub$(point, flat.z);
 		return {
-			cB: $author$project$Surface$dot$(local, flat.a3),
-			cD: $author$project$Surface$dot$(local, flat.a5)
+			cK: $author$project$Surface$dot$(local, flat.a9),
+			cM: $author$project$Surface$dot$(local, flat.bb)
 		};
 	} else {
 		var feature = piece.a;
-		var local = $author$project$Surface$sub$(point, feature.u);
-		var x = $author$project$Surface$dot$(local, feature.at);
-		var y = $author$project$Surface$dot$(local, feature.au);
+		var local = $author$project$Surface$sub$(point, feature.z);
+		var x = $author$project$Surface$dot$(local, feature.az);
+		var y = $author$project$Surface$dot$(local, feature.aA);
 		var rawTheta = A2($elm$core$Basics$atan2, y, x);
 		var theta = function () {
-			var _v1 = feature.i8;
+			var _v1 = feature.jg;
 			if (!_v1.$) {
-				var to = _v1.a.jr;
-				var from = _v1.a.hR;
+				var to = _v1.a.e;
+				var from = _v1.a.c;
 				var middle = (from + to) / 2;
 				return (middle + $author$project$Surface$wrapAngle((rawTheta - middle) + $elm$core$Basics$pi)) - $elm$core$Basics$pi;
 			} else {
@@ -4943,25 +4943,25 @@ var $author$project$Surface$localCoordinatesUnclamped$ = function (piece, point)
 			}
 		}();
 		return {
-			cB: theta,
-			cD: $author$project$Surface$profileParamUnclamped$(
+			cK: theta,
+			cM: $author$project$Surface$profileParamUnclamped$(
 				feature,
 				(x * $elm$core$Basics$cos(theta)) + (y * $elm$core$Basics$sin(theta)),
-				$author$project$Surface$dot$(local, feature.ah))
+				$author$project$Surface$dot$(local, feature.an))
 		};
 	}
 };
 var $author$project$Surface$localCoordinatesUnclamped = F2($author$project$Surface$localCoordinatesUnclamped$);
 var $elm$core$Basics$e = _Basics_e;
 var $author$project$Surface$cexp = function (p) {
-	var magnitude = A2($elm$core$Basics$pow, $elm$core$Basics$e, p.ad);
+	var magnitude = A2($elm$core$Basics$pow, $elm$core$Basics$e, p.aj);
 	return {
-		Z: magnitude * $elm$core$Basics$sin(p.Z),
-		ad: magnitude * $elm$core$Basics$cos(p.Z)
+		ad: magnitude * $elm$core$Basics$sin(p.ad),
+		aj: magnitude * $elm$core$Basics$cos(p.ad)
 	};
 };
 var $author$project$Surface$cscale$ = function (s, p) {
-	return {Z: s * p.Z, ad: s * p.ad};
+	return {ad: s * p.ad, aj: s * p.aj};
 };
 var $author$project$Surface$cscale = F2($author$project$Surface$cscale$);
 var $author$project$Surface$maxFloat$ = function (a, b) {
@@ -4975,19 +4975,19 @@ var $elm$core$Basics$abs = function (n) {
 var $elm$core$Basics$tan = _Basics_tan;
 var $author$project$Surface$segmentSigma$ = function (segment, t) {
 	if (!segment.$) {
-		var dr = segment.a.J;
-		var r0 = segment.a.bV;
+		var dr = segment.a.N;
+		var r0 = segment.a.b2;
 		return ($elm$core$Basics$abs(dr) < 1.0e-9) ? (t / $author$project$Surface$maxFloat$($author$project$Surface$minimumRadius, r0)) : (($elm$core$Basics$logBase$(
 			$elm$core$Basics$e,
 			$author$project$Surface$maxFloat$($author$project$Surface$minimumRadius, r0 + (t * dr))) - $elm$core$Basics$logBase$(
 			$elm$core$Basics$e,
 			$author$project$Surface$maxFloat$($author$project$Surface$minimumRadius, r0))) / dr);
 	} else {
-		var len = segment.a.aa;
-		var dir = segment.a.cb;
-		var a0 = segment.a.O;
-		var radius = segment.a.gH;
-		var cr = segment.a.bE;
+		var len = segment.a.af;
+		var dir = segment.a.cj;
+		var a0 = segment.a.S;
+		var radius = segment.a.p;
+		var cr = segment.a.bM;
 		var antiderivative = function (angle) {
 			if ($elm$core$Basics$abs(cr - radius) < 1.0e-9) {
 				return $elm$core$Basics$tan(angle / 2);
@@ -5026,23 +5026,23 @@ var $author$project$Surface$sigmaAt$ = function (feature, s) {
 						s - s0));
 			}),
 		0,
-		feature.gN);
+		feature.gX);
 	var beyond = (s < 0) ? (s / $author$project$Surface$maxFloat$(
 		$author$project$Surface$minimumRadius,
-		$author$project$Surface$profileAt$(feature, 0).d)) : (((s - feature.aL) > 0) ? ((s - feature.aL) / $author$project$Surface$maxFloat$(
+		$author$project$Surface$profileAt$(feature, 0).f)) : (((s - feature.aR) > 0) ? ((s - feature.aR) / $author$project$Surface$maxFloat$(
 		$author$project$Surface$minimumRadius,
-		$author$project$Surface$profileAt$(feature, feature.aL).d)) : 0);
+		$author$project$Surface$profileAt$(feature, feature.aR).f)) : 0);
 	return inside + beyond;
 };
 var $author$project$Surface$sigmaAt = F2($author$project$Surface$sigmaAt$);
 var $author$project$Surface$localChart$ = function (piece, a, b) {
 	if (!piece.$) {
-		return {Z: b, ad: a};
+		return {ad: b, aj: a};
 	} else {
 		var feature = piece.a;
 		return {
-			Z: feature.aH * a,
-			ad: $author$project$Surface$sigmaAt$(feature, b)
+			ad: feature.aN * a,
+			aj: $author$project$Surface$sigmaAt$(feature, b)
 		};
 	}
 };
@@ -5054,8 +5054,8 @@ var $author$project$Surface$pieceExponent = function (piece) {
 	} else {
 		var feature = piece.a;
 		return (($elm$core$Basics$abs(
-			$author$project$Surface$profileAt$(feature, feature.aL).d) - $author$project$Surface$tolerance) < 0) ? (-1) : (((($elm$core$Basics$abs(
-			$author$project$Surface$profileAt$(feature, 0).d) - $author$project$Surface$tolerance) < 0) || _Utils_eq(feature.i8, $elm$core$Maybe$Nothing)) ? 1 : 0);
+			$author$project$Surface$profileAt$(feature, feature.aR).f) - $author$project$Surface$tolerance) < 0) ? (-1) : (((($elm$core$Basics$abs(
+			$author$project$Surface$profileAt$(feature, 0).f) - $author$project$Surface$tolerance) < 0) || _Utils_eq(feature.jg, $elm$core$Maybe$Nothing)) ? 1 : 0);
 	}
 };
 var $author$project$Surface$mapChart$ = function (piece, a, b) {
@@ -5072,15 +5072,15 @@ var $author$project$Surface$chartCoordinate$ = function (surface, pieceIndex, po
 		var local = $author$project$Surface$localCoordinatesUnclamped$(
 			piece,
 			$author$project$Surface$fromPoint(point));
-		return $author$project$Surface$mapChart$(piece, local.cB, local.cD);
+		return $author$project$Surface$mapChart$(piece, local.cK, local.cM);
 	} else {
-		return {Z: 0, ad: 0};
+		return {ad: 0, aj: 0};
 	}
 };
 var $author$project$Surface$chartCoordinate = F3($author$project$Surface$chartCoordinate$);
 var $ianmackenzie$elm_geometry$Geometry$Types$Point3d = $elm$core$Basics$identity;
 var $ianmackenzie$elm_geometry$Point3d$meters$ = function (x, y, z) {
-	return {k: x, l: y, m: z};
+	return {m: x, n: y, o: z};
 };
 var $ianmackenzie$elm_geometry$Point3d$meters = F3($ianmackenzie$elm_geometry$Point3d$meters$);
 var $elm$core$Maybe$map$ = function (f, maybe) {
@@ -5098,7 +5098,7 @@ var $author$project$Surface$lengthOf = function (a) {
 		$author$project$Surface$dot$(a, a));
 };
 var $author$project$Surface$vec$ = function (x, y, z) {
-	return {k: x, l: y, m: z};
+	return {m: x, n: y, o: z};
 };
 var $author$project$Surface$vec = F3($author$project$Surface$vec$);
 var $author$project$Surface$boxDistance$ = function (p, box) {
@@ -5110,9 +5110,9 @@ var $author$project$Surface$boxDistance$ = function (p, box) {
 		});
 	return $author$project$Surface$lengthOf(
 		$author$project$Surface$vec$(
-			A3(outside, box.aZ.k, box.aY.k, p.k),
-			A3(outside, box.aZ.l, box.aY.l, p.l),
-			A3(outside, box.aZ.m, box.aY.m, p.m)));
+			A3(outside, box.a3.m, box.a2.m, p.m),
+			A3(outside, box.a3.n, box.a2.n, p.n),
+			A3(outside, box.a3.o, box.a2.o, p.o)));
 };
 var $author$project$Surface$boxDistance = F2($author$project$Surface$boxDistance$);
 var $elm$core$Array$foldl$ = function (func, baseCase, _v0) {
@@ -5136,29 +5136,29 @@ var $elm$core$Array$foldl$ = function (func, baseCase, _v0) {
 };
 var $elm$core$Array$foldl = F3($elm$core$Array$foldl$);
 var $author$project$Surface$add$ = function (a, b) {
-	return {k: a.k + b.k, l: a.l + b.l, m: a.m + b.m};
+	return {m: a.m + b.m, n: a.n + b.n, o: a.o + b.o};
 };
 var $author$project$Surface$add = F2($author$project$Surface$add$);
 var $author$project$Surface$combine$ = function (a, p, b, q) {
-	return {k: (a * p.k) + (b * q.k), l: (a * p.l) + (b * q.l), m: (a * p.m) + (b * q.m)};
+	return {m: (a * p.m) + (b * q.m), n: (a * p.n) + (b * q.n), o: (a * p.o) + (b * q.o)};
 };
 var $author$project$Surface$combine = F4($author$project$Surface$combine$);
 var $author$project$Surface$featurePoint$ = function (feature, theta, s) {
 	var radial = $author$project$Surface$combine$(
 		$elm$core$Basics$cos(theta),
-		feature.at,
+		feature.az,
 		$elm$core$Basics$sin(theta),
-		feature.au);
+		feature.aA);
 	var p = $author$project$Surface$profileAt$(feature, s);
 	return $author$project$Surface$add$(
-		feature.u,
-		$author$project$Surface$combine$(p.d, radial, p.bt, feature.ah));
+		feature.z,
+		$author$project$Surface$combine$(p.f, radial, p.bz, feature.an));
 };
 var $author$project$Surface$featurePoint = F3($author$project$Surface$featurePoint$);
 var $author$project$Surface$flatPoint$ = function (flat, a, b) {
 	return $author$project$Surface$add$(
-		flat.u,
-		$author$project$Surface$combine$(a, flat.a3, b, flat.a5));
+		flat.z,
+		$author$project$Surface$combine$(a, flat.a9, b, flat.bb));
 };
 var $author$project$Surface$flatPoint = F3($author$project$Surface$flatPoint$);
 var $author$project$Surface$piecePoint$ = function (piece, a, b) {
@@ -5172,10 +5172,10 @@ var $author$project$Surface$piecePoint$ = function (piece, a, b) {
 };
 var $author$project$Surface$piecePoint = F3($author$project$Surface$piecePoint$);
 var $author$project$Surface$clampTheta$ = function (feature, theta) {
-	var _v0 = feature.i8;
+	var _v0 = feature.jg;
 	if (!_v0.$) {
-		var to = _v0.a.jr;
-		var from = _v0.a.hR;
+		var to = _v0.a.e;
+		var from = _v0.a.c;
 		var relative = $author$project$Surface$wrapAngle(theta - from);
 		return (_Utils_cmp(relative, to - from) < 1) ? (from + relative) : ((_Utils_cmp(relative - (to - from), (2 * $elm$core$Basics$pi) - relative) < 0) ? to : from);
 	} else {
@@ -5184,9 +5184,9 @@ var $author$project$Surface$clampTheta$ = function (feature, theta) {
 };
 var $author$project$Surface$clampTheta = F2($author$project$Surface$clampTheta$);
 var $author$project$Surface$projectOntoFeature$ = function (feature, point) {
-	var local = $author$project$Surface$sub$(point, feature.u);
-	var x = $author$project$Surface$dot$(local, feature.at);
-	var y = $author$project$Surface$dot$(local, feature.au);
+	var local = $author$project$Surface$sub$(point, feature.z);
+	var x = $author$project$Surface$dot$(local, feature.az);
+	var y = $author$project$Surface$dot$(local, feature.aA);
 	var theta = $author$project$Surface$clampTheta$(
 		feature,
 		A2($elm$core$Basics$atan2, y, x));
@@ -5196,7 +5196,7 @@ var $author$project$Surface$projectOntoFeature$ = function (feature, point) {
 		$author$project$Surface$closestOnProfile$(
 			feature,
 			r,
-			$author$project$Surface$dot$(local, feature.ah)));
+			$author$project$Surface$dot$(local, feature.an)));
 };
 var $author$project$Surface$projectOntoFeature = F2($author$project$Surface$projectOntoFeature$);
 var $author$project$Surface$arcClampAngle$ = function (a0, swept, angle) {
@@ -5211,20 +5211,20 @@ var $author$project$Surface$arcClampAngle$ = function (a0, swept, angle) {
 var $author$project$Surface$arcClampAngle = F3($author$project$Surface$arcClampAngle$);
 var $author$project$Surface$closestOnEdge2d$ = function (edge, a, b) {
 	if (!edge.$) {
-		var by = edge.a.aR;
-		var bx = edge.a.aQ;
-		var ay = edge.a.aG;
-		var ax = edge.a.aF;
+		var by = edge.a.aX;
+		var bx = edge.a.aW;
+		var ay = edge.a.aM;
+		var ax = edge.a.aL;
 		var dy = by - ay;
 		var dx = bx - ax;
 		var t = $elm$core$Basics$clamp$(0, 1, (((a - ax) * dx) + ((b - ay) * dy)) / ((dx * dx) + (dy * dy)));
 		return _Utils_Tuple2(ax + (t * dx), ay + (t * dy));
 	} else {
-		var swept = edge.a.aC;
-		var a0 = edge.a.O;
-		var r = edge.a.d;
-		var cy = edge.a.aq;
-		var cx = edge.a.ap;
+		var swept = edge.a.aI;
+		var a0 = edge.a.S;
+		var r = edge.a.f;
+		var cy = edge.a.aw;
+		var cx = edge.a.av;
 		var angle = $author$project$Surface$arcClampAngle$(
 			a0,
 			swept,
@@ -5244,19 +5244,19 @@ var $author$project$Surface$onArc$ = function (a0, swept, angle) {
 var $author$project$Surface$onArc = F3($author$project$Surface$onArc$);
 var $author$project$Surface$rayCrossings$ = function (edge, a, b) {
 	if (!edge.$) {
-		var by = edge.a.aR;
-		var bx = edge.a.aQ;
-		var ay = edge.a.aG;
-		var ax = edge.a.aF;
+		var by = edge.a.aX;
+		var bx = edge.a.aW;
+		var ay = edge.a.aM;
+		var ax = edge.a.aL;
 		return ((!_Utils_eq(
 			_Utils_cmp(ay, b) > 0,
 			_Utils_cmp(by, b) > 0)) && (_Utils_cmp(a, ax + (((b - ay) / (by - ay)) * (bx - ax))) < 0)) ? 1 : 0;
 	} else {
-		var swept = edge.a.aC;
-		var a0 = edge.a.O;
-		var r = edge.a.d;
-		var cy = edge.a.aq;
-		var cx = edge.a.ap;
+		var swept = edge.a.aI;
+		var a0 = edge.a.S;
+		var r = edge.a.f;
+		var cy = edge.a.aw;
+		var cx = edge.a.av;
 		var dy = b - cy;
 		if (_Utils_cmp(
 			$elm$core$Basics$abs(dy),
@@ -5285,13 +5285,13 @@ var $author$project$Surface$insideFlat$ = function (flat, a, b) {
 					return count + $author$project$Surface$rayCrossings$(edge, a, b);
 				}),
 			0,
-			flat.bK));
+			flat.bS));
 };
 var $author$project$Surface$insideFlat = F3($author$project$Surface$insideFlat$);
 var $author$project$Surface$projectOntoFlat$ = function (flat, point) {
-	var local = $author$project$Surface$sub$(point, flat.u);
-	var b = $author$project$Surface$dot$(local, flat.a5);
-	var a = $author$project$Surface$dot$(local, flat.a3);
+	var local = $author$project$Surface$sub$(point, flat.z);
+	var b = $author$project$Surface$dot$(local, flat.bb);
+	var a = $author$project$Surface$dot$(local, flat.a9);
 	return $author$project$Surface$insideFlat$(flat, a, b) ? _Utils_Tuple2(a, b) : $elm$core$Array$foldl$(
 		F2(
 			function (edge, _v0) {
@@ -5308,7 +5308,7 @@ var $author$project$Surface$projectOntoFlat$ = function (flat, point) {
 		_Utils_Tuple2(
 			_Utils_Tuple2(a, b),
 			1 / 0),
-		flat.bK).a;
+		flat.bS).a;
 };
 var $author$project$Surface$projectOntoFlat = F2($author$project$Surface$projectOntoFlat$);
 var $author$project$Surface$projectOntoPiece$ = function (piece, point) {
@@ -5331,7 +5331,7 @@ var $author$project$Surface$nearest$ = function (point, _v0) {
 			var b = _v5.b;
 			var position = $author$project$Surface$piecePoint$(piece, a, b);
 			return _Utils_Tuple2(
-				{cB: a, cD: b, ak: index, eb: position},
+				{cK: a, cM: b, aq: index, gQ: position},
 				$author$project$Surface$lengthOf(
 					$author$project$Surface$sub$(position, p)));
 		});
@@ -5355,7 +5355,7 @@ var $author$project$Surface$nearest$ = function (point, _v0) {
 										0,
 										$elm$core$Maybe$map$(
 											$author$project$Surface$boxDistance(p),
-											$elm$core$Array$get$(index, surface.dy))))) {
+											$elm$core$Array$get$(index, surface.dF))))) {
 									return best;
 								} else {
 									var _v4 = A2(closest, piece, index);
@@ -5371,32 +5371,32 @@ var $author$project$Surface$nearest$ = function (point, _v0) {
 						}());
 				}),
 			_Utils_Tuple2(0, $elm$core$Maybe$Nothing),
-			surface.v).b);
+			surface.A).b);
 };
 var $author$project$Surface$nearest = F2($author$project$Surface$nearest$);
 var $author$project$Surface$nearestPiece$ = function (point, surface) {
 	return $elm$core$Maybe$map$(
 		function ($) {
-			return $.ak;
+			return $.aq;
 		},
 		$author$project$Surface$nearest$(point, surface));
 };
 var $author$project$Surface$nearestPiece = F2($author$project$Surface$nearestPiece$);
 var $author$project$Shapes$onPiece$ = function (surface, p) {
-	var point = $ianmackenzie$elm_geometry$Point3d$meters$(p.k, p.l, p.m);
+	var point = $ianmackenzie$elm_geometry$Point3d$meters$(p.m, p.n, p.o);
 	var _v0 = $author$project$Surface$nearestPiece$(point, surface);
 	if (!_v0.$) {
 		var piece = _v0.a;
 		return {
-			G: $author$project$Surface$chartCoordinate$(surface, piece, point),
-			ak: piece,
-			eb: p
+			K: $author$project$Surface$chartCoordinate$(surface, piece, point),
+			aq: piece,
+			gQ: p
 		};
 	} else {
 		return {
-			G: {Z: 0, ad: 0},
-			ak: -1,
-			eb: p
+			K: {ad: 0, aj: 0},
+			aq: -1,
+			gQ: p
 		};
 	}
 };
@@ -5413,45 +5413,45 @@ var $elm$core$Maybe$andThen = F2($elm$core$Maybe$andThen$);
 var $author$project$Surface$featureBasis$ = function (feature, theta, s) {
 	var radial = $author$project$Surface$combine$(
 		$elm$core$Basics$cos(theta),
-		feature.at,
+		feature.az,
 		$elm$core$Basics$sin(theta),
-		feature.au);
+		feature.aA);
 	var p = $author$project$Surface$profileAt$(feature, s);
 	return {
-		ar: $author$project$Surface$combine$(p.J, radial, p.aJ, feature.ah),
-		as: $author$project$Surface$combine$(
+		ax: $author$project$Surface$combine$(p.N, radial, p.aP, feature.an),
+		ay: $author$project$Surface$combine$(
 			-$elm$core$Basics$sin(theta),
-			feature.at,
+			feature.az,
 			$elm$core$Basics$cos(theta),
-			feature.au),
-		p: $author$project$Surface$combine$(p.aJ, radial, -p.J, feature.ah),
-		H: $author$project$Surface$add$(
-			feature.u,
-			$author$project$Surface$combine$(p.d, radial, p.bt, feature.ah))
+			feature.aA),
+		s: $author$project$Surface$combine$(p.aP, radial, -p.N, feature.an),
+		L: $author$project$Surface$add$(
+			feature.z,
+			$author$project$Surface$combine$(p.f, radial, p.bz, feature.an))
 	};
 };
 var $author$project$Surface$featureBasis = F3($author$project$Surface$featureBasis$);
 var $author$project$Surface$scale$ = function (s, a) {
-	return {k: s * a.k, l: s * a.l, m: s * a.m};
+	return {m: s * a.m, n: s * a.n, o: s * a.o};
 };
 var $author$project$Surface$scale = F2($author$project$Surface$scale$);
 var $author$project$Surface$tangentFrame$ = function (piece, a, b) {
 	if (!piece.$) {
 		var flat = piece.a;
 		return {
-			bH: flat.a3,
-			bI: flat.a5,
-			p: flat.p,
-			H: $author$project$Surface$flatPoint$(flat, a, b)
+			bP: flat.a9,
+			bQ: flat.bb,
+			s: flat.s,
+			L: $author$project$Surface$flatPoint$(flat, a, b)
 		};
 	} else {
 		var feature = piece.a;
 		var basis = $author$project$Surface$featureBasis$(feature, a, b);
 		return {
-			bH: basis.ar,
-			bI: $author$project$Surface$scale$(feature.aH, basis.as),
-			p: basis.p,
-			H: basis.H
+			bP: basis.ax,
+			bQ: $author$project$Surface$scale$(feature.aN, basis.ay),
+			s: basis.s,
+			L: basis.L
 		};
 	}
 };
@@ -5472,15 +5472,15 @@ var $author$project$Surface$toPoint = function (v) {
 var $author$project$Surface$nearestPoint$ = function (point, surface) {
 	return $elm$core$Maybe$andThen$(
 		function (_v0) {
-			var b = _v0.cD;
-			var a = _v0.cB;
-			var piece = _v0.ak;
+			var b = _v0.cM;
+			var a = _v0.cK;
+			var piece = _v0.aq;
 			return $elm$core$Maybe$map$(
 				function (piece_) {
 					var frame = $author$project$Surface$tangentFrame$(piece_, a, b);
 					return {
-						e9: $author$project$Surface$toDirection(frame.p),
-						eb: $author$project$Surface$toPoint(frame.H)
+						k: $author$project$Surface$toDirection(frame.s),
+						gQ: $author$project$Surface$toPoint(frame.L)
 					};
 				},
 				$author$project$Surface$getPiece$(piece, surface));
@@ -5490,10 +5490,10 @@ var $author$project$Surface$nearestPoint$ = function (point, surface) {
 var $author$project$Surface$nearestPoint = F2($author$project$Surface$nearestPoint$);
 var $author$project$Shapes$snap$ = function (surface, p) {
 	var _v0 = $author$project$Surface$nearestPoint$(
-		$ianmackenzie$elm_geometry$Point3d$meters$(p.k, p.l, p.m),
+		$ianmackenzie$elm_geometry$Point3d$meters$(p.m, p.n, p.o),
 		surface);
 	if (!_v0.$) {
-		var position = _v0.a.eb;
+		var position = _v0.a.gQ;
 		return $ianmackenzie$elm_geometry$Point3d$toMeters(position);
 	} else {
 		return p;
@@ -5526,16 +5526,16 @@ var $author$project$Shapes$addWalls$ = function (surface, walls, shapes) {
 							($elm$core$Array$length(pointsSoFar) + $elm$core$List$length(added)) - 1),
 						wallsSoFar));
 			}),
-		_Utils_Tuple2(shapes.fg, shapes.jx),
+		_Utils_Tuple2(shapes.fn, shapes.jE),
 		walls);
 	var allPoints = _v0.a;
 	var wallIndices = _v0.b;
 	return _Utils_update(
 		shapes,
 		{
-			bM: $author$project$Shapes$gridOf(allPoints),
-			fg: allPoints,
-			jx: wallIndices
+			bU: $author$project$Shapes$gridOf(allPoints),
+			fn: allPoints,
+			jE: wallIndices
 		});
 };
 var $author$project$Shapes$addWalls = F3($author$project$Shapes$addWalls$);
@@ -5725,7 +5725,7 @@ var $author$project$Shapes$split$ = function (tooLong, toPoint, position, _v0, s
 	var j = _v0.b;
 	var k = _v0.c;
 	var point = function (index) {
-		return $elm$core$Array$get$(index, state.fg);
+		return $elm$core$Array$get$(index, state.fn);
 	};
 	var isTooLong = F2(
 		function (a, b) {
@@ -5738,7 +5738,7 @@ var $author$project$Shapes$split$ = function (tooLong, toPoint, position, _v0, s
 		});
 	var at = function (index) {
 		return $elm$core$Maybe$withDefault$(
-			{k: 0, l: 0, m: 0},
+			{m: 0, n: 0, o: 0},
 			$elm$core$Maybe$map$(
 				position,
 				point(index)));
@@ -5758,25 +5758,25 @@ var $author$project$Shapes$split$ = function (tooLong, toPoint, position, _v0, s
 				$elm$core$Basics$min$(a, b),
 				$elm$core$Basics$max$(a, b));
 			var _v1 = function () {
-				var _v2 = $elm$core$Dict$get$(key, state.bP);
+				var _v2 = $elm$core$Dict$get$(key, state.bZ);
 				if (!_v2.$) {
 					var existing = _v2.a;
 					return _Utils_Tuple2(existing, state);
 				} else {
-					var index = $elm$core$Array$length(state.fg);
+					var index = $elm$core$Array$length(state.fn);
 					return _Utils_Tuple2(
 						index,
 						_Utils_update(
 							state,
 							{
-								bP: $elm$core$Dict$insert$(key, index, state.bP),
-								fg: $elm$core$Array$push$(
+								bZ: $elm$core$Dict$insert$(key, index, state.bZ),
+								fn: $elm$core$Array$push$(
 									toPoint(
 										$author$project$Shapes$lerp$(
 											0.5,
 											at(a),
 											at(b))),
-									state.fg)
+									state.fn)
 							}));
 				}
 			}();
@@ -5797,10 +5797,10 @@ var $author$project$Shapes$split$ = function (tooLong, toPoint, position, _v0, s
 	return (!(A2(isTooLong, i, j) || (A2(isTooLong, j, k) || A2(isTooLong, k, i)))) ? _Utils_update(
 		state,
 		{
-			aD: A2(
+			aJ: A2(
 				$elm$core$List$cons,
 				_Utils_Tuple3(i, j, k),
-				state.aD)
+				state.aJ)
 		}) : (((_Utils_cmp(dij, djk) > -1) && (_Utils_cmp(dij, dki) > -1)) ? A3(halve, i, j, k) : ((_Utils_cmp(djk, dki) > -1) ? A3(halve, j, k, i) : A3(halve, k, i, j)));
 };
 var $author$project$Shapes$split = F5($author$project$Shapes$split$);
@@ -5815,10 +5815,10 @@ var $author$project$Shapes$splitPavings$ = function (tooLong, toPoint, position,
 					$elm$core$Array$fromList(
 						$elm$core$List$map$(
 							A2($elm$core$Basics$composeR, $author$project$Shapes$fromTuple, toPoint),
-							paving.fg)));
+							paving.fn)));
 				var offset = $elm$core$Array$length(pointsSoFar);
 				return function (state) {
-					return _Utils_Tuple2(state.fg, state.aD);
+					return _Utils_Tuple2(state.fn, state.aJ);
 				}(
 					$elm$core$List$foldl$(
 						F2(
@@ -5833,8 +5833,8 @@ var $author$project$Shapes$splitPavings$ = function (tooLong, toPoint, position,
 									_Utils_Tuple3(i + offset, j + offset, k + offset),
 									state);
 							}),
-						{bP: $elm$core$Dict$empty, fg: withCorners, aD: trianglesSoFar},
-						paving.aD));
+						{bZ: $elm$core$Dict$empty, fn: withCorners, aJ: trianglesSoFar},
+						paving.aJ));
 			}),
 		_Utils_Tuple2($elm$core$Array$empty, _List_Nil),
 		pavings);
@@ -5858,10 +5858,10 @@ var $author$project$Shapes$prepare$ = function (surface, walls, pavings) {
 		surface,
 		walls,
 		{
-			bM: $author$project$Shapes$gridOf(shapePoints),
-			iD: triangles,
-			fg: shapePoints,
-			jx: _List_Nil
+			bU: $author$project$Shapes$gridOf(shapePoints),
+			iM: triangles,
+			fn: shapePoints,
+			jE: _List_Nil
 		});
 };
 var $author$project$Shapes$prepare = F3($author$project$Shapes$prepare$);
@@ -5903,18 +5903,18 @@ var $author$project$Surface$minFloat$ = function (a, b) {
 };
 var $author$project$Surface$minFloat = F2($author$project$Surface$minFloat$);
 var $author$project$Surface$cross$ = function (a, b) {
-	return {k: (a.l * b.m) - (a.m * b.l), l: (a.m * b.k) - (a.k * b.m), m: (a.k * b.l) - (a.l * b.k)};
+	return {m: (a.n * b.o) - (a.o * b.n), n: (a.o * b.m) - (a.m * b.o), o: (a.m * b.n) - (a.n * b.m)};
 };
 var $author$project$Surface$cross = F2($author$project$Surface$cross$);
 var $author$project$Surface$meshTriangle$ = function (a, b, c, acc) {
 	var facing = $author$project$Surface$cross$(
-		$author$project$Surface$sub$(b.eb, a.eb),
-		$author$project$Surface$sub$(c.eb, a.eb));
+		$author$project$Surface$sub$(b.gQ, a.gQ),
+		$author$project$Surface$sub$(c.gQ, a.gQ));
 	var outward = $author$project$Surface$dot$(
 		facing,
 		$author$project$Surface$add$(
-			a.e9,
-			$author$project$Surface$add$(b.e9, c.e9)));
+			a.k,
+			$author$project$Surface$add$(b.k, c.k)));
 	return (($author$project$Surface$lengthOf(facing) - 1.0e-12) < 0) ? acc : ((outward > 0) ? A2(
 		$elm$core$List$cons,
 		_Utils_Tuple3(a, b, c),
@@ -5932,10 +5932,10 @@ var $author$project$Surface$stepsFor$ = function (maxStepAngle, angle) {
 };
 var $author$project$Surface$stepsFor = F2($author$project$Surface$stepsFor$);
 var $author$project$Surface$sweepRange = function (feature) {
-	var _v0 = feature.i8;
+	var _v0 = feature.jg;
 	if (!_v0.$) {
-		var to = _v0.a.jr;
-		var from = _v0.a.hR;
+		var to = _v0.a.e;
+		var from = _v0.a.c;
 		return _Utils_Tuple2(from, to);
 	} else {
 		return _Utils_Tuple2(0, 2 * $elm$core$Basics$pi);
@@ -5945,19 +5945,19 @@ var $author$project$Surface$tessellateFeature$ = function (maxStepAngle, feature
 	var vertexAt = F2(
 		function (theta, s) {
 			var basis = $author$project$Surface$featureBasis$(feature, theta, s);
-			return {e9: basis.p, eb: basis.H};
+			return {k: basis.s, gQ: basis.L};
 		});
 	var profileSamples = _Utils_ap(
 		$elm$core$List$concatMap$(
 			function (segment) {
 				if (!segment.$) {
-					var s0 = segment.a.ae;
+					var s0 = segment.a.ak;
 					return _List_fromArray(
 						[s0]);
 				} else {
-					var radius = segment.a.gH;
-					var len = segment.a.aa;
-					var s0 = segment.a.ae;
+					var radius = segment.a.p;
+					var len = segment.a.af;
+					var s0 = segment.a.ak;
 					var steps = $author$project$Surface$stepsFor$(maxStepAngle, len / radius);
 					return $elm$core$List$map$(
 						function (j) {
@@ -5966,9 +5966,9 @@ var $author$project$Surface$tessellateFeature$ = function (maxStepAngle, feature
 						$elm$core$List$range$(0, steps - 1));
 				}
 			},
-			feature.gN),
+			feature.gX),
 		_List_fromArray(
-			[feature.aL]));
+			[feature.aR]));
 	var between = F3(
 		function (rowA, rowB, acc) {
 			between:
@@ -6040,7 +6040,7 @@ var $author$project$Surface$tessellateFeature$ = function (maxStepAngle, feature
 var $author$project$Surface$tessellateFeature = F2($author$project$Surface$tessellateFeature$);
 var $author$project$Surface$distance2$ = function (p, q) {
 	return $elm$core$Basics$sqrt(
-		A2($elm$core$Basics$pow, p.k - q.k, 2) + A2($elm$core$Basics$pow, p.l - q.l, 2));
+		A2($elm$core$Basics$pow, p.m - q.m, 2) + A2($elm$core$Basics$pow, p.n - q.n, 2));
 };
 var $author$project$Surface$distance2 = F2($author$project$Surface$distance2$);
 var $elm$core$List$drop$ = function (n, list) {
@@ -6109,9 +6109,9 @@ var $elm$core$Array$sliceLeft$ = function (from, array) {
 				var rest = nodesToInsert.b;
 				var firstSlice = from - (skipNodes * $elm$core$Array$branchFactor);
 				var initialBuilder = {
-					M: _List_Nil,
-					C: 0,
-					I: A3(
+					Q: _List_Nil,
+					G: 0,
+					M: A3(
 						$elm$core$Elm$JsArray$slice,
 						firstSlice,
 						$elm$core$Elm$JsArray$length(head),
@@ -6231,7 +6231,7 @@ var $elm$core$Array$slice$ = function (from, to, array) {
 };
 var $elm$core$Array$slice = F3($elm$core$Array$slice$);
 var $author$project$Surface$turn$ = function (a, b, c) {
-	return ((b.k - a.k) * (c.l - a.l)) - ((b.l - a.l) * (c.k - a.k));
+	return ((b.m - a.m) * (c.n - a.n)) - ((b.n - a.n) * (c.m - a.m));
 };
 var $author$project$Surface$turn = F3($author$project$Surface$turn$);
 var $author$project$Surface$earClipHelper$ = function (points, index, failures, acc) {
@@ -6240,7 +6240,7 @@ var $author$project$Surface$earClipHelper$ = function (points, index, failures, 
 		var count = $elm$core$Array$length(points);
 		var at = function (i) {
 			return $elm$core$Maybe$withDefault$(
-				{k: 0, l: 0},
+				{m: 0, n: 0},
 				$elm$core$Array$get$(
 					A2($elm$core$Basics$modBy, count, i),
 					points));
@@ -6335,41 +6335,41 @@ var $elm$core$List$isEmpty = function (xs) {
 var $author$project$Surface$flatLoops$ = function (maxStepAngle, flat) {
 	var startOf = function (edge) {
 		if (!edge.$) {
-			var ay = edge.a.aG;
-			var ax = edge.a.aF;
-			return {k: ax, l: ay};
+			var ay = edge.a.aM;
+			var ax = edge.a.aL;
+			return {m: ax, n: ay};
 		} else {
-			var a0 = edge.a.O;
-			var r = edge.a.d;
-			var cy = edge.a.aq;
-			var cx = edge.a.ap;
+			var a0 = edge.a.S;
+			var r = edge.a.f;
+			var cy = edge.a.aw;
+			var cx = edge.a.av;
 			return {
-				k: cx + (r * $elm$core$Basics$cos(a0)),
-				l: cy + (r * $elm$core$Basics$sin(a0))
+				m: cx + (r * $elm$core$Basics$cos(a0)),
+				n: cy + (r * $elm$core$Basics$sin(a0))
 			};
 		}
 	};
 	var pointsOf = function (edge) {
 		if (!edge.$) {
-			var ay = edge.a.aG;
-			var ax = edge.a.aF;
+			var ay = edge.a.aM;
+			var ax = edge.a.aL;
 			return _List_fromArray(
 				[
-					{k: ax, l: ay}
+					{m: ax, n: ay}
 				]);
 		} else {
-			var swept = edge.a.aC;
-			var a0 = edge.a.O;
-			var r = edge.a.d;
-			var cy = edge.a.aq;
-			var cx = edge.a.ap;
+			var swept = edge.a.aI;
+			var a0 = edge.a.S;
+			var r = edge.a.f;
+			var cy = edge.a.aw;
+			var cx = edge.a.av;
 			var steps = $author$project$Surface$stepsFor$(maxStepAngle, swept);
 			return $elm$core$List$map$(
 				function (i) {
 					var angle = a0 + ((swept * i) / steps);
 					return {
-						k: cx + (r * $elm$core$Basics$cos(angle)),
-						l: cy + (r * $elm$core$Basics$sin(angle))
+						m: cx + (r * $elm$core$Basics$cos(angle)),
+						n: cy + (r * $elm$core$Basics$sin(angle))
 					};
 				},
 				$elm$core$List$range$(0, steps - 1));
@@ -6377,18 +6377,18 @@ var $author$project$Surface$flatLoops$ = function (maxStepAngle, flat) {
 	};
 	var endOf = function (edge) {
 		if (!edge.$) {
-			var by = edge.a.aR;
-			var bx = edge.a.aQ;
-			return {k: bx, l: by};
+			var by = edge.a.aX;
+			var bx = edge.a.aW;
+			return {m: bx, n: by};
 		} else {
-			var swept = edge.a.aC;
-			var a0 = edge.a.O;
-			var r = edge.a.d;
-			var cy = edge.a.aq;
-			var cx = edge.a.ap;
+			var swept = edge.a.aI;
+			var a0 = edge.a.S;
+			var r = edge.a.f;
+			var cy = edge.a.aw;
+			var cx = edge.a.av;
 			return {
-				k: cx + (r * $elm$core$Basics$cos(a0 + swept)),
-				l: cy + (r * $elm$core$Basics$sin(a0 + swept))
+				m: cx + (r * $elm$core$Basics$cos(a0 + swept)),
+				n: cy + (r * $elm$core$Basics$sin(a0 + swept))
 			};
 		}
 	};
@@ -6434,7 +6434,7 @@ var $author$project$Surface$flatLoops$ = function (maxStepAngle, flat) {
 		});
 	return A4(
 		go,
-		$elm$core$Array$toList(flat.bK),
+		$elm$core$Array$toList(flat.bS),
 		$elm$core$Maybe$Nothing,
 		_List_Nil,
 		_List_Nil);
@@ -6605,7 +6605,7 @@ var $author$project$Surface$withHoles$ = function (outer, holes) {
 		return $elm$core$List$foldl$(
 			F2(
 				function (p, best) {
-					return $author$project$Surface$maxFloat$(best, p.k);
+					return $author$project$Surface$maxFloat$(best, p.m);
 				}),
 			(-1) / 0,
 			hole);
@@ -6640,12 +6640,12 @@ var $author$project$Surface$withHoles$ = function (outer, holes) {
 						var p = _v5.b;
 						var bestI = _v6.a;
 						var bestP = _v6.b;
-						return ((p.k - bestP.k) > 0) ? _Utils_Tuple2(i, p) : _Utils_Tuple2(bestI, bestP);
+						return ((p.m - bestP.m) > 0) ? _Utils_Tuple2(i, p) : _Utils_Tuple2(bestI, bestP);
 					}),
 				_Utils_Tuple2(
 					0,
 					$elm$core$Maybe$withDefault$(
-						{k: 0, l: 0},
+						{m: 0, n: 0},
 						$elm$core$List$head(hole))),
 				$elm$core$List$indexedMap$($elm$core$Tuple$pair, hole));
 			var blockers = _Utils_ap(
@@ -6708,8 +6708,8 @@ var $author$project$Surface$withHoles = F2($author$project$Surface$withHoles$);
 var $author$project$Surface$tessellateFlat$ = function (maxStepAngle, flat) {
 	var vertex = function (p) {
 		return {
-			e9: flat.p,
-			eb: $author$project$Surface$flatPoint$(flat, p.k, p.l)
+			k: flat.s,
+			gQ: $author$project$Surface$flatPoint$(flat, p.m, p.n)
 		};
 	};
 	var _v0 = $author$project$Surface$flatLoops$(maxStepAngle, flat);
@@ -6744,7 +6744,7 @@ var $author$project$Surface$boxAround = function (piece) {
 			var b = _v1.b;
 			var c = _v1.c;
 			return _List_fromArray(
-				[a.eb, b.eb, c.eb]);
+				[a.gQ, b.gQ, c.gQ]);
 		},
 		function () {
 			if (!piece.$) {
@@ -6766,43 +6766,43 @@ var $author$project$Surface$boxAround = function (piece) {
 				$elm$core$List$map$(get, corners));
 		});
 	return {
-		aY: $author$project$Surface$vec$(
-			A2(
-				bound,
-				$author$project$Surface$maxFloat,
-				function ($) {
-					return $.k;
-				}) + spare,
-			A2(
-				bound,
-				$author$project$Surface$maxFloat,
-				function ($) {
-					return $.l;
-				}) + spare,
+		a2: $author$project$Surface$vec$(
 			A2(
 				bound,
 				$author$project$Surface$maxFloat,
 				function ($) {
 					return $.m;
+				}) + spare,
+			A2(
+				bound,
+				$author$project$Surface$maxFloat,
+				function ($) {
+					return $.n;
+				}) + spare,
+			A2(
+				bound,
+				$author$project$Surface$maxFloat,
+				function ($) {
+					return $.o;
 				}) + spare),
-		aZ: $author$project$Surface$vec$(
-			A2(
-				bound,
-				$author$project$Surface$minFloat,
-				function ($) {
-					return $.k;
-				}) - spare,
-			A2(
-				bound,
-				$author$project$Surface$minFloat,
-				function ($) {
-					return $.l;
-				}) - spare,
+		a3: $author$project$Surface$vec$(
 			A2(
 				bound,
 				$author$project$Surface$minFloat,
 				function ($) {
 					return $.m;
+				}) - spare,
+			A2(
+				bound,
+				$author$project$Surface$minFloat,
+				function ($) {
+					return $.n;
+				}) - spare,
+			A2(
+				bound,
+				$author$project$Surface$minFloat,
+				function ($) {
+					return $.o;
 				}) - spare)
 	};
 };
@@ -6826,12 +6826,12 @@ var $ianmackenzie$elm_units$Angle$inRadians = function (_v0) {
 };
 var $ianmackenzie$elm_geometry$Frame3d$originPoint = function (_v0) {
 	var properties = _v0;
-	return properties.gA;
+	return properties.gK;
 };
 var $author$project$Surface$sweepStart = function (feature) {
-	var _v0 = feature.i8;
+	var _v0 = feature.jg;
 	if (!_v0.$) {
-		var from = _v0.a.hR;
+		var from = _v0.a.c;
 		return from;
 	} else {
 		return 0;
@@ -6843,24 +6843,24 @@ var $ianmackenzie$elm_geometry$Point2d$toMeters = function (_v0) {
 };
 var $ianmackenzie$elm_geometry$Frame3d$xDirection = function (_v0) {
 	var properties = _v0;
-	return properties.gY;
+	return properties.g6;
 };
 var $ianmackenzie$elm_geometry$Frame3d$yDirection = function (_v0) {
 	var properties = _v0;
-	return properties.gZ;
+	return properties.g7;
 };
 var $ianmackenzie$elm_geometry$Frame3d$zDirection = function (_v0) {
 	var properties = _v0;
-	return properties.jH;
+	return properties.jO;
 };
 var $author$project$Surface$buildFeature = function (spec) {
-	var start = $ianmackenzie$elm_geometry$Point2d$toMeters(spec.iI.c);
+	var start = $ianmackenzie$elm_geometry$Point2d$toMeters(spec.u.fz);
 	var ez = $author$project$Surface$fromDirection(
-		$ianmackenzie$elm_geometry$Frame3d$zDirection(spec.hQ));
+		$ianmackenzie$elm_geometry$Frame3d$zDirection(spec.h_));
 	var ey = $author$project$Surface$fromDirection(
-		$ianmackenzie$elm_geometry$Frame3d$yDirection(spec.hQ));
+		$ianmackenzie$elm_geometry$Frame3d$yDirection(spec.h_));
 	var ex = $author$project$Surface$fromDirection(
-		$ianmackenzie$elm_geometry$Frame3d$xDirection(spec.hQ));
+		$ianmackenzie$elm_geometry$Frame3d$xDirection(spec.h_));
 	var _v0 = function (_v3) {
 		var acc = _v3.a;
 		var total = _v3.b;
@@ -6875,27 +6875,27 @@ var $author$project$Surface$buildFeature = function (spec) {
 					var s0 = _v1.b;
 					var point = _v1.c;
 					if (!segment.$) {
-						var end = segment.a.h;
+						var end = segment.a.f_;
 						var e = $ianmackenzie$elm_geometry$Point2d$toMeters(end);
 						var len = $elm$core$Basics$sqrt(
-							A2($elm$core$Basics$pow, e.k - point.k, 2) + A2($elm$core$Basics$pow, e.l - point.l, 2));
+							A2($elm$core$Basics$pow, e.m - point.m, 2) + A2($elm$core$Basics$pow, e.n - point.n, 2));
 						return _Utils_Tuple3(
 							A2(
 								$elm$core$List$cons,
 								$author$project$Surface$LineSeg(
-									{aJ: (e.l - point.l) / len, J: (e.k - point.k) / len, cP: point.l, aa: len, bV: point.k, ae: s0}),
+									{aP: (e.n - point.n) / len, N: (e.m - point.m) / len, cX: point.n, af: len, b2: point.m, ak: s0}),
 								acc),
 							s0 + len,
 							e);
 					} else {
-						var center = segment.a.cF;
-						var end = segment.a.h;
+						var center = segment.a.b;
+						var end = segment.a.f_;
 						var e = $ianmackenzie$elm_geometry$Point2d$toMeters(end);
 						var c = $ianmackenzie$elm_geometry$Point2d$toMeters(center);
 						var radius = $elm$core$Basics$sqrt(
-							A2($elm$core$Basics$pow, point.k - c.k, 2) + A2($elm$core$Basics$pow, point.l - c.l, 2));
-						var a1 = A2($elm$core$Basics$atan2, e.l - c.l, e.k - c.k);
-						var a0 = A2($elm$core$Basics$atan2, point.l - c.l, point.k - c.k);
+							A2($elm$core$Basics$pow, point.m - c.m, 2) + A2($elm$core$Basics$pow, point.n - c.n, 2));
+						var a1 = A2($elm$core$Basics$atan2, e.n - c.n, e.m - c.m);
+						var a0 = A2($elm$core$Basics$atan2, point.n - c.n, point.m - c.m);
 						var delta = $author$project$Surface$wrapAngle((a1 - a0) + $elm$core$Basics$pi) - $elm$core$Basics$pi;
 						var len = $elm$core$Basics$abs(delta) * radius;
 						return _Utils_Tuple3(
@@ -6903,13 +6903,13 @@ var $author$project$Surface$buildFeature = function (spec) {
 								$elm$core$List$cons,
 								$author$project$Surface$ArcSeg(
 									{
-										O: a0,
-										b8: c.l,
-										bE: c.k,
-										cb: (delta < 0) ? (-1) : 1,
-										aa: len,
-										gH: radius,
-										ae: s0
+										S: a0,
+										cg: c.n,
+										bM: c.m,
+										cj: (delta < 0) ? (-1) : 1,
+										af: len,
+										p: radius,
+										ak: s0
 									}),
 								acc),
 							s0 + len,
@@ -6917,29 +6917,29 @@ var $author$project$Surface$buildFeature = function (spec) {
 					}
 				}),
 			_Utils_Tuple3(_List_Nil, 0, start),
-			spec.iI.gN));
+			spec.u.gX));
 	var segments = _v0.a;
 	var length = _v0.b;
 	var feature = {
-		aH: 1,
-		at: ex,
-		au: ey,
-		ah: ez,
-		aL: length,
-		u: $author$project$Surface$fromPoint(
-			$ianmackenzie$elm_geometry$Frame3d$originPoint(spec.hQ)),
-		gN: segments,
-		i8: function () {
-			var _v4 = spec.i8;
+		aN: 1,
+		az: ex,
+		aA: ey,
+		an: ez,
+		aR: length,
+		z: $author$project$Surface$fromPoint(
+			$ianmackenzie$elm_geometry$Frame3d$originPoint(spec.h_)),
+		gX: segments,
+		jg: function () {
+			var _v4 = spec.jg;
 			if (!_v4.$) {
 				return $elm$core$Maybe$Nothing;
 			} else {
-				var to = _v4.a.jr;
-				var from = _v4.a.hR;
+				var to = _v4.a.e;
+				var from = _v4.a.c;
 				return $elm$core$Maybe$Just(
 					{
-						hR: $ianmackenzie$elm_units$Angle$inRadians(from),
-						jr: $ianmackenzie$elm_units$Angle$inRadians(to)
+						c: $ianmackenzie$elm_units$Angle$inRadians(from),
+						e: $ianmackenzie$elm_units$Angle$inRadians(to)
 					});
 			}
 		}()
@@ -6958,9 +6958,9 @@ var $author$project$Surface$buildFeature = function (spec) {
 		_Utils_update(
 			feature,
 			{
-				aH: ($author$project$Surface$dot$(
-					$author$project$Surface$cross$(basis.p, basis.ar),
-					basis.as) < 0) ? (-1) : 1
+				aN: ($author$project$Surface$dot$(
+					$author$project$Surface$cross$(basis.s, basis.ax),
+					basis.ay) < 0) ? (-1) : 1
 			}));
 };
 var $author$project$Surface$DegenerateFlatEdge = {$: 2};
@@ -6976,7 +6976,7 @@ var $author$project$Surface$buildLoop = function (loop) {
 			var start = edge.a;
 			return start;
 		} else {
-			var start = edge.a.c;
+			var start = edge.a.fz;
 			return start;
 		}
 	};
@@ -6994,21 +6994,21 @@ var $author$project$Surface$buildLoop = function (loop) {
 					var b = $ianmackenzie$elm_geometry$Point2d$toMeters(next);
 					var a = $ianmackenzie$elm_geometry$Point2d$toMeters(start);
 					return $author$project$Surface$SegmentEdge(
-						{aF: a.k, aG: a.l, aQ: b.k, aR: b.l});
+						{aL: a.m, aM: a.n, aW: b.m, aX: b.n});
 				} else {
-					var sweptAngle = edge.a.i9;
-					var center = edge.a.cF;
-					var start = edge.a.c;
+					var sweptAngle = edge.a.jh;
+					var center = edge.a.b;
+					var start = edge.a.fz;
 					var s = $ianmackenzie$elm_geometry$Point2d$toMeters(start);
 					var c = $ianmackenzie$elm_geometry$Point2d$toMeters(center);
 					return $author$project$Surface$ArcEdge(
 						{
-							O: A2($elm$core$Basics$atan2, s.l - c.l, s.k - c.k),
-							ap: c.k,
-							aq: c.l,
-							d: $elm$core$Basics$sqrt(
-								A2($elm$core$Basics$pow, s.k - c.k, 2) + A2($elm$core$Basics$pow, s.l - c.l, 2)),
-							aC: $ianmackenzie$elm_units$Angle$inRadians(sweptAngle)
+							S: A2($elm$core$Basics$atan2, s.n - c.n, s.m - c.m),
+							av: c.m,
+							aw: c.n,
+							f: $elm$core$Basics$sqrt(
+								A2($elm$core$Basics$pow, s.m - c.m, 2) + A2($elm$core$Basics$pow, s.n - c.n, 2)),
+							aI: $ianmackenzie$elm_units$Angle$inRadians(sweptAngle)
 						});
 				}
 			}),
@@ -7017,17 +7017,17 @@ var $author$project$Surface$buildLoop = function (loop) {
 };
 var $author$project$Surface$edgeIsDegenerate = function (edge) {
 	if (!edge.$) {
-		var by = edge.a.aR;
-		var bx = edge.a.aQ;
-		var ay = edge.a.aG;
-		var ax = edge.a.aF;
+		var by = edge.a.aX;
+		var bx = edge.a.aW;
+		var ay = edge.a.aM;
+		var ax = edge.a.aL;
 		return _Utils_cmp(
 			$elm$core$Basics$sqrt(
 				A2($elm$core$Basics$pow, bx - ax, 2) + A2($elm$core$Basics$pow, by - ay, 2)),
 			$author$project$Surface$tolerance) < 0;
 	} else {
-		var swept = edge.a.aC;
-		var r = edge.a.d;
+		var swept = edge.a.aI;
+		var r = edge.a.f;
 		return _Utils_cmp(
 			$elm$core$Basics$abs(r * swept),
 			$author$project$Surface$tolerance) < 0;
@@ -7035,31 +7035,31 @@ var $author$project$Surface$edgeIsDegenerate = function (edge) {
 };
 var $ianmackenzie$elm_geometry$SketchPlane3d$originPoint = function (_v0) {
 	var properties = _v0;
-	return properties.gA;
+	return properties.gK;
 };
 var $ianmackenzie$elm_geometry$SketchPlane3d$xDirection = function (_v0) {
 	var properties = _v0;
-	return properties.gY;
+	return properties.g6;
 };
 var $ianmackenzie$elm_geometry$SketchPlane3d$yDirection = function (_v0) {
 	var properties = _v0;
-	return properties.gZ;
+	return properties.g7;
 };
 var $author$project$Surface$buildFlat = function (spec) {
 	var v = $author$project$Surface$fromDirection(
-		$ianmackenzie$elm_geometry$SketchPlane3d$yDirection(spec.iF));
+		$ianmackenzie$elm_geometry$SketchPlane3d$yDirection(spec.iO));
 	var u = $author$project$Surface$fromDirection(
-		$ianmackenzie$elm_geometry$SketchPlane3d$xDirection(spec.iF));
+		$ianmackenzie$elm_geometry$SketchPlane3d$xDirection(spec.iO));
 	var origin = $author$project$Surface$fromPoint(
-		$ianmackenzie$elm_geometry$SketchPlane3d$originPoint(spec.iF));
-	var edges = $elm$core$List$concatMap$($author$project$Surface$buildLoop, spec.hp);
+		$ianmackenzie$elm_geometry$SketchPlane3d$originPoint(spec.iO));
+	var edges = $elm$core$List$concatMap$($author$project$Surface$buildLoop, spec.eM);
 	return $elm$core$List$any$($author$project$Surface$edgeIsDegenerate, edges) ? $elm$core$Result$Err($author$project$Surface$DegenerateFlatEdge) : $elm$core$Result$Ok(
 		{
-			bK: $elm$core$Array$fromList(edges),
-			p: $author$project$Surface$cross$(u, v),
-			u: origin,
-			a3: u,
-			a5: v
+			bS: $elm$core$Array$fromList(edges),
+			s: $author$project$Surface$cross$(u, v),
+			z: origin,
+			a9: u,
+			bb: v
 		});
 };
 var $elm$core$Result$map2$ = function (func, ra, rb) {
@@ -7117,10 +7117,10 @@ var $author$project$Surface$combineMaybes = function (maybes) {
 var $author$project$Surface$edgeCount = function (piece) {
 	if (!piece.$) {
 		var flat = piece.a;
-		return $elm$core$Array$length(flat.bK);
+		return $elm$core$Array$length(flat.bS);
 	} else {
 		var feature = piece.a;
-		var _v1 = feature.i8;
+		var _v1 = feature.jg;
 		if (!_v1.$) {
 			return 4;
 		} else {
@@ -7131,21 +7131,21 @@ var $author$project$Surface$edgeCount = function (piece) {
 var $author$project$Surface$edgeSample$ = function (piece, edgeIndex, t) {
 	if (!piece.$) {
 		var flat = piece.a;
-		var _v1 = $elm$core$Array$get$(edgeIndex, flat.bK);
+		var _v1 = $elm$core$Array$get$(edgeIndex, flat.bS);
 		if (!_v1.$) {
 			if (!_v1.a.$) {
-				var by = _v1.a.a.aR;
-				var bx = _v1.a.a.aQ;
-				var ay = _v1.a.a.aG;
-				var ax = _v1.a.a.aF;
+				var by = _v1.a.a.aX;
+				var bx = _v1.a.a.aW;
+				var ay = _v1.a.a.aM;
+				var ax = _v1.a.a.aL;
 				return $elm$core$Maybe$Just(
 					$author$project$Surface$flatPoint$(flat, ax + (t * (bx - ax)), ay + (t * (by - ay))));
 			} else {
-				var swept = _v1.a.a.aC;
-				var a0 = _v1.a.a.O;
-				var r = _v1.a.a.d;
-				var cy = _v1.a.a.aq;
-				var cx = _v1.a.a.ap;
+				var swept = _v1.a.a.aI;
+				var a0 = _v1.a.a.S;
+				var r = _v1.a.a.f;
+				var cy = _v1.a.a.aw;
+				var cx = _v1.a.a.av;
 				var angle = a0 + (t * swept);
 				return $elm$core$Maybe$Just(
 					$author$project$Surface$flatPoint$(
@@ -7165,19 +7165,19 @@ var $author$project$Surface$edgeSample$ = function (piece, edgeIndex, t) {
 			case 0:
 				return (_Utils_cmp(
 					$elm$core$Basics$abs(
-						$author$project$Surface$profileAt$(feature, 0).d),
+						$author$project$Surface$profileAt$(feature, 0).f),
 					$author$project$Surface$tolerance) < 0) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(
 					$author$project$Surface$featurePoint$(feature, from + (t * (to - from)), 0));
 			case 1:
 				return (($elm$core$Basics$abs(
-					$author$project$Surface$profileAt$(feature, feature.aL).d) - $author$project$Surface$tolerance) < 0) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(
-					$author$project$Surface$featurePoint$(feature, from + (t * (to - from)), feature.aL));
+					$author$project$Surface$profileAt$(feature, feature.aR).f) - $author$project$Surface$tolerance) < 0) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(
+					$author$project$Surface$featurePoint$(feature, from + (t * (to - from)), feature.aR));
 			case 2:
 				return $elm$core$Maybe$Just(
-					$author$project$Surface$featurePoint$(feature, from, t * feature.aL));
+					$author$project$Surface$featurePoint$(feature, from, t * feature.aR));
 			case 3:
 				return $elm$core$Maybe$Just(
-					$author$project$Surface$featurePoint$(feature, to, t * feature.aL));
+					$author$project$Surface$featurePoint$(feature, to, t * feature.aR));
 			default:
 				return $elm$core$Maybe$Nothing;
 		}
@@ -7204,30 +7204,30 @@ var $elm$core$List$filterMap = F2($elm$core$List$filterMap$);
 var $author$project$Surface$locateOnEdge$ = function (piece, edgeIndex, point) {
 	if (!piece.$) {
 		var flat = piece.a;
-		var local = $author$project$Surface$sub$(point, flat.u);
-		var _v1 = $elm$core$Array$get$(edgeIndex, flat.bK);
+		var local = $author$project$Surface$sub$(point, flat.z);
+		var _v1 = $elm$core$Array$get$(edgeIndex, flat.bS);
 		if (!_v1.$) {
 			var edge = _v1.a;
 			var _v2 = $author$project$Surface$closestOnEdge2d$(
 				edge,
-				$author$project$Surface$dot$(local, flat.a3),
-				$author$project$Surface$dot$(local, flat.a5));
+				$author$project$Surface$dot$(local, flat.a9),
+				$author$project$Surface$dot$(local, flat.bb));
 			var a = _v2.a;
 			var b = _v2.b;
-			return {cB: a, cD: b};
+			return {cK: a, cM: b};
 		} else {
-			return {cB: 0, cD: 0};
+			return {cK: 0, cM: 0};
 		}
 	} else {
 		var feature = piece.a;
-		var local = $author$project$Surface$sub$(point, feature.u);
-		var x = $author$project$Surface$dot$(local, feature.at);
-		var y = $author$project$Surface$dot$(local, feature.au);
+		var local = $author$project$Surface$sub$(point, feature.z);
+		var x = $author$project$Surface$dot$(local, feature.az);
+		var y = $author$project$Surface$dot$(local, feature.aA);
 		var profileParam = function (theta) {
 			return $author$project$Surface$closestOnProfile$(
 				feature,
 				(x * $elm$core$Basics$cos(theta)) + (y * $elm$core$Basics$sin(theta)),
-				$author$project$Surface$dot$(local, feature.ah));
+				$author$project$Surface$dot$(local, feature.an));
 		};
 		var _v3 = $author$project$Surface$sweepRange(feature);
 		var from = _v3.a;
@@ -7235,27 +7235,27 @@ var $author$project$Surface$locateOnEdge$ = function (piece, edgeIndex, point) {
 		switch (edgeIndex) {
 			case 0:
 				return {
-					cB: $author$project$Surface$clampTheta$(
+					cK: $author$project$Surface$clampTheta$(
 						feature,
 						A2($elm$core$Basics$atan2, y, x)),
-					cD: 0
+					cM: 0
 				};
 			case 1:
 				return {
-					cB: $author$project$Surface$clampTheta$(
+					cK: $author$project$Surface$clampTheta$(
 						feature,
 						A2($elm$core$Basics$atan2, y, x)),
-					cD: feature.aL
+					cM: feature.aR
 				};
 			case 2:
 				return {
-					cB: from,
-					cD: profileParam(from)
+					cK: from,
+					cM: profileParam(from)
 				};
 			default:
 				return {
-					cB: to,
-					cD: profileParam(to)
+					cK: to,
+					cM: profileParam(to)
 				};
 		}
 	}
@@ -7297,13 +7297,369 @@ var $elm$core$Array$toIndexedList = function (array) {
 		_Utils_Tuple2(len - 1, _List_Nil),
 		array).b;
 };
-var $author$project$Surface$findSeams = function (pieces) {
-	var samples = function (_v9) {
-		var pieceIndex = _v9.a;
-		var edgeIndex = _v9.b;
-		var _v8 = $elm$core$Array$get$(pieceIndex, pieces);
-		if (!_v8.$) {
-			var piece = _v8.a;
+var $elm$core$Dict$getMin = function (dict) {
+	getMin:
+	while (true) {
+		if ((dict.$ === -1) && (dict.d.$ === -1)) {
+			var left = dict.d;
+			var $temp$dict = left;
+			dict = $temp$dict;
+			continue getMin;
+		} else {
+			return dict;
+		}
+	}
+};
+var $elm$core$Dict$moveRedLeft = function (dict) {
+	if (((dict.$ === -1) && (dict.d.$ === -1)) && (dict.e.$ === -1)) {
+		if ((dict.e.d.$ === -1) && (!dict.e.d.a)) {
+			var clr = dict.a;
+			var k = dict.b;
+			var v = dict.c;
+			var _v1 = dict.d;
+			var lClr = _v1.a;
+			var lK = _v1.b;
+			var lV = _v1.c;
+			var lLeft = _v1.d;
+			var lRight = _v1.e;
+			var _v2 = dict.e;
+			var rClr = _v2.a;
+			var rK = _v2.b;
+			var rV = _v2.c;
+			var rLeft = _v2.d;
+			var _v3 = rLeft.a;
+			var rlK = rLeft.b;
+			var rlV = rLeft.c;
+			var rlL = rLeft.d;
+			var rlR = rLeft.e;
+			var rRight = _v2.e;
+			return $elm$core$Dict$RBNode_elm_builtin$(
+				0,
+				rlK,
+				rlV,
+				$elm$core$Dict$RBNode_elm_builtin$(
+					1,
+					k,
+					v,
+					$elm$core$Dict$RBNode_elm_builtin$(0, lK, lV, lLeft, lRight),
+					rlL),
+				$elm$core$Dict$RBNode_elm_builtin$(1, rK, rV, rlR, rRight));
+		} else {
+			var clr = dict.a;
+			var k = dict.b;
+			var v = dict.c;
+			var _v4 = dict.d;
+			var lClr = _v4.a;
+			var lK = _v4.b;
+			var lV = _v4.c;
+			var lLeft = _v4.d;
+			var lRight = _v4.e;
+			var _v5 = dict.e;
+			var rClr = _v5.a;
+			var rK = _v5.b;
+			var rV = _v5.c;
+			var rLeft = _v5.d;
+			var rRight = _v5.e;
+			if (clr === 1) {
+				return $elm$core$Dict$RBNode_elm_builtin$(
+					1,
+					k,
+					v,
+					$elm$core$Dict$RBNode_elm_builtin$(0, lK, lV, lLeft, lRight),
+					$elm$core$Dict$RBNode_elm_builtin$(0, rK, rV, rLeft, rRight));
+			} else {
+				return $elm$core$Dict$RBNode_elm_builtin$(
+					1,
+					k,
+					v,
+					$elm$core$Dict$RBNode_elm_builtin$(0, lK, lV, lLeft, lRight),
+					$elm$core$Dict$RBNode_elm_builtin$(0, rK, rV, rLeft, rRight));
+			}
+		}
+	} else {
+		return dict;
+	}
+};
+var $elm$core$Dict$moveRedRight = function (dict) {
+	if (((dict.$ === -1) && (dict.d.$ === -1)) && (dict.e.$ === -1)) {
+		if ((dict.d.d.$ === -1) && (!dict.d.d.a)) {
+			var clr = dict.a;
+			var k = dict.b;
+			var v = dict.c;
+			var _v1 = dict.d;
+			var lClr = _v1.a;
+			var lK = _v1.b;
+			var lV = _v1.c;
+			var _v2 = _v1.d;
+			var _v3 = _v2.a;
+			var llK = _v2.b;
+			var llV = _v2.c;
+			var llLeft = _v2.d;
+			var llRight = _v2.e;
+			var lRight = _v1.e;
+			var _v4 = dict.e;
+			var rClr = _v4.a;
+			var rK = _v4.b;
+			var rV = _v4.c;
+			var rLeft = _v4.d;
+			var rRight = _v4.e;
+			return $elm$core$Dict$RBNode_elm_builtin$(
+				0,
+				lK,
+				lV,
+				$elm$core$Dict$RBNode_elm_builtin$(1, llK, llV, llLeft, llRight),
+				$elm$core$Dict$RBNode_elm_builtin$(
+					1,
+					k,
+					v,
+					lRight,
+					$elm$core$Dict$RBNode_elm_builtin$(0, rK, rV, rLeft, rRight)));
+		} else {
+			var clr = dict.a;
+			var k = dict.b;
+			var v = dict.c;
+			var _v5 = dict.d;
+			var lClr = _v5.a;
+			var lK = _v5.b;
+			var lV = _v5.c;
+			var lLeft = _v5.d;
+			var lRight = _v5.e;
+			var _v6 = dict.e;
+			var rClr = _v6.a;
+			var rK = _v6.b;
+			var rV = _v6.c;
+			var rLeft = _v6.d;
+			var rRight = _v6.e;
+			if (clr === 1) {
+				return $elm$core$Dict$RBNode_elm_builtin$(
+					1,
+					k,
+					v,
+					$elm$core$Dict$RBNode_elm_builtin$(0, lK, lV, lLeft, lRight),
+					$elm$core$Dict$RBNode_elm_builtin$(0, rK, rV, rLeft, rRight));
+			} else {
+				return $elm$core$Dict$RBNode_elm_builtin$(
+					1,
+					k,
+					v,
+					$elm$core$Dict$RBNode_elm_builtin$(0, lK, lV, lLeft, lRight),
+					$elm$core$Dict$RBNode_elm_builtin$(0, rK, rV, rLeft, rRight));
+			}
+		}
+	} else {
+		return dict;
+	}
+};
+var $elm$core$Dict$removeHelpPrepEQGT$ = function (targetKey, dict, color, key, value, left, right) {
+	if ((left.$ === -1) && (!left.a)) {
+		var _v1 = left.a;
+		var lK = left.b;
+		var lV = left.c;
+		var lLeft = left.d;
+		var lRight = left.e;
+		return $elm$core$Dict$RBNode_elm_builtin$(
+			color,
+			lK,
+			lV,
+			lLeft,
+			$elm$core$Dict$RBNode_elm_builtin$(0, key, value, lRight, right));
+	} else {
+		_v2$2:
+		while (true) {
+			if ((right.$ === -1) && (right.a === 1)) {
+				if (right.d.$ === -1) {
+					if (right.d.a === 1) {
+						var _v3 = right.a;
+						var _v4 = right.d;
+						var _v5 = _v4.a;
+						return $elm$core$Dict$moveRedRight(dict);
+					} else {
+						break _v2$2;
+					}
+				} else {
+					var _v6 = right.a;
+					var _v7 = right.d;
+					return $elm$core$Dict$moveRedRight(dict);
+				}
+			} else {
+				break _v2$2;
+			}
+		}
+		return dict;
+	}
+};
+var $elm$core$Dict$removeHelpPrepEQGT = F7($elm$core$Dict$removeHelpPrepEQGT$);
+var $elm$core$Dict$removeMin = function (dict) {
+	if ((dict.$ === -1) && (dict.d.$ === -1)) {
+		var color = dict.a;
+		var key = dict.b;
+		var value = dict.c;
+		var left = dict.d;
+		var lColor = left.a;
+		var lLeft = left.d;
+		var right = dict.e;
+		if (lColor === 1) {
+			if ((lLeft.$ === -1) && (!lLeft.a)) {
+				var _v3 = lLeft.a;
+				return $elm$core$Dict$RBNode_elm_builtin$(
+					color,
+					key,
+					value,
+					$elm$core$Dict$removeMin(left),
+					right);
+			} else {
+				var _v4 = $elm$core$Dict$moveRedLeft(dict);
+				if (_v4.$ === -1) {
+					var nColor = _v4.a;
+					var nKey = _v4.b;
+					var nValue = _v4.c;
+					var nLeft = _v4.d;
+					var nRight = _v4.e;
+					return $elm$core$Dict$balance$(
+						nColor,
+						nKey,
+						nValue,
+						$elm$core$Dict$removeMin(nLeft),
+						nRight);
+				} else {
+					return $elm$core$Dict$RBEmpty_elm_builtin;
+				}
+			}
+		} else {
+			return $elm$core$Dict$RBNode_elm_builtin$(
+				color,
+				key,
+				value,
+				$elm$core$Dict$removeMin(left),
+				right);
+		}
+	} else {
+		return $elm$core$Dict$RBEmpty_elm_builtin;
+	}
+};
+var $elm$core$Dict$removeHelp$ = function (targetKey, dict) {
+	if (dict.$ === -2) {
+		return $elm$core$Dict$RBEmpty_elm_builtin;
+	} else {
+		var color = dict.a;
+		var key = dict.b;
+		var value = dict.c;
+		var left = dict.d;
+		var right = dict.e;
+		if (_Utils_cmp(targetKey, key) < 0) {
+			if ((left.$ === -1) && (left.a === 1)) {
+				var _v4 = left.a;
+				var lLeft = left.d;
+				if ((lLeft.$ === -1) && (!lLeft.a)) {
+					var _v6 = lLeft.a;
+					return $elm$core$Dict$RBNode_elm_builtin$(
+						color,
+						key,
+						value,
+						$elm$core$Dict$removeHelp$(targetKey, left),
+						right);
+				} else {
+					var _v7 = $elm$core$Dict$moveRedLeft(dict);
+					if (_v7.$ === -1) {
+						var nColor = _v7.a;
+						var nKey = _v7.b;
+						var nValue = _v7.c;
+						var nLeft = _v7.d;
+						var nRight = _v7.e;
+						return $elm$core$Dict$balance$(
+							nColor,
+							nKey,
+							nValue,
+							$elm$core$Dict$removeHelp$(targetKey, nLeft),
+							nRight);
+					} else {
+						return $elm$core$Dict$RBEmpty_elm_builtin;
+					}
+				}
+			} else {
+				return $elm$core$Dict$RBNode_elm_builtin$(
+					color,
+					key,
+					value,
+					$elm$core$Dict$removeHelp$(targetKey, left),
+					right);
+			}
+		} else {
+			return $elm$core$Dict$removeHelpEQGT$(
+				targetKey,
+				$elm$core$Dict$removeHelpPrepEQGT$(targetKey, dict, color, key, value, left, right));
+		}
+	}
+};
+var $elm$core$Dict$removeHelp = F2($elm$core$Dict$removeHelp$);
+var $elm$core$Dict$removeHelpEQGT$ = function (targetKey, dict) {
+	if (dict.$ === -1) {
+		var color = dict.a;
+		var key = dict.b;
+		var value = dict.c;
+		var left = dict.d;
+		var right = dict.e;
+		if (_Utils_eq(targetKey, key)) {
+			var _v1 = $elm$core$Dict$getMin(right);
+			if (_v1.$ === -1) {
+				var minKey = _v1.b;
+				var minValue = _v1.c;
+				return $elm$core$Dict$balance$(
+					color,
+					minKey,
+					minValue,
+					left,
+					$elm$core$Dict$removeMin(right));
+			} else {
+				return $elm$core$Dict$RBEmpty_elm_builtin;
+			}
+		} else {
+			return $elm$core$Dict$balance$(
+				color,
+				key,
+				value,
+				left,
+				$elm$core$Dict$removeHelp$(targetKey, right));
+		}
+	} else {
+		return $elm$core$Dict$RBEmpty_elm_builtin;
+	}
+};
+var $elm$core$Dict$removeHelpEQGT = F2($elm$core$Dict$removeHelpEQGT$);
+var $elm$core$Dict$remove$ = function (key, dict) {
+	var _v0 = $elm$core$Dict$removeHelp$(key, dict);
+	if ((_v0.$ === -1) && (!_v0.a)) {
+		var _v1 = _v0.a;
+		var k = _v0.b;
+		var v = _v0.c;
+		var l = _v0.d;
+		var r = _v0.e;
+		return $elm$core$Dict$RBNode_elm_builtin$(1, k, v, l, r);
+	} else {
+		var x = _v0;
+		return x;
+	}
+};
+var $elm$core$Dict$remove = F2($elm$core$Dict$remove$);
+var $elm$core$Dict$update$ = function (targetKey, alter, dictionary) {
+	var _v0 = alter(
+		$elm$core$Dict$get$(targetKey, dictionary));
+	if (!_v0.$) {
+		var value = _v0.a;
+		return $elm$core$Dict$insert$(targetKey, value, dictionary);
+	} else {
+		return $elm$core$Dict$remove$(targetKey, dictionary);
+	}
+};
+var $elm$core$Dict$update = F3($elm$core$Dict$update$);
+var $author$project$Surface$findSeams$ = function (_v0, pieces) {
+	var open = _v0.fi;
+	var samples = function (_v17) {
+		var pieceIndex = _v17.a;
+		var edgeIndex = _v17.b;
+		var _v16 = $elm$core$Array$get$(pieceIndex, pieces);
+		if (!_v16.$) {
+			var piece = _v16.a;
 			return $author$project$Surface$combineMaybes(
 				$elm$core$List$map$(
 					A2($author$project$Surface$edgeSample, piece, edgeIndex),
@@ -7313,20 +7669,44 @@ var $author$project$Surface$findSeams = function (pieces) {
 			return $elm$core$Maybe$Nothing;
 		}
 	};
+	var middleOf = function (points) {
+		if (((((points.b && points.b.b) && points.b.b.b) && points.b.b.b.b) && points.b.b.b.b.b) && (!points.b.b.b.b.b.b)) {
+			var p0 = points.a;
+			var _v12 = points.b;
+			var p1 = _v12.a;
+			var _v13 = _v12.b;
+			var p2 = _v13.a;
+			var _v14 = _v13.b;
+			var p3 = _v14.a;
+			var _v15 = _v14.b;
+			var p4 = _v15.a;
+			return (_Utils_cmp(
+				$author$project$Surface$lengthOf(
+					$author$project$Surface$sub$(p0, p4)),
+				$author$project$Surface$tolerance) < 0) ? $elm$core$Maybe$Just(
+				$author$project$Surface$scale$(
+					0.25,
+					$author$project$Surface$add$(
+						$author$project$Surface$add$(p0, p1),
+						$author$project$Surface$add$(p2, p3)))) : $elm$core$Maybe$Just(p2);
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	};
 	var liesOn = F2(
-		function (_v7, points) {
-			var pieceIndex = _v7.a;
-			var edgeIndex = _v7.b;
-			var _v6 = $elm$core$Array$get$(pieceIndex, pieces);
-			if (!_v6.$) {
-				var piece = _v6.a;
+		function (_v10, points) {
+			var pieceIndex = _v10.a;
+			var edgeIndex = _v10.b;
+			var _v9 = $elm$core$Array$get$(pieceIndex, pieces);
+			if (!_v9.$) {
+				var piece = _v9.a;
 				return $elm$core$List$all$(
 					function (point) {
 						var located = $author$project$Surface$locateOnEdge$(piece, edgeIndex, point);
 						return _Utils_cmp(
 							$author$project$Surface$lengthOf(
 								$author$project$Surface$sub$(
-									$author$project$Surface$piecePoint$(piece, located.cB, located.cD),
+									$author$project$Surface$piecePoint$(piece, located.cK, located.cM),
 									point)),
 							$author$project$Surface$tolerance) < 0;
 					},
@@ -7335,15 +7715,22 @@ var $author$project$Surface$findSeams = function (pieces) {
 				return false;
 			}
 		});
-	var describe = function (_v5) {
-		var pieceIndex = _v5.a;
-		var edgeIndex = _v5.b;
+	var meet = F2(
+		function (first, second) {
+			return (!_Utils_eq(first.dV.a, second.dV.a)) && ((_Utils_cmp(
+				$author$project$Surface$lengthOf(
+					$author$project$Surface$sub$(first.ct, second.ct)),
+				10 * $author$project$Surface$tolerance) < 0) && (A2(liesOn, second.dV, first.fn) && A2(liesOn, first.dV, second.fn)));
+		});
+	var describe = function (_v8) {
+		var pieceIndex = _v8.a;
+		var edgeIndex = _v8.b;
 		return 'edge ' + ($elm$core$String$fromInt(edgeIndex) + (' of piece ' + $elm$core$String$fromInt(pieceIndex)));
 	};
 	var allEdges = $elm$core$List$concatMap$(
-		function (_v4) {
-			var index = _v4.a;
-			var piece = _v4.b;
+		function (_v7) {
+			var index = _v7.a;
+			var piece = _v7.b;
 			return $elm$core$List$map$(
 				$elm$core$Tuple$pair(index),
 				$elm$core$List$range$(
@@ -7351,36 +7738,109 @@ var $author$project$Surface$findSeams = function (pieces) {
 					$author$project$Surface$edgeCount(piece) - 1));
 		},
 		$elm$core$Array$toIndexedList(pieces));
-	var edgeSamples = $elm$core$List$filterMap$(
-		function (edge) {
-			return $elm$core$Maybe$map$(
-				$elm$core$Tuple$pair(edge),
-				samples(edge));
-		},
-		allEdges);
-	var matchesFor = function (_v3) {
-		var edge = _v3.a;
-		var points = _v3.b;
-		return $elm$core$List$map$(
-			$elm$core$Tuple$first,
-			$elm$core$List$filter$(
-				function (_v2) {
-					var otherEdge = _v2.a;
-					var otherPoints = _v2.b;
-					return (!_Utils_eq(otherEdge.a, edge.a)) && (A2(liesOn, otherEdge, points) && A2(liesOn, edge, otherPoints));
+	var edgeSamples = $elm$core$Array$fromList(
+		A2(
+			$elm$core$List$sortBy,
+			A2(
+				$elm$core$Basics$composeR,
+				function ($) {
+					return $.ct;
 				},
-				edgeSamples));
-	};
-	return $elm$core$List$foldl$(
+				function ($) {
+					return $.m;
+				}),
+			$elm$core$List$filterMap$(
+				function (edge) {
+					return $elm$core$Maybe$andThen$(
+						function (points) {
+							return $elm$core$Maybe$map$(
+								function (middle) {
+									return {dV: edge, ct: middle, fn: points};
+								},
+								middleOf(points));
+						},
+						samples(edge));
+				},
+				allEdges)));
+	var pairsWith = F3(
+		function (first, index, acc) {
+			pairsWith:
+			while (true) {
+				var _v1 = $elm$core$Array$get$(index, edgeSamples);
+				if (!_v1.$) {
+					var second = _v1.a;
+					if (_Utils_cmp(second.ct.m - first.ct.m, 10 * $author$project$Surface$tolerance) > 0) {
+						return acc;
+					} else {
+						if (A2(meet, first, second)) {
+							var $temp$index = index + 1,
+								$temp$acc = A2(
+								$elm$core$List$cons,
+								_Utils_Tuple2(first.dV, second.dV),
+								A2(
+									$elm$core$List$cons,
+									_Utils_Tuple2(second.dV, first.dV),
+									acc));
+							index = $temp$index;
+							acc = $temp$acc;
+							continue pairsWith;
+						} else {
+							var $temp$index = index + 1;
+							index = $temp$index;
+							continue pairsWith;
+						}
+					}
+				} else {
+					return acc;
+				}
+			}
+		});
+	var pairsFrom = F2(
+		function (index, acc) {
+			pairsFrom:
+			while (true) {
+				var _v2 = $elm$core$Array$get$(index, edgeSamples);
+				if (!_v2.$) {
+					var first = _v2.a;
+					var $temp$index = index + 1,
+						$temp$acc = A3(pairsWith, first, index + 1, acc);
+					index = $temp$index;
+					acc = $temp$acc;
+					continue pairsFrom;
+				} else {
+					return acc;
+				}
+			}
+		});
+	var matches = $elm$core$List$foldl$(
+		function (_v6) {
+			var edge = _v6.a;
+			var other = _v6.b;
+			return A2(
+				$elm$core$Dict$update,
+				edge,
+				function (others) {
+					return $elm$core$Maybe$Just(
+						A2(
+							$elm$core$List$cons,
+							other,
+							$elm$core$Maybe$withDefault$(_List_Nil, others)));
+				});
+		},
+		$elm$core$Dict$empty,
+		A2(pairsFrom, 0, _List_Nil));
+	return $elm$core$Array$foldl$(
 		F2(
-			function (edgeAndSamples, result) {
-				var edge = edgeAndSamples.a;
+			function (_v3, result) {
+				var edge = _v3.dV;
 				if (!result.$) {
 					var seams = result.a;
-					var _v1 = matchesFor(edgeAndSamples);
-					if (_v1.b) {
-						if (!_v1.b.b) {
-							var other = _v1.a;
+					var _v5 = $elm$core$Maybe$withDefault$(
+						_List_Nil,
+						$elm$core$Dict$get$(edge, matches));
+					if (_v5.b) {
+						if (!_v5.b.b) {
+							var other = _v5.a;
 							return $elm$core$Result$Ok(
 								$author$project$Surface$setSeam$(edge, other, seams));
 						} else {
@@ -7389,7 +7849,7 @@ var $author$project$Surface$findSeams = function (pieces) {
 									describe(edge)));
 						}
 					} else {
-						return $elm$core$Result$Err(
+						return open ? result : $elm$core$Result$Err(
 							$author$project$Surface$UnmatchedEdge(
 								describe(edge)));
 					}
@@ -7407,6 +7867,7 @@ var $author$project$Surface$findSeams = function (pieces) {
 				pieces)),
 		edgeSamples);
 };
+var $author$project$Surface$findSeams = F2($author$project$Surface$findSeams$);
 var $elm$core$Result$map$ = function (func, ra) {
 	if (!ra.$) {
 		var a = ra.a;
@@ -7418,7 +7879,7 @@ var $elm$core$Result$map$ = function (func, ra) {
 	}
 };
 var $elm$core$Result$map = F2($elm$core$Result$map$);
-var $author$project$Surface$build$ = function (flatSpecs, featureSpecs) {
+var $author$project$Surface$buildWith$ = function (options, flatSpecs, featureSpecs) {
 	var _v0 = _Utils_Tuple2(
 		$author$project$Surface$combineResults(
 			$elm$core$List$map$($author$project$Surface$buildFlat, flatSpecs)),
@@ -7435,12 +7896,12 @@ var $author$project$Surface$build$ = function (flatSpecs, featureSpecs) {
 			return $elm$core$Result$map$(
 				function (seams) {
 					return {
-						dy: $elm$core$Array$map$($author$project$Surface$boxAround, pieces),
-						v: pieces,
-						a2: seams
+						dF: $elm$core$Array$map$($author$project$Surface$boxAround, pieces),
+						A: pieces,
+						a8: seams
 					};
 				},
-				$author$project$Surface$findSeams(pieces));
+				$author$project$Surface$findSeams$(options, pieces));
 		} else {
 			var error = _v0.b.a;
 			return $elm$core$Result$Err(error);
@@ -7450,7 +7911,9 @@ var $author$project$Surface$build$ = function (flatSpecs, featureSpecs) {
 		return $elm$core$Result$Err(error);
 	}
 };
-var $author$project$Surface$build = F2($author$project$Surface$build$);
+var $author$project$Surface$buildWith = F3($author$project$Surface$buildWith$);
+var $author$project$Surface$build = $author$project$Surface$buildWith(
+	{fi: false});
 var $author$project$World$X = 0;
 var $author$project$World$Y = 1;
 var $author$project$World$Z = 2;
@@ -7469,29 +7932,29 @@ var $ianmackenzie$elm_units$Angle$degrees = function (numDegrees) {
 };
 var $author$project$World$filletRadius = 0.198579;
 var $author$project$World$box = {
-	aY: {k: 4.236575, l: 0.598373, m: 1.992144},
-	aZ: {k: -3.343595, l: -0.401627, m: -2.452917}
+	a2: {m: 4.236575, n: 0.598373, o: 1.992144},
+	a3: {m: -3.343595, n: -0.401627, o: -2.452917}
 };
 var $author$project$World$inner$ = function (axis, sign) {
 	var get = function (v) {
 		switch (axis) {
 			case 0:
-				return v.k;
-			case 1:
-				return v.l;
-			default:
 				return v.m;
+			case 1:
+				return v.n;
+			default:
+				return v.o;
 		}
 	};
-	return (sign > 0) ? (get($author$project$World$box.aY) - $author$project$World$filletRadius) : (get($author$project$World$box.aZ) + $author$project$World$filletRadius);
+	return (sign > 0) ? (get($author$project$World$box.a2) - $author$project$World$filletRadius) : (get($author$project$World$box.a3) + $author$project$World$filletRadius);
 };
 var $author$project$World$inner = F2($author$project$World$inner$);
 var $ianmackenzie$elm_geometry$Geometry$Types$Point2d = $elm$core$Basics$identity;
 var $ianmackenzie$elm_geometry$Point2d$meters$ = function (x, y) {
-	return {k: x, l: y};
+	return {m: x, n: y};
 };
 var $ianmackenzie$elm_geometry$Point2d$meters = F2($ianmackenzie$elm_geometry$Point2d$meters$);
-var $ianmackenzie$elm_geometry$Point2d$origin = {k: 0, l: 0};
+var $ianmackenzie$elm_geometry$Point2d$origin = {m: 0, n: 0};
 var $author$project$World$point = function (coordinates) {
 	var get = function (axis) {
 		return $elm$core$Maybe$withDefault$(
@@ -7515,13 +7978,13 @@ var $author$project$World$unit$ = function (axis, sign) {
 	switch (axis) {
 		case 0:
 			return $ianmackenzie$elm_geometry$Direction3d$unsafe(
-				{k: sign, l: 0, m: 0});
+				{m: sign, n: 0, o: 0});
 		case 1:
 			return $ianmackenzie$elm_geometry$Direction3d$unsafe(
-				{k: 0, l: sign, m: 0});
+				{m: 0, n: sign, o: 0});
 		default:
 			return $ianmackenzie$elm_geometry$Direction3d$unsafe(
-				{k: 0, l: 0, m: sign});
+				{m: 0, n: 0, o: sign});
 	}
 };
 var $author$project$World$unit = F2($author$project$World$unit$);
@@ -7538,9 +8001,9 @@ var $author$project$World$corner$ = function (signX, signY, signZ) {
 	var xDirection = _v0.a;
 	var yDirection = _v0.b;
 	return {
-		hQ: $ianmackenzie$elm_geometry$Frame3d$unsafe(
+		h_: $ianmackenzie$elm_geometry$Frame3d$unsafe(
 			{
-				gA: $author$project$World$point(
+				gK: $author$project$World$point(
 					_List_fromArray(
 						[
 							_Utils_Tuple2(
@@ -7553,25 +8016,25 @@ var $author$project$World$corner$ = function (signX, signY, signZ) {
 							2,
 							$author$project$World$inner$(2, signZ))
 						])),
-				gY: xDirection,
-				gZ: yDirection,
-				jH: $author$project$World$unit$(1, signY)
+				g6: xDirection,
+				g7: yDirection,
+				jO: $author$project$World$unit$(1, signY)
 			}),
-		iI: {
-			gN: _List_fromArray(
+		u: {
+			gX: _List_fromArray(
 				[
 					$author$project$Surface$Circle(
 					{
-						cF: $ianmackenzie$elm_geometry$Point2d$origin,
-						h: $ianmackenzie$elm_geometry$Point2d$meters$(0, $author$project$World$filletRadius)
+						b: $ianmackenzie$elm_geometry$Point2d$origin,
+						f_: $ianmackenzie$elm_geometry$Point2d$meters$(0, $author$project$World$filletRadius)
 					})
 				]),
-			c: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$filletRadius, 0)
+			fz: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$filletRadius, 0)
 		},
-		i8: $author$project$Surface$PartTurn(
+		jg: $author$project$Surface$PartTurn(
 			{
-				hR: $ianmackenzie$elm_units$Angle$degrees(0),
-				jr: $ianmackenzie$elm_units$Angle$degrees(90)
+				c: $ianmackenzie$elm_units$Angle$degrees(0),
+				e: $ianmackenzie$elm_units$Angle$degrees(90)
 			})
 	};
 };
@@ -7595,9 +8058,9 @@ var $author$project$World$edgeFillet$ = function (along, signA, signB) {
 	var a = _v0.a;
 	var b = _v0.b;
 	return {
-		hQ: $ianmackenzie$elm_geometry$Frame3d$unsafe(
+		h_: $ianmackenzie$elm_geometry$Frame3d$unsafe(
 			{
-				gA: $author$project$World$point(
+				gK: $author$project$World$point(
 					_List_fromArray(
 						[
 							_Utils_Tuple2(
@@ -7607,110 +8070,110 @@ var $author$project$World$edgeFillet$ = function (along, signA, signB) {
 							b,
 							$author$project$World$inner$(b, signB))
 						])),
-				gY: $author$project$World$unit$(a, signA),
-				gZ: $author$project$World$unit$(b, signB),
-				jH: $author$project$World$unit$(along, zSign)
+				g6: $author$project$World$unit$(a, signA),
+				g7: $author$project$World$unit$(b, signB),
+				jO: $author$project$World$unit$(along, zSign)
 			}),
-		iI: {
-			gN: _List_fromArray(
+		u: {
+			gX: _List_fromArray(
 				[
 					$author$project$Surface$Line(
 					{
-						h: $ianmackenzie$elm_geometry$Point2d$meters$(
+						f_: $ianmackenzie$elm_geometry$Point2d$meters$(
 							$author$project$World$filletRadius,
 							zSign * $author$project$World$inner$(along, zSign))
 					})
 				]),
-			c: $ianmackenzie$elm_geometry$Point2d$meters$(
+			fz: $ianmackenzie$elm_geometry$Point2d$meters$(
 				$author$project$World$filletRadius,
 				zSign * $author$project$World$inner$(along, -zSign))
 		},
-		i8: $author$project$Surface$PartTurn(
+		jg: $author$project$Surface$PartTurn(
 			{
-				hR: $ianmackenzie$elm_units$Angle$degrees(0),
-				jr: $ianmackenzie$elm_units$Angle$degrees(90)
+				c: $ianmackenzie$elm_units$Angle$degrees(0),
+				e: $ianmackenzie$elm_units$Angle$degrees(90)
 			})
 	};
 };
 var $author$project$World$edgeFillet = F3($author$project$World$edgeFillet$);
 var $author$project$Surface$FullTurn = {$: 0};
-var $author$project$World$hill = {aw: 0.15, gH: 0.45, k: 3.5, m: -1.3};
-var $author$project$World$hillCurveRadius = (A2($elm$core$Basics$pow, $author$project$World$hill.gH, 2) + A2($elm$core$Basics$pow, $author$project$World$hill.aw, 2)) / (4 * $author$project$World$hill.aw);
+var $author$project$World$hill = {aC: 0.15, p: 0.45, m: 3.5, o: -1.3};
+var $author$project$World$hillCurveRadius = (A2($elm$core$Basics$pow, $author$project$World$hill.p, 2) + A2($elm$core$Basics$pow, $author$project$World$hill.aC, 2)) / (4 * $author$project$World$hill.aC);
 var $ianmackenzie$elm_geometry$Direction3d$negativeZ = $ianmackenzie$elm_geometry$Direction3d$unsafe(
-	{k: 0, l: 0, m: -1});
+	{m: 0, n: 0, o: -1});
 var $ianmackenzie$elm_geometry$Direction3d$positiveX = $ianmackenzie$elm_geometry$Direction3d$unsafe(
-	{k: 1, l: 0, m: 0});
+	{m: 1, n: 0, o: 0});
 var $ianmackenzie$elm_geometry$Direction3d$x = $ianmackenzie$elm_geometry$Direction3d$positiveX;
 var $ianmackenzie$elm_geometry$Direction3d$positiveY = $ianmackenzie$elm_geometry$Direction3d$unsafe(
-	{k: 0, l: 1, m: 0});
+	{m: 0, n: 1, o: 0});
 var $ianmackenzie$elm_geometry$Direction3d$y = $ianmackenzie$elm_geometry$Direction3d$positiveY;
 var $author$project$World$hillFeature = function () {
-	var top = $author$project$World$box.aY.l;
+	var top = $author$project$World$box.a2.n;
 	var r = $author$project$World$hillCurveRadius;
-	var peak = {bt: (top + $author$project$World$hill.aw) - r, d: 0};
-	var foot = {bt: top + r, d: $author$project$World$hill.gH};
-	var meet = {bt: foot.bt + ((peak.bt - foot.bt) / 2), d: foot.d + ((peak.d - foot.d) / 2)};
+	var peak = {bz: (top + $author$project$World$hill.aC) - r, f: 0};
+	var foot = {bz: top + r, f: $author$project$World$hill.p};
+	var meet = {bz: foot.bz + ((peak.bz - foot.bz) / 2), f: foot.f + ((peak.f - foot.f) / 2)};
 	return {
-		hQ: $ianmackenzie$elm_geometry$Frame3d$unsafe(
+		h_: $ianmackenzie$elm_geometry$Frame3d$unsafe(
 			{
-				gA: $ianmackenzie$elm_geometry$Point3d$meters$($author$project$World$hill.k, 0, $author$project$World$hill.m),
-				gY: $ianmackenzie$elm_geometry$Direction3d$x,
-				gZ: $ianmackenzie$elm_geometry$Direction3d$negativeZ,
-				jH: $ianmackenzie$elm_geometry$Direction3d$y
+				gK: $ianmackenzie$elm_geometry$Point3d$meters$($author$project$World$hill.m, 0, $author$project$World$hill.o),
+				g6: $ianmackenzie$elm_geometry$Direction3d$x,
+				g7: $ianmackenzie$elm_geometry$Direction3d$negativeZ,
+				jO: $ianmackenzie$elm_geometry$Direction3d$y
 			}),
-		iI: {
-			gN: _List_fromArray(
+		u: {
+			gX: _List_fromArray(
 				[
 					$author$project$Surface$Circle(
 					{
-						cF: $ianmackenzie$elm_geometry$Point2d$meters$(foot.d, foot.bt),
-						h: $ianmackenzie$elm_geometry$Point2d$meters$(meet.d, meet.bt)
+						b: $ianmackenzie$elm_geometry$Point2d$meters$(foot.f, foot.bz),
+						f_: $ianmackenzie$elm_geometry$Point2d$meters$(meet.f, meet.bz)
 					}),
 					$author$project$Surface$Circle(
 					{
-						cF: $ianmackenzie$elm_geometry$Point2d$meters$(peak.d, peak.bt),
-						h: $ianmackenzie$elm_geometry$Point2d$meters$(0, top + $author$project$World$hill.aw)
+						b: $ianmackenzie$elm_geometry$Point2d$meters$(peak.f, peak.bz),
+						f_: $ianmackenzie$elm_geometry$Point2d$meters$(0, top + $author$project$World$hill.aC)
 					})
 				]),
-			c: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$hill.gH, top)
+			fz: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$hill.p, top)
 		},
-		i8: $author$project$Surface$FullTurn
+		jg: $author$project$Surface$FullTurn
 	};
 }();
-var $author$project$World$hole = {cd: 0.30432, ev: 0.47524, k: 1.156, m: -0.2058};
-var $author$project$World$holeRim = $author$project$World$hole.ev + $author$project$World$hole.cd;
+var $author$project$World$hole = {cl: 0.30432, eB: 0.47524, m: 1.156, o: -0.2058};
+var $author$project$World$holeRim = $author$project$World$hole.eB + $author$project$World$hole.cl;
 var $author$project$World$holeFeature = function () {
-	var top = $author$project$World$box.aY.l;
-	var bottom = $author$project$World$box.aZ.l;
+	var top = $author$project$World$box.a2.n;
+	var bottom = $author$project$World$box.a3.n;
 	return {
-		hQ: $ianmackenzie$elm_geometry$Frame3d$unsafe(
+		h_: $ianmackenzie$elm_geometry$Frame3d$unsafe(
 			{
-				gA: $ianmackenzie$elm_geometry$Point3d$meters$($author$project$World$hole.k, 0, $author$project$World$hole.m),
-				gY: $ianmackenzie$elm_geometry$Direction3d$x,
-				gZ: $ianmackenzie$elm_geometry$Direction3d$negativeZ,
-				jH: $ianmackenzie$elm_geometry$Direction3d$y
+				gK: $ianmackenzie$elm_geometry$Point3d$meters$($author$project$World$hole.m, 0, $author$project$World$hole.o),
+				g6: $ianmackenzie$elm_geometry$Direction3d$x,
+				g7: $ianmackenzie$elm_geometry$Direction3d$negativeZ,
+				jO: $ianmackenzie$elm_geometry$Direction3d$y
 			}),
-		iI: {
-			gN: _List_fromArray(
+		u: {
+			gX: _List_fromArray(
 				[
 					$author$project$Surface$Circle(
 					{
-						cF: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$holeRim, top - $author$project$World$hole.cd),
-						h: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$hole.ev, top - $author$project$World$hole.cd)
+						b: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$holeRim, top - $author$project$World$hole.cl),
+						f_: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$hole.eB, top - $author$project$World$hole.cl)
 					}),
 					$author$project$Surface$Line(
 					{
-						h: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$hole.ev, bottom + $author$project$World$hole.cd)
+						f_: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$hole.eB, bottom + $author$project$World$hole.cl)
 					}),
 					$author$project$Surface$Circle(
 					{
-						cF: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$holeRim, bottom + $author$project$World$hole.cd),
-						h: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$holeRim, bottom)
+						b: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$holeRim, bottom + $author$project$World$hole.cl),
+						f_: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$holeRim, bottom)
 					})
 				]),
-			c: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$holeRim, top)
+			fz: $ianmackenzie$elm_geometry$Point2d$meters$($author$project$World$holeRim, top)
 		},
-		i8: $author$project$Surface$FullTurn
+		jg: $author$project$Surface$FullTurn
 	};
 }();
 var $author$project$World$signs = _List_fromArray(
@@ -7753,7 +8216,7 @@ var $author$project$Surface$Straight = function (a) {
 };
 var $ianmackenzie$elm_geometry$Geometry$Types$Vector2d = $elm$core$Basics$identity;
 var $ianmackenzie$elm_geometry$Vector2d$meters$ = function (x, y) {
-	return {k: x, l: y};
+	return {m: x, n: y};
 };
 var $ianmackenzie$elm_geometry$Vector2d$meters = F2($ianmackenzie$elm_geometry$Vector2d$meters$);
 var $author$project$World$outer$ = function (axis, sign) {
@@ -7763,7 +8226,7 @@ var $author$project$World$outer = F2($author$project$World$outer$);
 var $ianmackenzie$elm_geometry$Point2d$translateBy$ = function (_v0, _v1) {
 	var v = _v0;
 	var p = _v1;
-	return {k: p.k + v.k, l: p.l + v.l};
+	return {m: p.m + v.m, n: p.n + v.n};
 };
 var $ianmackenzie$elm_geometry$Point2d$translateBy = F2($ianmackenzie$elm_geometry$Point2d$translateBy$);
 var $ianmackenzie$elm_geometry$Geometry$Types$SketchPlane3d = $elm$core$Basics$identity;
@@ -7776,20 +8239,20 @@ var $author$project$World$boxFace$ = function (axis, sign) {
 				[
 					$author$project$Surface$Arc(
 					{
-						cF: center,
-						c: $ianmackenzie$elm_geometry$Point2d$translateBy$(
+						b: center,
+						fz: $ianmackenzie$elm_geometry$Point2d$translateBy$(
 							$ianmackenzie$elm_geometry$Vector2d$meters$(radius, 0),
 							center),
-						i9: $ianmackenzie$elm_units$Angle$degrees(-360)
+						jh: $ianmackenzie$elm_units$Angle$degrees(-360)
 					})
 				]);
 		});
 	var holeLoops = (axis === 1) ? A2(
 		$elm$core$List$cons,
-		A3(circle, $author$project$World$hole.k, $author$project$World$hole.m, $author$project$World$holeRim),
+		A3(circle, $author$project$World$hole.m, $author$project$World$hole.o, $author$project$World$holeRim),
 		(sign > 0) ? _List_fromArray(
 			[
-				A3(circle, $author$project$World$hill.k, $author$project$World$hill.m, $author$project$World$hill.gH)
+				A3(circle, $author$project$World$hill.m, $author$project$World$hill.o, $author$project$World$hill.p)
 			]) : _List_Nil) : _List_Nil;
 	var _v0 = (sign > 0) ? $author$project$World$otherAxes(axis) : function (_v1) {
 		var first = _v1.a;
@@ -7816,18 +8279,18 @@ var $author$project$World$boxFace$ = function (axis, sign) {
 				_Utils_Tuple2(-1, 1)
 			]));
 	return {
-		hp: A2($elm$core$List$cons, rectangle, holeLoops),
-		iF: $ianmackenzie$elm_geometry$SketchPlane3d$unsafe(
+		eM: A2($elm$core$List$cons, rectangle, holeLoops),
+		iO: $ianmackenzie$elm_geometry$SketchPlane3d$unsafe(
 			{
-				gA: $author$project$World$point(
+				gK: $author$project$World$point(
 					_List_fromArray(
 						[
 							_Utils_Tuple2(
 							axis,
 							$author$project$World$outer$(axis, sign))
 						])),
-				gY: $author$project$World$unit$(a, 1),
-				gZ: $author$project$World$unit$(b, 1)
+				g6: $author$project$World$unit$(a, 1),
+				g7: $author$project$World$unit$(b, 1)
 			})
 	};
 };
@@ -7840,7 +8303,7 @@ var $author$project$World$flats = $elm$core$List$concatMap$(
 	},
 	_List_fromArray(
 		[0, 1, 2]));
-var $author$project$World$surface = $author$project$Surface$build$($author$project$World$flats, $author$project$World$features);
+var $author$project$World$surface = A2($author$project$Surface$build, $author$project$World$flats, $author$project$World$features);
 var $author$project$MeshData$surface = $author$project$World$surface;
 var $author$project$WorldShapes$walls = _List_fromArray(
 	[
@@ -8237,9 +8700,6 @@ var $author$project$MeshData$mapShapes = function () {
 		return $author$project$Shapes$empty;
 	}
 }();
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $elm$json$Json$Decode$succeed = _Json_succeed;
 var $elm$core$Result$toMaybe = function (result) {
 	if (!result.$) {
 		var v = result.a;
@@ -8248,10 +8708,217 @@ var $elm$core$Result$toMaybe = function (result) {
 		return $elm$core$Maybe$Nothing;
 	}
 };
+var $author$project$MinimapWorker$init = {
+	bF: {cz: $author$project$WorldShapes$pavings, jE: $author$project$WorldShapes$walls},
+	bG: $author$project$MeshData$mapShapes,
+	b4: $elm$core$Result$toMaybe($author$project$MeshData$surface)
+};
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
+var $elm$json$Json$Decode$succeed = _Json_succeed;
 var $elm$json$Json$Decode$decodeValue = _Json_run;
+var $author$project$GridLevel$Arc = function (a) {
+	return {$: 1, a: a};
+};
+var $author$project$GridLevel$FlatCell = function (a) {
+	return {$: 0, a: a};
+};
+var $author$project$GridLevel$ProfileArc = function (a) {
+	return {$: 1, a: a};
+};
+var $author$project$GridLevel$ProfileLine$ = function (a, b) {
+	return {$: 0, a: a, b: b};
+};
+var $author$project$GridLevel$ProfileLine = F2($author$project$GridLevel$ProfileLine$);
+var $author$project$GridLevel$RoundCell = function (a) {
+	return {$: 1, a: a};
+};
+var $author$project$GridLevel$Segment$ = function (a, b) {
+	return {$: 0, a: a, b: b};
+};
+var $author$project$GridLevel$Segment = F2($author$project$GridLevel$Segment$);
+var $elm$json$Json$Decode$andThen = _Json_andThen;
+var $elm$json$Json$Decode$fail = _Json_fail;
+var $elm$json$Json$Decode$field = _Json_decodeField;
+var $elm$json$Json$Decode$int = _Json_decodeInt;
+var $author$project$GridLevel$ivec$ = function (x, y, z) {
+	return {m: x, n: y, o: z};
+};
+var $author$project$GridLevel$ivec = F3($author$project$GridLevel$ivec$);
+var $elm$json$Json$Decode$list = _Json_decodeList;
+var $elm$json$Json$Decode$map = _Json_map1;
+var $elm$json$Json$Decode$map2 = _Json_map2;
+var $elm$json$Json$Decode$map4 = _Json_map4;
+var $elm$json$Json$Decode$oneOf = _Json_oneOf;
+var $author$project$GridLevel$decoder = function () {
+	var toIVec = function (list) {
+		if (((list.b && list.b.b) && list.b.b.b) && (!list.b.b.b.b)) {
+			var x = list.a;
+			var _v25 = list.b;
+			var y = _v25.a;
+			var _v26 = _v25.b;
+			var z = _v26.a;
+			return $elm$json$Json$Decode$succeed(
+				$author$project$GridLevel$ivec$(x, y, z));
+		} else {
+			return $elm$json$Json$Decode$fail('Expected 3 numbers');
+		}
+	};
+	var profile = A2(
+		$elm$json$Json$Decode$andThen,
+		function (list) {
+			_v15$2:
+			while (true) {
+				if (((list.b && list.b.b) && list.b.b.b) && list.b.b.b.b) {
+					if (!list.b.b.b.b.b) {
+						var a = list.a;
+						var _v16 = list.b;
+						var b = _v16.a;
+						var _v17 = _v16.b;
+						var c = _v17.a;
+						var _v18 = _v17.b;
+						var d = _v18.a;
+						return $elm$json$Json$Decode$succeed(
+							$author$project$GridLevel$ProfileLine$(
+								_Utils_Tuple2(a, b),
+								_Utils_Tuple2(c, d)));
+					} else {
+						if (list.b.b.b.b.b.b && (!list.b.b.b.b.b.b.b)) {
+							var a = list.a;
+							var _v19 = list.b;
+							var b = _v19.a;
+							var _v20 = _v19.b;
+							var c = _v20.a;
+							var _v21 = _v20.b;
+							var d = _v21.a;
+							var _v22 = _v21.b;
+							var e = _v22.a;
+							var _v23 = _v22.b;
+							var f = _v23.a;
+							return $elm$json$Json$Decode$succeed(
+								$author$project$GridLevel$ProfileArc(
+									{
+										b: _Utils_Tuple2(e, f),
+										c: _Utils_Tuple2(a, b),
+										e: _Utils_Tuple2(c, d)
+									}));
+						} else {
+							break _v15$2;
+						}
+					}
+				} else {
+					break _v15$2;
+				}
+			}
+			return $elm$json$Json$Decode$fail('Not a profile');
+		},
+		$elm$json$Json$Decode$list($elm$json$Json$Decode$int));
+	var ivecDecoder = A2(
+		$elm$json$Json$Decode$andThen,
+		toIVec,
+		$elm$json$Json$Decode$list($elm$json$Json$Decode$int));
+	var curve = A2(
+		$elm$json$Json$Decode$andThen,
+		function (list) {
+			_v0$2:
+			while (true) {
+				if (((((list.b && list.b.b) && list.b.b.b) && list.b.b.b.b) && list.b.b.b.b.b) && list.b.b.b.b.b.b) {
+					if (!list.b.b.b.b.b.b.b) {
+						var ax = list.a;
+						var _v1 = list.b;
+						var ay = _v1.a;
+						var _v2 = _v1.b;
+						var az = _v2.a;
+						var _v3 = _v2.b;
+						var bx = _v3.a;
+						var _v4 = _v3.b;
+						var by = _v4.a;
+						var _v5 = _v4.b;
+						var bz = _v5.a;
+						return $elm$json$Json$Decode$succeed(
+							$author$project$GridLevel$Segment$(
+								$author$project$GridLevel$ivec$(ax, ay, az),
+								$author$project$GridLevel$ivec$(bx, by, bz)));
+					} else {
+						if (((list.b.b.b.b.b.b.b.b && list.b.b.b.b.b.b.b.b.b) && list.b.b.b.b.b.b.b.b.b.b) && (!list.b.b.b.b.b.b.b.b.b.b.b)) {
+							var cx = list.a;
+							var _v6 = list.b;
+							var cy = _v6.a;
+							var _v7 = _v6.b;
+							var cz = _v7.a;
+							var _v8 = _v7.b;
+							var r = _v8.a;
+							var _v9 = _v8.b;
+							var fx = _v9.a;
+							var _v10 = _v9.b;
+							var fy = _v10.a;
+							var _v11 = _v10.b;
+							var fz = _v11.a;
+							var _v12 = _v11.b;
+							var tx = _v12.a;
+							var _v13 = _v12.b;
+							var ty = _v13.a;
+							var _v14 = _v13.b;
+							var tz = _v14.a;
+							return $elm$json$Json$Decode$succeed(
+								$author$project$GridLevel$Arc(
+									{
+										b: $author$project$GridLevel$ivec$(cx, cy, cz),
+										c: $author$project$GridLevel$ivec$(fx, fy, fz),
+										p: r,
+										e: $author$project$GridLevel$ivec$(tx, ty, tz)
+									}));
+						} else {
+							break _v0$2;
+						}
+					}
+				} else {
+					break _v0$2;
+				}
+			}
+			return $elm$json$Json$Decode$fail('Not an edge');
+		},
+		$elm$json$Json$Decode$list($elm$json$Json$Decode$int));
+	var cell = $elm$json$Json$Decode$oneOf(
+		_List_fromArray(
+			[
+				A3(
+				$elm$json$Json$Decode$map2,
+				F2(
+					function (normal, loop) {
+						return $author$project$GridLevel$FlatCell(
+							{X: loop, k: normal});
+					}),
+				A2($elm$json$Json$Decode$field, 'normal', ivecDecoder),
+				A2(
+					$elm$json$Json$Decode$field,
+					'loop',
+					$elm$json$Json$Decode$list(curve))),
+				A5(
+				$elm$json$Json$Decode$map4,
+				F4(
+					function (center, axis, x, p) {
+						return $author$project$GridLevel$RoundCell(
+							{w: axis, b: center, u: p, m: x});
+					}),
+				A2($elm$json$Json$Decode$field, 'center', ivecDecoder),
+				A2($elm$json$Json$Decode$field, 'axis', ivecDecoder),
+				A2($elm$json$Json$Decode$field, 'x', ivecDecoder),
+				A2($elm$json$Json$Decode$field, 'profile', profile))
+			]));
+	return A2(
+		$elm$json$Json$Decode$map,
+		function (cells) {
+			return {V: cells};
+		},
+		A2(
+			$elm$json$Json$Decode$field,
+			'cells',
+			$elm$json$Json$Decode$list(cell)));
+}();
 var $author$project$Minimap$mapDistance$ = function (a, b) {
 	return $elm$core$Basics$sqrt(
-		A2($elm$core$Basics$pow, a.k - b.k, 2) + A2($elm$core$Basics$pow, a.l - b.l, 2));
+		A2($elm$core$Basics$pow, a.m - b.m, 2) + A2($elm$core$Basics$pow, a.n - b.n, 2));
 };
 var $author$project$Minimap$mapDistance = F2($author$project$Minimap$mapDistance$);
 var $author$project$Minimap$sameImage = 0.02;
@@ -8264,94 +8931,94 @@ var $author$project$Minimap$addImage$ = function (image, images) {
 };
 var $author$project$Minimap$addImage = F2($author$project$Minimap$addImage$);
 var $author$project$Minimap$dot$ = function (a, b) {
-	return ((a.k * b.k) + (a.l * b.l)) + (a.m * b.m);
+	return ((a.m * b.m) + (a.n * b.n)) + (a.o * b.o);
 };
 var $author$project$Minimap$dot = F2($author$project$Minimap$dot$);
 var $author$project$Minimap$maxOffSurface = 0.05;
 var $author$project$Minimap$sub$ = function (a, b) {
-	return {k: a.k - b.k, l: a.l - b.l, m: a.m - b.m};
+	return {m: a.m - b.m, n: a.n - b.n, o: a.o - b.o};
 };
 var $author$project$Minimap$sub = F2($author$project$Minimap$sub$);
 var $author$project$Minimap$fanImage$ = function (_v0, point) {
-	var max = _v0.aY;
-	var min = _v0.aZ;
-	var c = _v0.cE;
-	var b = _v0.cD;
-	var a = _v0.cB;
+	var max = _v0.a2;
+	var min = _v0.a3;
+	var c = _v0.cN;
+	var b = _v0.cM;
+	var a = _v0.cK;
 	var weights = function (_v3) {
-		if (_Utils_eq(a.ak, point.ak) && (_Utils_eq(b.ak, point.ak) && _Utils_eq(c.ak, point.ak))) {
-			var e2y = c.G.Z - a.G.Z;
-			var e2x = c.G.ad - a.G.ad;
-			var e1y = b.G.Z - a.G.Z;
-			var e1x = b.G.ad - a.G.ad;
-			var dy = point.G.Z - a.G.Z;
-			var dx = point.G.ad - a.G.ad;
+		if (_Utils_eq(a.aq, point.aq) && (_Utils_eq(b.aq, point.aq) && _Utils_eq(c.aq, point.aq))) {
+			var e2y = c.K.ad - a.K.ad;
+			var e2x = c.K.aj - a.K.aj;
+			var e1y = b.K.ad - a.K.ad;
+			var e1x = b.K.aj - a.K.aj;
+			var dy = point.K.ad - a.K.ad;
+			var dx = point.K.aj - a.K.aj;
 			var determinant = (e1x * e2y) - (e2x * e1y);
 			return ($elm$core$Basics$abs(determinant) < 1.0e-14) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(
 				_Utils_Tuple2(((e2y * dx) - (e2x * dy)) / determinant, ((e1x * dy) - (e1y * dx)) / determinant));
 		} else {
-			var e2 = $author$project$Minimap$sub$(c.eb, a.eb);
+			var e2 = $author$project$Minimap$sub$(c.gQ, a.gQ);
 			var g22 = $author$project$Minimap$dot$(e2, e2);
-			var e1 = $author$project$Minimap$sub$(b.eb, a.eb);
+			var e1 = $author$project$Minimap$sub$(b.gQ, a.gQ);
 			var g11 = $author$project$Minimap$dot$(e1, e1);
 			var g12 = $author$project$Minimap$dot$(e1, e2);
 			var gram = (g11 * g22) - (g12 * g12);
-			var d = $author$project$Minimap$sub$(point.eb, a.eb);
+			var d = $author$project$Minimap$sub$(point.gQ, a.gQ);
 			var l1 = ((g22 * $author$project$Minimap$dot$(e1, d)) - (g12 * $author$project$Minimap$dot$(e2, d))) / gram;
 			var l2 = ((g11 * $author$project$Minimap$dot$(e2, d)) - (g12 * $author$project$Minimap$dot$(e1, d))) / gram;
-			var off = {k: (d.k - (l1 * e1.k)) - (l2 * e2.k), l: (d.l - (l1 * e1.l)) - (l2 * e2.l), m: (d.m - (l1 * e1.m)) - (l2 * e2.m)};
+			var off = {m: (d.m - (l1 * e1.m)) - (l2 * e2.m), n: (d.n - (l1 * e1.n)) - (l2 * e2.n), o: (d.o - (l1 * e1.o)) - (l2 * e2.o)};
 			return ((gram < 1.0e-14) || (($author$project$Minimap$dot$(off, off) - ($author$project$Minimap$maxOffSurface * $author$project$Minimap$maxOffSurface)) > 0)) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$Just(
 				_Utils_Tuple2(l1, l2));
 		}
 	};
-	var p = point.eb;
-	var _v1 = (((p.k - min.k) < 0) || (((p.k - max.k) > 0) || (((p.l - min.l) < 0) || (((p.l - max.l) > 0) || (((p.m - min.m) < 0) || ((p.m - max.m) > 0)))))) ? $elm$core$Maybe$Nothing : weights(0);
+	var p = point.gQ;
+	var _v1 = (((p.m - min.m) < 0) || (((p.m - max.m) > 0) || (((p.n - min.n) < 0) || (((p.n - max.n) > 0) || (((p.o - min.o) < 0) || ((p.o - max.o) > 0)))))) ? $elm$core$Maybe$Nothing : weights(0);
 	if (!_v1.$) {
 		var _v2 = _v1.a;
 		var l1 = _v2.a;
 		var l2 = _v2.b;
 		return (((l1 + 1.0e-3) >= 0) && (((l2 + 1.0e-3) >= 0) && ((l1 + l2) <= 1.001))) ? $elm$core$Maybe$Just(
-			{k: (a.ab.k + (l1 * (b.ab.k - a.ab.k))) + (l2 * (c.ab.k - a.ab.k)), l: (a.ab.l + (l1 * (b.ab.l - a.ab.l))) + (l2 * (c.ab.l - a.ab.l))}) : $elm$core$Maybe$Nothing;
+			{m: (a.ag.m + (l1 * (b.ag.m - a.ag.m))) + (l2 * (c.ag.m - a.ag.m)), n: (a.ag.n + (l1 * (b.ag.n - a.ag.n))) + (l2 * (c.ag.n - a.ag.n))}) : $elm$core$Maybe$Nothing;
 	} else {
 		return $elm$core$Maybe$Nothing;
 	}
 };
 var $author$project$Minimap$fanImage = F2($author$project$Minimap$fanImage$);
 var $author$project$Shapes$foldWithin$ = function (box, step, initial, shapes) {
-	var grid = shapes.bM;
+	var grid = shapes.bU;
 	var clampCell = F3(
 		function (first, count, i) {
 			return ((i - first) < 0) ? 0 : ((((i - first) - count) >= 0) ? (count - 1) : (i - first));
 		});
 	var xTo = A3(
 		clampCell,
-		grid.b3,
-		grid.bQ,
-		$author$project$Shapes$cellOf(box.aY.k));
+		grid.cc,
+		grid.b_,
+		$author$project$Shapes$cellOf(box.a2.m));
 	var _v0 = _Utils_Tuple2(
 		A3(
 			clampCell,
-			grid.b5,
-			grid.by,
-			$author$project$Shapes$cellOf(box.aZ.m)),
+			grid.ce,
+			grid.bE,
+			$author$project$Shapes$cellOf(box.a3.o)),
 		A3(
 			clampCell,
-			grid.b5,
-			grid.by,
-			$author$project$Shapes$cellOf(box.aY.m)));
+			grid.ce,
+			grid.bE,
+			$author$project$Shapes$cellOf(box.a2.o)));
 	var zFrom = _v0.a;
 	var zTo = _v0.b;
 	var _v1 = _Utils_Tuple2(
 		A3(
 			clampCell,
-			grid.b4,
-			grid.bx,
-			$author$project$Shapes$cellOf(box.aZ.l)),
+			grid.cd,
+			grid.bD,
+			$author$project$Shapes$cellOf(box.a3.n)),
 		A3(
 			clampCell,
-			grid.b4,
-			grid.bx,
-			$author$project$Shapes$cellOf(box.aY.l)));
+			grid.cd,
+			grid.bD,
+			$author$project$Shapes$cellOf(box.a2.n)));
 	var yFrom = _v1.a;
 	var yTo = _v1.b;
 	var go = F4(
@@ -8379,7 +9046,7 @@ var $author$project$Shapes$foldWithin$ = function (box, step, initial, shapes) {
 						} else {
 							var $temp$z = z + 1,
 								$temp$acc = function () {
-								var _v2 = $elm$core$Array$get$((((x * grid.bx) + y) * grid.by) + z, grid.b7);
+								var _v2 = $elm$core$Array$get$((((x * grid.bD) + y) * grid.bE) + z, grid.V);
 								if (!_v2.$) {
 									var inCell = _v2.a;
 									return $elm$core$List$foldl$(step, acc, inCell);
@@ -8399,27 +9066,27 @@ var $author$project$Shapes$foldWithin$ = function (box, step, initial, shapes) {
 		go,
 		A3(
 			clampCell,
-			grid.b3,
-			grid.bQ,
-			$author$project$Shapes$cellOf(box.aZ.k)),
+			grid.cc,
+			grid.b_,
+			$author$project$Shapes$cellOf(box.a3.m)),
 		yFrom,
 		zFrom,
 		initial);
 };
 var $author$project$Shapes$foldWithin = F4($author$project$Shapes$foldWithin$);
 var $author$project$Minimap$inBox$ = function (box, p) {
-	return ((p.k - box.aZ.k) >= 0) && (((p.k - box.aY.k) <= 0) && (((p.l - box.aZ.l) >= 0) && (((p.l - box.aY.l) <= 0) && (((p.m - box.aZ.m) >= 0) && ((p.m - box.aY.m) <= 0)))));
+	return ((p.m - box.a3.m) >= 0) && (((p.m - box.a2.m) <= 0) && (((p.n - box.a3.n) >= 0) && (((p.n - box.a2.n) <= 0) && (((p.o - box.a3.o) >= 0) && ((p.o - box.a2.o) <= 0)))));
 };
 var $author$project$Minimap$inBox = F2($author$project$Minimap$inBox$);
 var $author$project$Minimap$addFanImages$ = function (shapes, triangle, images) {
 	return $author$project$Shapes$foldWithin$(
-		{aY: triangle.aY, aZ: triangle.aZ},
+		{a2: triangle.a2, a3: triangle.a3},
 		F2(
 			function (index, acc) {
-				var _v0 = $elm$core$Array$get$(index, shapes.fg);
+				var _v0 = $elm$core$Array$get$(index, shapes.fn);
 				if (!_v0.$) {
 					var point = _v0.a;
-					if ($author$project$Minimap$inBox$(triangle, point.eb)) {
+					if ($author$project$Minimap$inBox$(triangle, point.gQ)) {
 						var _v1 = $author$project$Minimap$fanImage$(triangle, point);
 						if (!_v1.$) {
 							var image = _v1.a;
@@ -8447,7 +9114,7 @@ var $author$project$Minimap$addFanImages$ = function (shapes, triangle, images) 
 var $author$project$Minimap$addFanImages = F3($author$project$Minimap$addFanImages$);
 var $author$project$Minimap$distance$ = function (a, b) {
 	return $elm$core$Basics$sqrt(
-		(A2($elm$core$Basics$pow, a.k - b.k, 2) + A2($elm$core$Basics$pow, a.l - b.l, 2)) + A2($elm$core$Basics$pow, a.m - b.m, 2));
+		(A2($elm$core$Basics$pow, a.m - b.m, 2) + A2($elm$core$Basics$pow, a.n - b.n, 2)) + A2($elm$core$Basics$pow, a.o - b.o, 2));
 };
 var $author$project$Minimap$distance = F2($author$project$Minimap$distance$);
 var $author$project$Minimap$maxFloat$ = function (a, b) {
@@ -8465,41 +9132,41 @@ var $author$project$Minimap$near$ = function (p, q) {
 var $author$project$Minimap$near = F2($author$project$Minimap$near$);
 var $author$project$Minimap$between$ = function (left, right, triangles) {
 	var last = $elm$core$Basics$min$(
-		left.ce + $elm$core$Array$length(left.fg),
-		right.ce + $elm$core$Array$length(right.fg)) - 2;
+		left.cm + $elm$core$Array$length(left.fn),
+		right.cm + $elm$core$Array$length(right.fn)) - 2;
 	var at = F2(
 		function (ray, j) {
-			return $elm$core$Array$get$(j - ray.ce, ray.fg);
+			return $elm$core$Array$get$(j - ray.cm, ray.fn);
 		});
 	var add = F4(
 		function (a, b, c, acc) {
-			return ($author$project$Minimap$near$(a.eb, b.eb) && ($author$project$Minimap$near$(b.eb, c.eb) && $author$project$Minimap$near$(c.eb, a.eb))) ? A2(
+			return ($author$project$Minimap$near$(a.gQ, b.gQ) && ($author$project$Minimap$near$(b.gQ, c.gQ) && $author$project$Minimap$near$(c.gQ, a.gQ))) ? A2(
 				$elm$core$List$cons,
 				{
-					cB: a,
-					cD: b,
-					cE: c,
-					aY: {
-						k: $author$project$Minimap$maxFloat$(
-							a.eb.k,
-							$author$project$Minimap$maxFloat$(b.eb.k, c.eb.k)) + $author$project$Minimap$maxOffSurface,
-						l: $author$project$Minimap$maxFloat$(
-							a.eb.l,
-							$author$project$Minimap$maxFloat$(b.eb.l, c.eb.l)) + $author$project$Minimap$maxOffSurface,
+					cK: a,
+					cM: b,
+					cN: c,
+					a2: {
 						m: $author$project$Minimap$maxFloat$(
-							a.eb.m,
-							$author$project$Minimap$maxFloat$(b.eb.m, c.eb.m)) + $author$project$Minimap$maxOffSurface
+							a.gQ.m,
+							$author$project$Minimap$maxFloat$(b.gQ.m, c.gQ.m)) + $author$project$Minimap$maxOffSurface,
+						n: $author$project$Minimap$maxFloat$(
+							a.gQ.n,
+							$author$project$Minimap$maxFloat$(b.gQ.n, c.gQ.n)) + $author$project$Minimap$maxOffSurface,
+						o: $author$project$Minimap$maxFloat$(
+							a.gQ.o,
+							$author$project$Minimap$maxFloat$(b.gQ.o, c.gQ.o)) + $author$project$Minimap$maxOffSurface
 					},
-					aZ: {
-						k: $author$project$Minimap$minFloat$(
-							a.eb.k,
-							$author$project$Minimap$minFloat$(b.eb.k, c.eb.k)) - $author$project$Minimap$maxOffSurface,
-						l: $author$project$Minimap$minFloat$(
-							a.eb.l,
-							$author$project$Minimap$minFloat$(b.eb.l, c.eb.l)) - $author$project$Minimap$maxOffSurface,
+					a3: {
 						m: $author$project$Minimap$minFloat$(
-							a.eb.m,
-							$author$project$Minimap$minFloat$(b.eb.m, c.eb.m)) - $author$project$Minimap$maxOffSurface
+							a.gQ.m,
+							$author$project$Minimap$minFloat$(b.gQ.m, c.gQ.m)) - $author$project$Minimap$maxOffSurface,
+						n: $author$project$Minimap$minFloat$(
+							a.gQ.n,
+							$author$project$Minimap$minFloat$(b.gQ.n, c.gQ.n)) - $author$project$Minimap$maxOffSurface,
+						o: $author$project$Minimap$minFloat$(
+							a.gQ.o,
+							$author$project$Minimap$minFloat$(b.gQ.o, c.gQ.o)) - $author$project$Minimap$maxOffSurface
 					}
 				},
 				acc) : acc;
@@ -8545,7 +9212,7 @@ var $author$project$Minimap$between$ = function (left, right, triangles) {
 		});
 	return A2(
 		go,
-		$elm$core$Basics$max$(left.ce, right.ce),
+		$elm$core$Basics$max$(left.cm, right.cm),
 		triangles);
 };
 var $author$project$Minimap$between = F3($author$project$Minimap$between$);
@@ -8553,23 +9220,23 @@ var $author$project$Surface$fanSpacing = 0.15;
 var $author$project$Minimap$fanTriangles = function (groups) {
 	var pointsOf = function (ray) {
 		return {
-			ce: ray.fU,
-			fg: $elm$core$Array$fromList(
+			cm: ray.f1,
+			fn: $elm$core$Array$fromList(
 				$elm$core$List$indexedMap$(
 					F2(
 						function (i, sample) {
-							var distanceOnMap = (ray.fU + i) * $author$project$Surface$fanSpacing;
+							var distanceOnMap = (ray.f1 + i) * $author$project$Surface$fanSpacing;
 							return {
-								G: sample.G,
-								ab: {
-									k: distanceOnMap * $elm$core$Basics$cos(ray.fK),
-									l: distanceOnMap * $elm$core$Basics$sin(ray.fK)
+								K: sample.K,
+								ag: {
+									m: distanceOnMap * $elm$core$Basics$cos(ray.fS),
+									n: distanceOnMap * $elm$core$Basics$sin(ray.fS)
 								},
-								ak: sample.ak,
-								eb: sample.eb
+								aq: sample.aq,
+								gQ: sample.gQ
 							};
 						}),
-					ray.iP))
+					ray.iX))
 		};
 	};
 	var addGroup = F2(
@@ -8600,24 +9267,24 @@ var $ianmackenzie$elm_units$Length$inMeters = function (_v0) {
 	return numMeters;
 };
 var $author$project$Surface$cmul$ = function (p, q) {
-	return {Z: (p.ad * q.Z) + (p.Z * q.ad), ad: (p.ad * q.ad) - (p.Z * q.Z)};
+	return {ad: (p.aj * q.ad) + (p.ad * q.aj), aj: (p.aj * q.aj) - (p.ad * q.ad)};
 };
 var $author$project$Surface$cmul = F2($author$project$Surface$cmul$);
 var $author$project$Surface$cabs = function (p) {
-	return $elm$core$Basics$sqrt((p.ad * p.ad) + (p.Z * p.Z));
+	return $elm$core$Basics$sqrt((p.aj * p.aj) + (p.ad * p.ad));
 };
 var $author$project$Surface$cadd$ = function (p, q) {
-	return {Z: p.Z + q.Z, ad: p.ad + q.ad};
+	return {ad: p.ad + q.ad, aj: p.aj + q.aj};
 };
 var $author$project$Surface$cadd = F2($author$project$Surface$cadd$);
 var $author$project$Surface$csub$ = function (p, q) {
-	return {Z: p.Z - q.Z, ad: p.ad - q.ad};
+	return {ad: p.ad - q.ad, aj: p.aj - q.aj};
 };
 var $author$project$Surface$csub = F2($author$project$Surface$csub$);
 var $author$project$Surface$distanceToSegment$ = function (p, q) {
 	var d = $author$project$Surface$csub$(q, p);
-	var lengthSquared = (d.ad * d.ad) + (d.Z * d.Z);
-	var t = (lengthSquared < 1.0e-18) ? 0 : $elm$core$Basics$clamp$(0, 1, -(((p.ad * d.ad) + (p.Z * d.Z)) / lengthSquared));
+	var lengthSquared = (d.aj * d.aj) + (d.ad * d.ad);
+	var t = (lengthSquared < 1.0e-18) ? 0 : $elm$core$Basics$clamp$(0, 1, -(((p.aj * d.aj) + (p.ad * d.ad)) / lengthSquared));
 	return $author$project$Surface$cabs(
 		$author$project$Surface$cadd$(
 			p,
@@ -8628,7 +9295,7 @@ var $author$project$Surface$edgeFractions$ = function (piece, edgeIndex) {
 	var count = function () {
 		if (!piece.$) {
 			var flat = piece.a;
-			var _v1 = $elm$core$Array$get$(edgeIndex, flat.bK);
+			var _v1 = $elm$core$Array$get$(edgeIndex, flat.bS);
 			if ((!_v1.$) && (_v1.a.$ === 1)) {
 				return 64;
 			} else {
@@ -8653,30 +9320,30 @@ var $author$project$Surface$holeEdges = function (piece) {
 				var index = _v1.a;
 				var edge = _v1.b;
 				if (edge.$ === 1) {
-					var swept = edge.a.aC;
+					var swept = edge.a.aI;
 					return (_Utils_cmp(swept, ((-2) * $elm$core$Basics$pi) + 1.0e-6) < 0) ? $elm$core$Maybe$Just(index) : $elm$core$Maybe$Nothing;
 				} else {
 					return $elm$core$Maybe$Nothing;
 				}
 			},
-			$elm$core$Array$toIndexedList(flat.bK));
+			$elm$core$Array$toIndexedList(flat.bS));
 	} else {
 		return _List_Nil;
 	}
 };
 var $author$project$Surface$intersectWindows$ = function (first, second) {
-	if (_Utils_cmp(first.fY, $elm$core$Basics$pi) > -1) {
+	if (_Utils_cmp(first.f5, $elm$core$Basics$pi) > -1) {
 		return second;
 	} else {
-		if (_Utils_cmp(second.fY, $elm$core$Basics$pi) > -1) {
+		if (_Utils_cmp(second.f5, $elm$core$Basics$pi) > -1) {
 			return first;
 		} else {
-			var offset = $author$project$Surface$wrapAngle((second.cF - first.cF) + $elm$core$Basics$pi) - $elm$core$Basics$pi;
-			var to = $elm$core$Basics$min$(first.fY, offset + second.fY);
-			var from = $elm$core$Basics$max$(-first.fY, offset - second.fY);
+			var offset = $author$project$Surface$wrapAngle((second.b - first.b) + $elm$core$Basics$pi) - $elm$core$Basics$pi;
+			var to = $elm$core$Basics$min$(first.f5, offset + second.f5);
+			var from = $elm$core$Basics$max$(-first.f5, offset - second.f5);
 			return {
-				cF: first.cF + ((from + to) / 2),
-				fY: $elm$core$Basics$max$(0, (to - from) / 2)
+				b: first.b + ((from + to) / 2),
+				f5: $elm$core$Basics$max$(0, (to - from) / 2)
 			};
 		}
 	}
@@ -8685,11 +9352,11 @@ var $author$project$Surface$intersectWindows = F2($author$project$Surface$inters
 var $author$project$Surface$isNewPlacement$ = function (child, placed) {
 	return $elm$core$List$all$(
 		function (other) {
-			return (!_Utils_eq(other.ak, child.ak)) || (($author$project$Surface$cabs(
-				$author$project$Surface$csub$(other.aA, child.aA)) > 1.0e-6) || (($author$project$Surface$cabs(
-				$author$project$Surface$csub$(other.gw, child.gw)) > 1.0e-6) || (($elm$core$Basics$abs(
-				$author$project$Surface$wrapAngle((other.fE.cF - child.fE.cF) + $elm$core$Basics$pi) - $elm$core$Basics$pi) > 1.0e-6) || ($elm$core$Basics$abs(
-				$elm$core$Basics$min$($elm$core$Basics$pi, other.fE.fY) - $elm$core$Basics$min$($elm$core$Basics$pi, child.fE.fY)) > 1.0e-6))));
+			return (!_Utils_eq(other.aq, child.aq)) || (($author$project$Surface$cabs(
+				$author$project$Surface$csub$(other.aG, child.aG)) > 1.0e-6) || (($author$project$Surface$cabs(
+				$author$project$Surface$csub$(other.gG, child.gG)) > 1.0e-6) || (($elm$core$Basics$abs(
+				$author$project$Surface$wrapAngle((other.fM.b - child.fM.b) + $elm$core$Basics$pi) - $elm$core$Basics$pi) > 1.0e-6) || ($elm$core$Basics$abs(
+				$elm$core$Basics$min$($elm$core$Basics$pi, other.fM.f5) - $elm$core$Basics$min$($elm$core$Basics$pi, child.fM.f5)) > 1.0e-6))));
 		},
 		placed);
 };
@@ -8699,16 +9366,16 @@ var $author$project$Surface$isRigid = function (piece) {
 		return true;
 	} else {
 		var feature = piece.a;
-		return (!_Utils_eq(feature.i8, $elm$core$Maybe$Nothing)) && $elm$core$List$all$(
+		return (!_Utils_eq(feature.jg, $elm$core$Maybe$Nothing)) && $elm$core$List$all$(
 			function (segment) {
 				if (!segment.$) {
-					var dr = segment.a.J;
+					var dr = segment.a.N;
 					return $elm$core$Basics$abs(dr) < 1.0e-9;
 				} else {
 					return false;
 				}
 			},
-			feature.gN);
+			feature.gX);
 	}
 };
 var $author$project$Surface$maxPlacements = 64;
@@ -8721,8 +9388,8 @@ var $elm$core$List$member$ = function (x, xs) {
 };
 var $elm$core$List$member = F2($elm$core$List$member$);
 var $author$project$Surface$cdiv$ = function (p, q) {
-	var denominator = (q.ad * q.ad) + (q.Z * q.Z);
-	return {Z: ((p.Z * q.ad) - (p.ad * q.Z)) / denominator, ad: ((p.ad * q.ad) + (p.Z * q.Z)) / denominator};
+	var denominator = (q.aj * q.aj) + (q.ad * q.ad);
+	return {ad: ((p.ad * q.aj) - (p.aj * q.ad)) / denominator, aj: ((p.aj * q.aj) + (p.ad * q.ad)) / denominator};
 };
 var $author$project$Surface$cdiv = F2($author$project$Surface$cdiv$);
 var $author$project$Surface$holeOnMap$ = function (piece, placement) {
@@ -8731,17 +9398,17 @@ var $author$project$Surface$holeOnMap$ = function (piece, placement) {
 		return $elm$core$Maybe$andThen$(
 			function (edge) {
 				if (edge.$ === 1) {
-					var r = edge.a.d;
-					var cy = edge.a.aq;
-					var cx = edge.a.ap;
+					var r = edge.a.f;
+					var cy = edge.a.aw;
+					var cx = edge.a.av;
 					return $elm$core$Maybe$Just(
 						{
-							cF: $author$project$Surface$cadd$(
+							b: $author$project$Surface$cadd$(
 								$author$project$Surface$cmul$(
-									placement.aA,
-									{Z: cy, ad: cx}),
-								placement.gw),
-							gH: r * $author$project$Surface$cabs(placement.aA)
+									placement.aG,
+									{ad: cy, aj: cx}),
+								placement.gG),
+							p: r * $author$project$Surface$cabs(placement.aG)
 						});
 				} else {
 					return $elm$core$Maybe$Nothing;
@@ -8749,7 +9416,7 @@ var $author$project$Surface$holeOnMap$ = function (piece, placement) {
 			},
 			$elm$core$Maybe$andThen$(
 				function (index) {
-					return $elm$core$Array$get$(index, flat.bK);
+					return $elm$core$Array$get$(index, flat.bS);
 				},
 				$elm$core$List$head(
 					$author$project$Surface$holeEdges(piece))));
@@ -8760,8 +9427,8 @@ var $author$project$Surface$holeOnMap$ = function (piece, placement) {
 var $author$project$Surface$holeOnMap = F2($author$project$Surface$holeOnMap$);
 var $author$project$Surface$placeOnMap$ = function (placement, chart) {
 	return $author$project$Surface$cadd$(
-		$author$project$Surface$cmul$(placement.aA, chart),
-		placement.gw);
+		$author$project$Surface$cmul$(placement.aG, chart),
+		placement.gG);
 };
 var $author$project$Surface$placeOnMap = F2($author$project$Surface$placeOnMap$);
 var $author$project$Surface$placeChild$ = function (parent, parentPiece, edgeIndex, childIndex, childEdge, childPiece, distance, window) {
@@ -8769,11 +9436,11 @@ var $author$project$Surface$placeChild$ = function (parent, parentPiece, edgeInd
 		var located = $author$project$Surface$locateOnEdge$(parentPiece, edgeIndex, p);
 		return $author$project$Surface$placeOnMap$(
 			parent,
-			$author$project$Surface$localChart$(parentPiece, located.cB, located.cD));
+			$author$project$Surface$localChart$(parentPiece, located.cK, located.cM));
 	};
 	var childChart = function (p) {
 		var located = $author$project$Surface$locateOnEdge$(childPiece, childEdge, p);
-		return $author$project$Surface$localChart$(childPiece, located.cB, located.cD);
+		return $author$project$Surface$localChart$(childPiece, located.cK, located.cM);
 	};
 	var _v0 = $elm$core$List$filterMap$(
 		A2($author$project$Surface$edgeSample, parentPiece, edgeIndex),
@@ -8797,14 +9464,14 @@ var $author$project$Surface$placeChild$ = function (parent, parentPiece, edgeInd
 				$author$project$Surface$cmul$(scale_, z1));
 			return $elm$core$Maybe$Just(
 				{
-					bG: distance,
-					hW: $author$project$Surface$holeOnMap$(
+					bO: distance,
+					h3: $author$project$Surface$holeOnMap$(
 						childPiece,
-						{gw: offset, aA: scale_}),
-					gw: offset,
-					ak: childIndex,
-					aA: scale_,
-					fE: window
+						{gG: offset, aG: scale_}),
+					gG: offset,
+					aq: childIndex,
+					aG: scale_,
+					fM: window
 				});
 		} else {
 			return $elm$core$Maybe$Nothing;
@@ -8815,13 +9482,13 @@ var $author$project$Surface$placeChild$ = function (parent, parentPiece, edgeInd
 };
 var $author$project$Surface$placeChild = F8($author$project$Surface$placeChild$);
 var $author$project$Surface$subtractWindow$ = function (cut, window) {
-	if (_Utils_cmp(cut.fY, $elm$core$Basics$pi) > -1) {
+	if (_Utils_cmp(cut.f5, $elm$core$Basics$pi) > -1) {
 		return _List_Nil;
 	} else {
-		if (_Utils_cmp(window.fY, $elm$core$Basics$pi) > -1) {
+		if (_Utils_cmp(window.f5, $elm$core$Basics$pi) > -1) {
 			return _List_fromArray(
 				[
-					{cF: cut.cF + $elm$core$Basics$pi, fY: $elm$core$Basics$pi - cut.fY}
+					{b: cut.b + $elm$core$Basics$pi, f5: $elm$core$Basics$pi - cut.f5}
 				]);
 		} else {
 			var remove = F2(
@@ -8849,24 +9516,24 @@ var $author$project$Surface$subtractWindow$ = function (cut, window) {
 						},
 						intervals);
 				});
-			var offset = $author$project$Surface$wrapAngle((cut.cF - window.cF) + $elm$core$Basics$pi) - $elm$core$Basics$pi;
+			var offset = $author$project$Surface$wrapAngle((cut.b - window.b) + $elm$core$Basics$pi) - $elm$core$Basics$pi;
 			return $elm$core$List$map$(
 				function (_v0) {
 					var from = _v0.a;
 					var to = _v0.b;
-					return {cF: window.cF + ((from + to) / 2), fY: (to - from) / 2};
+					return {b: window.b + ((from + to) / 2), f5: (to - from) / 2};
 				},
 				$elm$core$List$foldl$(
 					F2(
 						function (turns, intervals) {
 							return A2(
 								remove,
-								_Utils_Tuple2((offset - cut.fY) + ((turns * 2) * $elm$core$Basics$pi), (offset + cut.fY) + ((turns * 2) * $elm$core$Basics$pi)),
+								_Utils_Tuple2((offset - cut.f5) + ((turns * 2) * $elm$core$Basics$pi), (offset + cut.f5) + ((turns * 2) * $elm$core$Basics$pi)),
 								intervals);
 						}),
 					_List_fromArray(
 						[
-							_Utils_Tuple2(-window.fY, window.fY)
+							_Utils_Tuple2(-window.f5, window.f5)
 						]),
 					_List_fromArray(
 						[-1, 0, 1])));
@@ -8874,11 +9541,11 @@ var $author$project$Surface$subtractWindow$ = function (cut, window) {
 	}
 };
 var $author$project$Surface$subtractWindow = F2($author$project$Surface$subtractWindow$);
-var $author$project$Surface$fullWindow = {cF: 0, fY: $elm$core$Basics$pi};
+var $author$project$Surface$fullWindow = {b: 0, f5: $elm$core$Basics$pi};
 var $author$project$Surface$windowOf = function (points) {
 	var _v0 = $elm$core$List$map$(
 		function (p) {
-			return A2($elm$core$Basics$atan2, p.Z, p.ad);
+			return A2($elm$core$Basics$atan2, p.ad, p.aj);
 		},
 		$elm$core$List$filter$(
 			function (p) {
@@ -8904,7 +9571,7 @@ var $author$project$Surface$windowOf = function (points) {
 			rest);
 		var low = _v1.b;
 		var high = _v1.c;
-		return (_Utils_cmp(high - low, (2 * $elm$core$Basics$pi) - 1.0e-3) > -1) ? $author$project$Surface$fullWindow : {cF: (low + high) / 2, fY: (high - low) / 2};
+		return (_Utils_cmp(high - low, (2 * $elm$core$Basics$pi) - 1.0e-3) > -1) ? $author$project$Surface$fullWindow : {b: (low + high) / 2, f5: (high - low) / 2};
 	} else {
 		return $author$project$Surface$fullWindow;
 	}
@@ -8917,10 +9584,10 @@ var $author$project$Surface$flattenHelper$ = function (radius, pieces, seams, qu
 			A2(
 				$elm$core$Basics$composeR,
 				function ($) {
-					return $.D;
+					return $.H;
 				},
 				function ($) {
-					return $.bG;
+					return $.bO;
 				}),
 			queue);
 		if (!_v0.b) {
@@ -8928,11 +9595,11 @@ var $author$project$Surface$flattenHelper$ = function (radius, pieces, seams, qu
 				$elm$core$List$reverse(placed),
 				curved);
 		} else {
-			var route = _v0.a.fk;
-			var enteredThrough = _v0.a.eW;
-			var placement = _v0.a.D;
+			var route = _v0.a.fr;
+			var enteredThrough = _v0.a.e1;
+			var placement = _v0.a.H;
 			var rest = _v0.b;
-			var _v1 = $elm$core$Array$get$(placement.ak, pieces);
+			var _v1 = $elm$core$Array$get$(placement.aq, pieces);
 			if (!_v1.$) {
 				var parentPiece = _v1.a;
 				var edgeOnMap = function (edgeIndex) {
@@ -8941,7 +9608,7 @@ var $author$project$Surface$flattenHelper$ = function (radius, pieces, seams, qu
 							var located = $author$project$Surface$locateOnEdge$(parentPiece, edgeIndex, p);
 							return $author$project$Surface$placeOnMap$(
 								placement,
-								$author$project$Surface$localChart$(parentPiece, located.cB, located.cD));
+								$author$project$Surface$localChart$(parentPiece, located.cK, located.cM));
 						},
 						$elm$core$List$filterMap$(
 							A2($author$project$Surface$edgeSample, parentPiece, edgeIndex),
@@ -8965,7 +9632,7 @@ var $author$project$Surface$flattenHelper$ = function (radius, pieces, seams, qu
 								$elm$core$Basics$identity,
 								$elm$core$Maybe$andThen$(
 									$elm$core$Array$get(edgeIndex),
-									$elm$core$Array$get$(placement.ak, seams)));
+									$elm$core$Array$get$(placement.aq, seams)));
 							if (!_v3.$) {
 								var _v4 = _v3.a;
 								var childIndex = _v4.a;
@@ -8973,7 +9640,7 @@ var $author$project$Surface$flattenHelper$ = function (radius, pieces, seams, qu
 								var points = edgeOnMap(edgeIndex);
 								var visible = $elm$core$List$filter$(
 									function (window) {
-										return window.fY > 1.0e-6;
+										return window.f5 > 1.0e-6;
 									},
 									$elm$core$List$foldl$(
 										F2(
@@ -8986,7 +9653,7 @@ var $author$project$Surface$flattenHelper$ = function (radius, pieces, seams, qu
 										_List_fromArray(
 											[
 												$author$project$Surface$intersectWindows$(
-												placement.fE,
+												placement.fM,
 												$author$project$Surface$windowOf(points))
 											]),
 										$elm$core$List$filter$(
@@ -9025,7 +9692,7 @@ var $author$project$Surface$flattenHelper$ = function (radius, pieces, seams, qu
 														childIndex,
 														childEdge,
 														childPiece,
-														$elm$core$Basics$max$(distance, placement.bG),
+														$elm$core$Basics$max$(distance, placement.bO),
 														window);
 													if (!_v7.$) {
 														var child = _v7.a;
@@ -9035,9 +9702,9 @@ var $author$project$Surface$flattenHelper$ = function (radius, pieces, seams, qu
 															A2(
 																$elm$core$List$cons,
 																{
-																	eW: childEdge,
-																	D: child,
-																	fk: A2($elm$core$List$cons, childIndex, route)
+																	e1: childEdge,
+																	H: child,
+																	fr: A2($elm$core$List$cons, childIndex, route)
 																},
 																q),
 															A2($elm$core$List$cons, child, p),
@@ -9086,9 +9753,9 @@ var $elm$core$List$map3 = _List_map3;
 var $author$project$Surface$finishGroup = function (rays) {
 	var firsts = $elm$core$List$map$(
 		function (ray) {
-			return $elm$core$Basics$isInfinite(ray.aV) ? 1000000 : $elm$core$Basics$max$(
+			return $elm$core$Basics$isInfinite(ray.a$) ? 1000000 : $elm$core$Basics$max$(
 				0,
-				$elm$core$Basics$floor(ray.aV / $author$project$Surface$fanSpacing) - 2);
+				$elm$core$Basics$floor(ray.a$ / $author$project$Surface$fanSpacing) - 2);
 		},
 		rays);
 	var neighbourMin = A4(
@@ -9113,9 +9780,9 @@ var $author$project$Surface$finishGroup = function (rays) {
 		F2(
 			function (ray, first) {
 				return {
-					fK: ray.fK,
-					fU: first,
-					iP: $elm$core$List$drop$(first, ray.iP)
+					fS: ray.fS,
+					f1: first,
+					iX: $elm$core$List$drop$(first, ray.iX)
 				};
 			}),
 		rays,
@@ -9129,8 +9796,8 @@ var $author$project$Surface$mergeWindows = function (windows) {
 		$elm$core$Tuple$first,
 		$elm$core$List$map$(
 			function (window) {
-				var from = $author$project$Surface$wrapAngle((window.cF - window.fY) - $author$project$Surface$fanMargin);
-				return _Utils_Tuple2(from, from + (2 * (window.fY + $author$project$Surface$fanMargin)));
+				var from = $author$project$Surface$wrapAngle((window.b - window.f5) - $author$project$Surface$fanMargin);
+				return _Utils_Tuple2(from, from + (2 * (window.f5 + $author$project$Surface$fanMargin)));
 			},
 			windows));
 	var merged = $elm$core$List$foldl$(
@@ -9210,7 +9877,7 @@ var $author$project$Surface$spread$ = function (first, second) {
 			F2(
 				function (p, q) {
 					return $author$project$Surface$lengthOf(
-						$author$project$Surface$sub$(p.eb, q.eb));
+						$author$project$Surface$sub$(p.gQ, q.gQ));
 				}),
 			first,
 			second));
@@ -9219,17 +9886,17 @@ var $author$project$Surface$spread = F2($author$project$Surface$spread$);
 var $elm$core$Basics$acos = _Basics_acos;
 var $author$project$Surface$edgeTangent2d$ = function (edge, a, b) {
 	if (!edge.$) {
-		var by = edge.a.aR;
-		var bx = edge.a.aQ;
-		var ay = edge.a.aG;
-		var ax = edge.a.aF;
+		var by = edge.a.aX;
+		var bx = edge.a.aW;
+		var ay = edge.a.aM;
+		var ax = edge.a.aL;
 		var l = $elm$core$Basics$sqrt(
 			A2($elm$core$Basics$pow, bx - ax, 2) + A2($elm$core$Basics$pow, by - ay, 2));
 		return _Utils_Tuple2((bx - ax) / l, (by - ay) / l);
 	} else {
-		var swept = edge.a.aC;
-		var cy = edge.a.aq;
-		var cx = edge.a.ap;
+		var swept = edge.a.aI;
+		var cy = edge.a.aw;
+		var cx = edge.a.av;
 		var dir = (swept < 0) ? (-1) : 1;
 		var angle = A2($elm$core$Basics$atan2, b - cy, a - cx);
 		return _Utils_Tuple2(
@@ -9242,7 +9909,7 @@ var $author$project$Surface$edgeFrame$ = function (piece, edgeIndex, a, b) {
 	if (!piece.$) {
 		var flat = piece.a;
 		var _v1 = function () {
-			var _v2 = $elm$core$Array$get$(edgeIndex, flat.bK);
+			var _v2 = $elm$core$Array$get$(edgeIndex, flat.bS);
 			if (!_v2.$) {
 				var edge = _v2.a;
 				return $author$project$Surface$edgeTangent2d$(edge, a, b);
@@ -9252,28 +9919,28 @@ var $author$project$Surface$edgeFrame$ = function (piece, edgeIndex, a, b) {
 		}();
 		var tx = _v1.a;
 		var ty = _v1.b;
-		var tangent = $author$project$Surface$combine$(tx, flat.a3, ty, flat.a5);
+		var tangent = $author$project$Surface$combine$(tx, flat.a9, ty, flat.bb);
 		return {
-			ch: $author$project$Surface$cross$(flat.p, tangent),
-			cv: tangent
+			ig: $author$project$Surface$cross$(flat.s, tangent),
+			cE: tangent
 		};
 	} else {
 		var feature = piece.a;
 		var basis = $author$project$Surface$featureBasis$(feature, a, b);
 		switch (edgeIndex) {
 			case 0:
-				return {ch: basis.ar, cv: basis.as};
+				return {ig: basis.ax, cE: basis.ay};
 			case 1:
 				return {
-					ch: $author$project$Surface$scale$(-1, basis.ar),
-					cv: basis.as
+					ig: $author$project$Surface$scale$(-1, basis.ax),
+					cE: basis.ay
 				};
 			case 2:
-				return {ch: basis.as, cv: basis.ar};
+				return {ig: basis.ay, cE: basis.ax};
 			default:
 				return {
-					ch: $author$project$Surface$scale$(-1, basis.as),
-					cv: basis.ar
+					ig: $author$project$Surface$scale$(-1, basis.ay),
+					cE: basis.ax
 				};
 		}
 	}
@@ -9282,43 +9949,43 @@ var $author$project$Surface$edgeFrame = F4($author$project$Surface$edgeFrame$);
 var $author$project$Surface$headingToVec$ = function (frame, heading) {
 	return $author$project$Surface$combine$(
 		$elm$core$Basics$cos(heading),
-		frame.bH,
+		frame.bP,
 		$elm$core$Basics$sin(heading),
-		frame.bI);
+		frame.bQ);
 };
 var $author$project$Surface$headingToVec = F2($author$project$Surface$headingToVec$);
 var $author$project$Surface$vecToHeading$ = function (frame, direction) {
 	return A2(
 		$elm$core$Basics$atan2,
-		$author$project$Surface$dot$(direction, frame.bI),
-		$author$project$Surface$dot$(direction, frame.bH));
+		$author$project$Surface$dot$(direction, frame.bQ),
+		$author$project$Surface$dot$(direction, frame.bP));
 };
 var $author$project$Surface$vecToHeading = F2($author$project$Surface$vecToHeading$);
 var $author$project$Surface$crossSeam$ = function (piece, edgeIndex, point, other, otherIndex, otherEdge) {
-	var frame = $author$project$Surface$tangentFrame$(piece, point.cB, point.cD);
-	var located = $author$project$Surface$locateOnEdge$(other, otherEdge, frame.H);
-	var otherFrame = $author$project$Surface$tangentFrame$(other, located.cB, located.cD);
-	var direction = $author$project$Surface$headingToVec$(frame, point.g);
-	var _v0 = $author$project$Surface$edgeFrame$(other, otherEdge, located.cB, located.cD);
-	var inward = _v0.ch;
-	var tangent = _v0.cv;
+	var frame = $author$project$Surface$tangentFrame$(piece, point.cK, point.cM);
+	var located = $author$project$Surface$locateOnEdge$(other, otherEdge, frame.L);
+	var otherFrame = $author$project$Surface$tangentFrame$(other, located.cK, located.cM);
+	var direction = $author$project$Surface$headingToVec$(frame, point.i);
+	var _v0 = $author$project$Surface$edgeFrame$(other, otherEdge, located.cK, located.cM);
+	var inward = _v0.ig;
+	var tangent = _v0.cE;
 	var along = $author$project$Surface$dot$(direction, tangent);
 	var across = $elm$core$Basics$sqrt(
 		$elm$core$Basics$max$(1.0e-12, 1 - (along * along)));
 	return {
-		cB: located.cB,
-		cD: located.cD,
-		g: $author$project$Surface$vecToHeading$(
+		cK: located.cK,
+		cM: located.cM,
+		i: $author$project$Surface$vecToHeading$(
 			otherFrame,
 			$author$project$Surface$combine$(along, tangent, across, inward)),
-		ak: otherIndex
+		aq: otherIndex
 	};
 };
 var $author$project$Surface$crossSeam = F6($author$project$Surface$crossSeam$);
 var $author$project$Surface$emitSamples$ = function (context, travelled, until, at, index, samples) {
 	emitSamples:
 	while (true) {
-		if (((index - context.aT) <= 0) && (((index * $author$project$Surface$fanSpacing) - until) <= 1.0e-9)) {
+		if (((index - context.aZ) <= 0) && (((index * $author$project$Surface$fanSpacing) - until) <= 1.0e-9)) {
 			var $temp$index = index + 1,
 				$temp$samples = A2(
 				$elm$core$List$cons,
@@ -9342,29 +10009,29 @@ var $author$project$Surface$Sphere$ = function (a, b) {
 };
 var $author$project$Surface$Sphere = F2($author$project$Surface$Sphere$);
 var $author$project$Surface$featureShape = function (feature) {
-	var _v0 = feature.gN;
+	var _v0 = feature.gX;
 	_v0$2:
 	while (true) {
 		if (_v0.b) {
 			if (!_v0.a.$) {
 				if (!_v0.b.b) {
-					var dr = _v0.a.a.J;
-					var r0 = _v0.a.a.bV;
+					var dr = _v0.a.a.N;
+					var r0 = _v0.a.a.b2;
 					return ($elm$core$Basics$abs(dr) < 1.0e-9) ? $author$project$Surface$Cylinder(r0) : $author$project$Surface$Revolved;
 				} else {
 					break _v0$2;
 				}
 			} else {
 				if (!_v0.b.b) {
-					var radius = _v0.a.a.gH;
-					var ch = _v0.a.a.b8;
-					var cr = _v0.a.a.bE;
+					var radius = _v0.a.a.p;
+					var ch = _v0.a.a.cg;
+					var cr = _v0.a.a.bM;
 					return (($elm$core$Basics$abs(cr) < 1.0e-9) && (_Utils_cmp(
 						$author$project$Surface$sweepRange(feature).b - $author$project$Surface$sweepStart(feature),
 						$elm$core$Basics$pi + 1.0e-9) < 1)) ? $author$project$Surface$Sphere$(
 						$author$project$Surface$add$(
-							feature.u,
-							$author$project$Surface$scale$(ch, feature.ah)),
+							feature.z,
+							$author$project$Surface$scale$(ch, feature.an)),
 						radius) : $author$project$Surface$Revolved;
 				} else {
 					break _v0$2;
@@ -9386,27 +10053,27 @@ var $author$project$Surface$firstViolation$ = function (feature, before, after) 
 			_Utils_Tuple2(
 			0,
 			A3(fraction, before.a, after.a, 0))
-		]) : (((after.a - feature.aL) > 0) ? _List_fromArray(
+		]) : (((after.a - feature.aR) > 0) ? _List_fromArray(
 		[
 			_Utils_Tuple2(
 			1,
-			A3(fraction, before.a, after.a, feature.aL))
+			A3(fraction, before.a, after.a, feature.aR))
 		]) : _List_Nil);
 	var sweepViolations = function () {
-		var _v3 = feature.i8;
+		var _v3 = feature.jg;
 		if (!_v3.$) {
-			var to = _v3.a.jr;
-			var from = _v3.a.hR;
-			return ((after.b - from) < 0) ? _List_fromArray(
+			var to = _v3.a.e;
+			var from = _v3.a.c;
+			return ((after.d - from) < 0) ? _List_fromArray(
 				[
 					_Utils_Tuple2(
 					2,
-					A3(fraction, before.b, after.b, from))
-				]) : (((after.b - to) > 0) ? _List_fromArray(
+					A3(fraction, before.d, after.d, from))
+				]) : (((after.d - to) > 0) ? _List_fromArray(
 				[
 					_Utils_Tuple2(
 					3,
-					A3(fraction, before.b, after.b, to))
+					A3(fraction, before.d, after.d, to))
 				]) : _List_Nil);
 		} else {
 			return _List_Nil;
@@ -9433,10 +10100,10 @@ var $author$project$Surface$firstViolation$ = function (feature, before, after) 
 var $author$project$Surface$firstViolation = F3($author$project$Surface$firstViolation$);
 var $author$project$Surface$rayExit$ = function (edge, px, py, dx, dy) {
 	if (!edge.$) {
-		var by = edge.a.aR;
-		var bx = edge.a.aQ;
-		var ay = edge.a.aG;
-		var ax = edge.a.aF;
+		var by = edge.a.aX;
+		var bx = edge.a.aW;
+		var ay = edge.a.aM;
+		var ax = edge.a.aL;
 		var ey = by - ay;
 		var ex = bx - ax;
 		var denominator = (dx * ey) - (dy * ex);
@@ -9449,11 +10116,11 @@ var $author$project$Surface$rayExit$ = function (edge, px, py, dx, dy) {
 				$elm$core$Basics$max$(0, t)) : $elm$core$Maybe$Nothing;
 		}
 	} else {
-		var swept = edge.a.aC;
-		var a0 = edge.a.O;
-		var r = edge.a.d;
-		var cy = edge.a.aq;
-		var cx = edge.a.ap;
+		var swept = edge.a.aI;
+		var a0 = edge.a.S;
+		var r = edge.a.f;
+		var cy = edge.a.aw;
+		var cx = edge.a.av;
 		var oy = py - cy;
 		var ox = px - cx;
 		var dir = (swept < 0) ? (-1) : 1;
@@ -9525,14 +10192,14 @@ var $author$project$Surface$flatExit$ = function (flat, px, py, dx, dy) {
 					}());
 			}),
 		_Utils_Tuple2(0, $elm$core$Maybe$Nothing),
-		flat.bK).b;
+		flat.bS).b;
 };
 var $author$project$Surface$flatExit = F5($author$project$Surface$flatExit$);
 var $author$project$Surface$insideSweep$ = function (feature, theta) {
-	var _v0 = feature.i8;
+	var _v0 = feature.jg;
 	if (!_v0.$) {
-		var to = _v0.a.jr;
-		var from = _v0.a.hR;
+		var to = _v0.a.e;
+		var from = _v0.a.c;
 		return ($author$project$Surface$wrapAngle(theta - from) - (to - from)) <= 1.0e-9;
 	} else {
 		return true;
@@ -9542,24 +10209,24 @@ var $author$project$Surface$insideSweep = F2($author$project$Surface$insideSweep
 var $author$project$Surface$leavePole$ = function (feature, state) {
 	var p = $author$project$Surface$profileAt$(feature, state.a);
 	var atStart = (state.a - $author$project$Surface$tolerance) < 0;
-	var atEnd = (state.a - (feature.aL - $author$project$Surface$tolerance)) > 0;
-	if ((($elm$core$Basics$abs(p.d) - $author$project$Surface$tolerance) < 0) && (atStart || atEnd)) {
-		var outwardSign = atStart ? p.J : (-p.J);
-		var basis = $author$project$Surface$featureBasis$(feature, state.b, state.a);
+	var atEnd = (state.a - (feature.aR - $author$project$Surface$tolerance)) > 0;
+	if ((($elm$core$Basics$abs(p.f) - $author$project$Surface$tolerance) < 0) && (atStart || atEnd)) {
+		var outwardSign = atStart ? p.N : (-p.N);
+		var basis = $author$project$Surface$featureBasis$(feature, state.d, state.a);
 		var direction = $author$project$Surface$combine$(
-			$elm$core$Basics$cos(state.o),
-			basis.ar,
-			$elm$core$Basics$sin(state.o) * feature.aH,
-			basis.as);
+			$elm$core$Basics$cos(state.r),
+			basis.ax,
+			$elm$core$Basics$sin(state.r) * feature.aN,
+			basis.ay);
 		var theta = A2(
 			$elm$core$Basics$atan2,
-			$author$project$Surface$dot$(direction, feature.au),
-			$author$project$Surface$dot$(direction, feature.at)) + ((outwardSign < 0) ? $elm$core$Basics$pi : 0);
+			$author$project$Surface$dot$(direction, feature.aA),
+			$author$project$Surface$dot$(direction, feature.az)) + ((outwardSign < 0) ? $elm$core$Basics$pi : 0);
 		return $author$project$Surface$insideSweep$(feature, theta) ? $elm$core$Result$Ok(
 			{
-				o: atStart ? 0 : $elm$core$Basics$pi,
+				r: atStart ? 0 : $elm$core$Basics$pi,
 				a: state.a,
-				b: $author$project$Surface$clampTheta$(feature, theta)
+				d: $author$project$Surface$clampTheta$(feature, theta)
 			}) : $elm$core$Result$Err(direction);
 	} else {
 		return $elm$core$Result$Ok(state);
@@ -9593,12 +10260,12 @@ var $author$project$Surface$nearestExcluding$ = function (excluded, p, pieces) {
 									var bestDistance = _v3.b;
 									return (_Utils_cmp(distance, bestDistance) < 0) ? $elm$core$Maybe$Just(
 										_Utils_Tuple2(
-											{cB: a, cD: b, ak: index},
+											{cK: a, cM: b, aq: index},
 											distance)) : best;
 								} else {
 									return $elm$core$Maybe$Just(
 										_Utils_Tuple2(
-											{cB: a, cD: b, ak: index},
+											{cK: a, cM: b, aq: index},
 											distance));
 								}
 							}());
@@ -9610,18 +10277,18 @@ var $author$project$Surface$nearestExcluding$ = function (excluded, p, pieces) {
 var $author$project$Surface$nearestExcluding = F3($author$project$Surface$nearestExcluding$);
 var $author$project$Surface$derivative$ = function (feature, state) {
 	var p = $author$project$Surface$profileAt$(feature, state.a);
-	var r = $author$project$Surface$maxFloat$(1.0e-6, p.d);
+	var r = $author$project$Surface$maxFloat$(1.0e-6, p.f);
 	return {
-		o: ((-$elm$core$Basics$sin(state.o)) * p.J) / r,
-		a: $elm$core$Basics$cos(state.o),
-		b: (feature.aH * $elm$core$Basics$sin(state.o)) / r
+		r: ((-$elm$core$Basics$sin(state.r)) * p.N) / r,
+		a: $elm$core$Basics$cos(state.r),
+		d: (feature.aN * $elm$core$Basics$sin(state.r)) / r
 	};
 };
 var $author$project$Surface$derivative = F2($author$project$Surface$derivative$);
 var $author$project$Surface$rk4$ = function (feature, h, state) {
 	var offset = F2(
 		function (k, f) {
-			return {o: state.o + (f * k.o), a: state.a + (f * k.a), b: state.b + (f * k.b)};
+			return {r: state.r + (f * k.r), a: state.a + (f * k.a), d: state.d + (f * k.d)};
 		});
 	var k1 = $author$project$Surface$derivative$(feature, state);
 	var k2 = $author$project$Surface$derivative$(
@@ -9633,7 +10300,7 @@ var $author$project$Surface$rk4$ = function (feature, h, state) {
 	var k4 = $author$project$Surface$derivative$(
 		feature,
 		A2(offset, k3, h));
-	return {o: state.o + ((h / 6) * (((k1.o + (2 * k2.o)) + (2 * k3.o)) + k4.o)), a: state.a + ((h / 6) * (((k1.a + (2 * k2.a)) + (2 * k3.a)) + k4.a)), b: state.b + ((h / 6) * (((k1.b + (2 * k2.b)) + (2 * k3.b)) + k4.b))};
+	return {r: state.r + ((h / 6) * (((k1.r + (2 * k2.r)) + (2 * k3.r)) + k4.r)), a: state.a + ((h / 6) * (((k1.a + (2 * k2.a)) + (2 * k3.a)) + k4.a)), d: state.d + ((h / 6) * (((k1.d + (2 * k2.d)) + (2 * k3.d)) + k4.d))};
 };
 var $author$project$Surface$rk4 = F3($author$project$Surface$rk4$);
 var $author$project$Surface$refineFraction$ = function (feature, edgeIndex, h, state, fraction, iterations) {
@@ -9649,15 +10316,15 @@ var $author$project$Surface$refineFraction$ = function (feature, edgeIndex, h, s
 					case 0:
 						return _Utils_Tuple2(partial.a, rate.a);
 					case 1:
-						return _Utils_Tuple2(partial.a - feature.aL, rate.a);
+						return _Utils_Tuple2(partial.a - feature.aR, rate.a);
 					case 2:
 						return _Utils_Tuple2(
-							partial.b - $author$project$Surface$sweepStart(feature),
-							rate.b);
+							partial.d - $author$project$Surface$sweepStart(feature),
+							rate.d);
 					default:
 						return _Utils_Tuple2(
-							partial.b - $author$project$Surface$sweepRange(feature).b,
-							rate.b);
+							partial.d - $author$project$Surface$sweepRange(feature).b,
+							rate.d);
 				}
 			}();
 			var value = _v0.a;
@@ -9677,26 +10344,26 @@ var $author$project$Surface$refineFraction$ = function (feature, edgeIndex, h, s
 var $author$project$Surface$refineFraction = F6($author$project$Surface$refineFraction$);
 var $author$project$Surface$sampleAt$ = function (piece, pieceIndex, a, b) {
 	return {
-		G: $author$project$Surface$mapChart$(piece, a, b),
-		ak: pieceIndex,
-		eb: $author$project$Surface$piecePoint$(piece, a, b)
+		K: $author$project$Surface$mapChart$(piece, a, b),
+		aq: pieceIndex,
+		gQ: $author$project$Surface$piecePoint$(piece, a, b)
 	};
 };
 var $author$project$Surface$sampleAt = F4($author$project$Surface$sampleAt$);
 var $author$project$Surface$crossTrace$ = function (context, crossings, pieceIndex, edgeIndex, edgePoint, travelled, index, trace) {
 	var _v31 = _Utils_Tuple2(
-		$elm$core$Array$get$(pieceIndex, context.v),
+		$elm$core$Array$get$(pieceIndex, context.A),
 		$elm$core$Maybe$andThen$(
 			$elm$core$Basics$identity,
 			$elm$core$Maybe$andThen$(
 				$elm$core$Array$get(edgeIndex),
-				$elm$core$Array$get$(pieceIndex, context.a2))));
+				$elm$core$Array$get$(pieceIndex, context.a8))));
 	if ((!_v31.a.$) && (!_v31.b.$)) {
 		var piece = _v31.a.a;
 		var _v32 = _v31.b.a;
 		var otherIndex = _v32.a;
 		var otherEdge = _v32.b;
-		var _v33 = $elm$core$Array$get$(otherIndex, context.v);
+		var _v33 = $elm$core$Array$get$(otherIndex, context.A);
 		if (!_v33.$) {
 			var other = _v33.a;
 			return $author$project$Surface$traceStep$(
@@ -9715,8 +10382,8 @@ var $author$project$Surface$crossTrace$ = function (context, crossings, pieceInd
 };
 var $author$project$Surface$crossTrace = F8($author$project$Surface$crossTrace$);
 var $author$project$Surface$traceCylinder$ = function (context, crossings, pieceIndex, piece, feature, radius, state, travelled, index, trace) {
-	var ds = $elm$core$Basics$cos(state.o);
-	var dTheta = (feature.aH * $elm$core$Basics$sin(state.o)) / radius;
+	var ds = $elm$core$Basics$cos(state.r);
+	var dTheta = (feature.aN * $elm$core$Basics$sin(state.r)) / radius;
 	var exits = $elm$core$List$head(
 		A2(
 			$elm$core$List$sortBy,
@@ -9729,26 +10396,26 @@ var $author$project$Surface$traceCylinder$ = function (context, crossings, piece
 							((ds + 1.0e-12) < 0) ? $elm$core$Maybe$Just(
 							_Utils_Tuple2(0, (-state.a) / ds)) : $elm$core$Maybe$Nothing,
 							(ds > 1.0e-12) ? $elm$core$Maybe$Just(
-							_Utils_Tuple2(1, (feature.aL - state.a) / ds)) : $elm$core$Maybe$Nothing
+							_Utils_Tuple2(1, (feature.aR - state.a) / ds)) : $elm$core$Maybe$Nothing
 						]),
 					function () {
-						var _v30 = feature.i8;
+						var _v30 = feature.jg;
 						if (!_v30.$) {
-							var to = _v30.a.jr;
-							var from = _v30.a.hR;
+							var to = _v30.a.e;
+							var from = _v30.a.c;
 							return _List_fromArray(
 								[
 									((dTheta + 1.0e-12) < 0) ? $elm$core$Maybe$Just(
-									_Utils_Tuple2(2, (from - state.b) / dTheta)) : $elm$core$Maybe$Nothing,
+									_Utils_Tuple2(2, (from - state.d) / dTheta)) : $elm$core$Maybe$Nothing,
 									(dTheta > 1.0e-12) ? $elm$core$Maybe$Just(
-									_Utils_Tuple2(3, (to - state.b) / dTheta)) : $elm$core$Maybe$Nothing
+									_Utils_Tuple2(3, (to - state.d) / dTheta)) : $elm$core$Maybe$Nothing
 								]);
 						} else {
 							return _List_Nil;
 						}
 					}()))));
 	var until = $author$project$Surface$minFloat$(
-		context.aT * $author$project$Surface$fanSpacing,
+		context.aZ * $author$project$Surface$fanSpacing,
 		function () {
 			if (!exits.$) {
 				var _v29 = exits.a;
@@ -9763,10 +10430,10 @@ var $author$project$Surface$traceCylinder$ = function (context, crossings, piece
 		travelled,
 		until,
 		function (t) {
-			return $author$project$Surface$sampleAt$(piece, pieceIndex, state.b + (t * dTheta), state.a + (t * ds));
+			return $author$project$Surface$sampleAt$(piece, pieceIndex, state.d + (t * dTheta), state.a + (t * ds));
 		},
 		index,
-		trace.iP);
+		trace.iX);
 	var nextIndex = _v23.a;
 	var samples = _v23.b;
 	if (!exits.$) {
@@ -9777,9 +10444,9 @@ var $author$project$Surface$traceCylinder$ = function (context, crossings, piece
 		var _v26 = function () {
 			switch (edgeIndex) {
 				case 0:
-					return _Utils_Tuple2(state.b + (t * dTheta), 0);
+					return _Utils_Tuple2(state.d + (t * dTheta), 0);
 				case 1:
-					return _Utils_Tuple2(state.b + (t * dTheta), feature.aL);
+					return _Utils_Tuple2(state.d + (t * dTheta), feature.aR);
 				case 2:
 					return _Utils_Tuple2(
 						$author$project$Surface$sweepStart(feature),
@@ -9797,16 +10464,16 @@ var $author$project$Surface$traceCylinder$ = function (context, crossings, piece
 			crossings,
 			pieceIndex,
 			edgeIndex,
-			{cB: a, cD: b, g: state.o, ak: pieceIndex},
+			{cK: a, cM: b, i: state.r, aq: pieceIndex},
 			travelled + t,
 			nextIndex,
 			_Utils_update(
 				trace,
-				{iP: samples}));
+				{iX: samples}));
 	} else {
 		return _Utils_update(
 			trace,
-			{iP: samples});
+			{iX: samples});
 	}
 };
 var $author$project$Surface$traceCylinder = function (context) {
@@ -9833,7 +10500,7 @@ var $author$project$Surface$traceCylinder = function (context) {
 var $author$project$Surface$traceFeature$ = function (context, crossings, pieceIndex, piece, feature, state_, travelled, index, trace) {
 	traceFeature:
 	while (true) {
-		if ((index - context.aT) > 0) {
+		if ((index - context.aZ) > 0) {
 			return trace;
 		} else {
 			var _v16 = $author$project$Surface$leavePole$(feature, state_);
@@ -9842,24 +10509,24 @@ var $author$project$Surface$traceFeature$ = function (context, crossings, pieceI
 				var _v17 = $author$project$Surface$nearestExcluding$(
 					pieceIndex,
 					$author$project$Surface$add$(
-						$author$project$Surface$featurePoint$(feature, state_.b, state_.a),
+						$author$project$Surface$featurePoint$(feature, state_.d, state_.a),
 						$author$project$Surface$scale$(1.0e-7, direction)),
-					context.v);
+					context.A);
 				if (!_v17.$) {
 					var next = _v17.a;
-					var _v18 = $elm$core$Array$get$(next.ak, context.v);
+					var _v18 = $elm$core$Array$get$(next.aq, context.A);
 					if (!_v18.$) {
 						var nextPiece = _v18.a;
 						return $author$project$Surface$traceStep$(
 							context,
 							crossings + 1,
 							{
-								cB: next.cB,
-								cD: next.cD,
-								g: $author$project$Surface$vecToHeading$(
-									$author$project$Surface$tangentFrame$(nextPiece, next.cB, next.cD),
+								cK: next.cK,
+								cM: next.cM,
+								i: $author$project$Surface$vecToHeading$(
+									$author$project$Surface$tangentFrame$(nextPiece, next.cK, next.cM),
 									direction),
-								ak: next.ak
+								aq: next.aq
 							},
 							travelled,
 							index,
@@ -9879,10 +10546,10 @@ var $author$project$Surface$traceFeature$ = function (context, crossings, pieceI
 						$temp$trace = _Utils_update(
 						trace,
 						{
-							iP: A2(
+							iX: A2(
 								$elm$core$List$cons,
-								$author$project$Surface$sampleAt$(piece, pieceIndex, state.b, state.a),
-								trace.iP)
+								$author$project$Surface$sampleAt$(piece, pieceIndex, state.d, state.a),
+								trace.iX)
 						});
 					state_ = $temp$state_;
 					index = $temp$index;
@@ -9893,7 +10560,7 @@ var $author$project$Surface$traceFeature$ = function (context, crossings, pieceI
 						target - travelled,
 						$author$project$Surface$maxFloat$(
 							1.0e-4,
-							0.25 * $author$project$Surface$profileAt$(feature, state.a).d));
+							0.25 * $author$project$Surface$profileAt$(feature, state.a).f));
 					var next = $author$project$Surface$rk4$(feature, h, state);
 					var _v19 = $author$project$Surface$firstViolation$(feature, state, next);
 					if (!_v19.$) {
@@ -9911,23 +10578,23 @@ var $author$project$Surface$traceFeature$ = function (context, crossings, pieceI
 								case 1:
 									return _Utils_update(
 										partial,
-										{a: feature.aL});
+										{a: feature.aR});
 								case 2:
 									return _Utils_update(
 										partial,
 										{
-											b: $author$project$Surface$sweepStart(feature)
+											d: $author$project$Surface$sweepStart(feature)
 										});
 								default:
 									return _Utils_update(
 										partial,
 										{
-											b: $author$project$Surface$sweepRange(feature).b
+											d: $author$project$Surface$sweepRange(feature).b
 										});
 							}
 						}();
 						if ((edgeIndex <= 1) && (($elm$core$Basics$abs(
-							$author$project$Surface$profileAt$(feature, clamped.a).d) - $author$project$Surface$tolerance) < 0)) {
+							$author$project$Surface$profileAt$(feature, clamped.a).f) - $author$project$Surface$tolerance) < 0)) {
 							var $temp$state_ = clamped,
 								$temp$travelled = travelled + (h * fraction);
 							state_ = $temp$state_;
@@ -9939,21 +10606,21 @@ var $author$project$Surface$traceFeature$ = function (context, crossings, pieceI
 								crossings,
 								pieceIndex,
 								edgeIndex,
-								{cB: clamped.b, cD: clamped.a, g: clamped.o, ak: pieceIndex},
+								{cK: clamped.d, cM: clamped.a, i: clamped.r, aq: pieceIndex},
 								travelled + (h * fraction),
 								index,
 								trace);
 						}
 					} else {
 						var $temp$state_ = function () {
-							var _v22 = feature.i8;
+							var _v22 = feature.jg;
 							if (!_v22.$) {
 								return next;
 							} else {
 								return _Utils_update(
 									next,
 									{
-										b: $author$project$Surface$wrapAngle(next.b)
+										d: $author$project$Surface$wrapAngle(next.d)
 									});
 							}
 						}(),
@@ -9969,16 +10636,16 @@ var $author$project$Surface$traceFeature$ = function (context, crossings, pieceI
 };
 var $author$project$Surface$traceFeature = F9($author$project$Surface$traceFeature$);
 var $author$project$Surface$traceSphere$ = function (context, crossings, pieceIndex, piece, feature, center, radius, state, travelled, index, trace) {
-	var offset = $author$project$Surface$sub$(center, feature.u);
-	var basis = $author$project$Surface$featureBasis$(feature, state.b, state.a);
+	var offset = $author$project$Surface$sub$(center, feature.z);
+	var basis = $author$project$Surface$featureBasis$(feature, state.d, state.a);
 	var e1 = $author$project$Surface$scale$(
 		1 / radius,
-		$author$project$Surface$sub$(basis.H, center));
+		$author$project$Surface$sub$(basis.L, center));
 	var e2 = $author$project$Surface$combine$(
-		$elm$core$Basics$cos(state.o),
-		basis.ar,
-		$elm$core$Basics$sin(state.o) * feature.aH,
-		basis.as);
+		$elm$core$Basics$cos(state.r),
+		basis.ax,
+		$elm$core$Basics$sin(state.r) * feature.aN,
+		basis.ay);
 	var crossing = F2(
 		function (n, k) {
 			var k_ = k - $author$project$Surface$dot$(offset, n);
@@ -10005,12 +10672,12 @@ var $author$project$Surface$traceSphere$ = function (context, crossings, pieceIn
 		function (edgeIndex, s) {
 			var end = $author$project$Surface$profileAt$(feature, s);
 			return (_Utils_cmp(
-				$elm$core$Basics$abs(end.d),
+				$elm$core$Basics$abs(end.f),
 				$author$project$Surface$tolerance) < 0) ? $elm$core$Maybe$Nothing : $elm$core$Maybe$map$(
 				function (angle) {
 					return _Utils_Tuple2(edgeIndex, angle);
 				},
-				A2(crossing, feature.ah, end.bt));
+				A2(crossing, feature.an, end.bz));
 		});
 	var sweepEdge = F2(
 		function (edgeIndex, theta) {
@@ -10022,9 +10689,9 @@ var $author$project$Surface$traceSphere$ = function (context, crossings, pieceIn
 					crossing,
 					$author$project$Surface$combine$(
 						-$elm$core$Basics$sin(theta),
-						feature.at,
+						feature.az,
 						$elm$core$Basics$cos(theta),
-						feature.au),
+						feature.aA),
 					0));
 		});
 	var exit = $elm$core$List$head(
@@ -10037,13 +10704,13 @@ var $author$project$Surface$traceSphere$ = function (context, crossings, pieceIn
 					_List_fromArray(
 						[
 							A2(profileEdge, 0, 0),
-							A2(profileEdge, 1, feature.aL)
+							A2(profileEdge, 1, feature.aR)
 						]),
 					function () {
-						var _v15 = feature.i8;
+						var _v15 = feature.jg;
 						if (!_v15.$) {
-							var to = _v15.a.jr;
-							var from = _v15.a.hR;
+							var to = _v15.a.e;
+							var from = _v15.a.c;
 							return _List_fromArray(
 								[
 									A2(sweepEdge, 2, from),
@@ -10054,7 +10721,7 @@ var $author$project$Surface$traceSphere$ = function (context, crossings, pieceIn
 						}
 					}()))));
 	var until = $author$project$Surface$minFloat$(
-		context.aT * $author$project$Surface$fanSpacing,
+		context.aZ * $author$project$Surface$fanSpacing,
 		function () {
 			if (!exit.$) {
 				var _v14 = exit.a;
@@ -10081,13 +10748,13 @@ var $author$project$Surface$traceSphere$ = function (context, crossings, pieceIn
 			var position = at(t / radius);
 			var local = $author$project$Surface$localCoordinatesUnclamped$(piece, position);
 			return {
-				G: $author$project$Surface$mapChart$(piece, local.cB, local.cD),
-				ak: pieceIndex,
-				eb: position
+				K: $author$project$Surface$mapChart$(piece, local.cK, local.cM),
+				aq: pieceIndex,
+				gQ: position
 			};
 		},
 		index,
-		trace.iP);
+		trace.iX);
 	var nextIndex = _v8.a;
 	var samples = _v8.b;
 	if (!exit.$) {
@@ -10101,20 +10768,20 @@ var $author$project$Surface$traceSphere$ = function (context, crossings, pieceIn
 			switch (edgeIndex) {
 				case 0:
 					return _Utils_Tuple2(
-						$author$project$Surface$clampTheta$(feature, local.cB),
+						$author$project$Surface$clampTheta$(feature, local.cK),
 						0);
 				case 1:
 					return _Utils_Tuple2(
-						$author$project$Surface$clampTheta$(feature, local.cB),
-						feature.aL);
+						$author$project$Surface$clampTheta$(feature, local.cK),
+						feature.aR);
 				case 2:
 					return _Utils_Tuple2(
 						$author$project$Surface$sweepStart(feature),
-						$elm$core$Basics$clamp$(0, feature.aL, local.cD));
+						$elm$core$Basics$clamp$(0, feature.aR, local.cM));
 				default:
 					return _Utils_Tuple2(
 						$author$project$Surface$sweepRange(feature).b,
-						$elm$core$Basics$clamp$(0, feature.aL, local.cD));
+						$elm$core$Basics$clamp$(0, feature.aR, local.cM));
 			}
 		}();
 		var a = _v11.a;
@@ -10125,26 +10792,26 @@ var $author$project$Surface$traceSphere$ = function (context, crossings, pieceIn
 			pieceIndex,
 			edgeIndex,
 			{
-				cB: a,
-				cD: b,
-				g: $author$project$Surface$vecToHeading$(
+				cK: a,
+				cM: b,
+				i: $author$project$Surface$vecToHeading$(
 					$author$project$Surface$tangentFrame$(piece, a, b),
 					$author$project$Surface$combine$(
 						-$elm$core$Basics$sin(angle),
 						e1,
 						$elm$core$Basics$cos(angle),
 						e2)),
-				ak: pieceIndex
+				aq: pieceIndex
 			},
 			travelled + (radius * angle),
 			nextIndex,
 			_Utils_update(
 				trace,
-				{iP: samples}));
+				{iX: samples}));
 	} else {
 		return _Utils_update(
 			trace,
-			{iP: samples});
+			{iX: samples});
 	}
 };
 var $author$project$Surface$traceSphere = function (context) {
@@ -10171,24 +10838,24 @@ var $author$project$Surface$traceSphere = function (context) {
 	};
 };
 var $author$project$Surface$traceStep$ = function (context, crossings, point, travelled, index, trace) {
-	if (((index - context.aT) > 0) || ((crossings - $author$project$Surface$maxSeamCrossings) > 0)) {
+	if (((index - context.aZ) > 0) || ((crossings - $author$project$Surface$maxSeamCrossings) > 0)) {
 		return trace;
 	} else {
-		var _v0 = $elm$core$Array$get$(point.ak, context.v);
+		var _v0 = $elm$core$Array$get$(point.aq, context.A);
 		if (!_v0.$) {
 			var piece = _v0.a;
-			var newTrace = (((travelled - trace.aV) < 0) && (!_Utils_eq(
-				$elm$core$Array$get$(point.ak, context.dg),
+			var newTrace = (((travelled - trace.a$) < 0) && (!_Utils_eq(
+				$elm$core$Array$get$(point.aq, context.dn),
 				$elm$core$Maybe$Just(true)))) ? _Utils_update(
 				trace,
-				{aV: travelled}) : trace;
+				{a$: travelled}) : trace;
 			if (!piece.$) {
 				var flat = piece.a;
-				var dy = $elm$core$Basics$sin(point.g);
-				var dx = $elm$core$Basics$cos(point.g);
-				var exit = $author$project$Surface$flatExit$(flat, point.cB, point.cD, dx, dy);
+				var dy = $elm$core$Basics$sin(point.i);
+				var dx = $elm$core$Basics$cos(point.i);
+				var exit = $author$project$Surface$flatExit$(flat, point.cK, point.cM, dx, dy);
 				var until = $author$project$Surface$minFloat$(
-					context.aT * $author$project$Surface$fanSpacing,
+					context.aZ * $author$project$Surface$fanSpacing,
 					function () {
 						if (!exit.$) {
 							var _v6 = exit.a;
@@ -10207,7 +10874,7 @@ var $author$project$Surface$traceStep$ = function (context, crossings, point, tr
 								var $temp$i = i + 1,
 									$temp$samples = A2(
 									$elm$core$List$cons,
-									$author$project$Surface$sampleAt$(piece, point.ak, point.cB + (t * dx), point.cD + (t * dy)),
+									$author$project$Surface$sampleAt$(piece, point.aq, point.cK + (t * dx), point.cM + (t * dy)),
 									samples);
 								i = $temp$i;
 								samples = $temp$samples;
@@ -10217,7 +10884,7 @@ var $author$project$Surface$traceStep$ = function (context, crossings, point, tr
 							}
 						}
 					});
-				var _v2 = A2(emit, index, newTrace.iP);
+				var _v2 = A2(emit, index, newTrace.iX);
 				var nextIndex = _v2.a;
 				var samples_ = _v2.b;
 				if (!exit.$) {
@@ -10227,35 +10894,35 @@ var $author$project$Surface$traceStep$ = function (context, crossings, point, tr
 					return $author$project$Surface$crossTrace$(
 						context,
 						crossings,
-						point.ak,
+						point.aq,
 						edgeIndex,
 						_Utils_update(
 							point,
-							{cB: point.cB + (t * dx), cD: point.cD + (t * dy)}),
+							{cK: point.cK + (t * dx), cM: point.cM + (t * dy)}),
 						travelled + t,
 						nextIndex,
 						_Utils_update(
 							newTrace,
-							{iP: samples_}));
+							{iX: samples_}));
 				} else {
 					return _Utils_update(
 						newTrace,
-						{iP: samples_});
+						{iX: samples_});
 				}
 			} else {
 				var feature = piece.a;
-				var state = {o: point.g, a: point.cD, b: point.cB};
+				var state = {r: point.i, a: point.cM, d: point.cK};
 				var _v7 = $author$project$Surface$featureShape(feature);
 				switch (_v7.$) {
 					case 0:
 						var radius = _v7.a;
-						return $author$project$Surface$traceCylinder$(context, crossings, point.ak, piece, feature, radius, state, travelled, index, newTrace);
+						return $author$project$Surface$traceCylinder$(context, crossings, point.aq, piece, feature, radius, state, travelled, index, newTrace);
 					case 1:
 						var center = _v7.a;
 						var radius = _v7.b;
-						return (($author$project$Surface$profileAt$(feature, state.a).d - $author$project$Surface$tolerance) < 0) ? $author$project$Surface$traceFeature$(context, crossings, point.ak, piece, feature, state, travelled, index, newTrace) : $author$project$Surface$traceSphere$(context, crossings, point.ak, piece, feature, center, radius, state, travelled, index, newTrace);
+						return (($author$project$Surface$profileAt$(feature, state.a).f - $author$project$Surface$tolerance) < 0) ? $author$project$Surface$traceFeature$(context, crossings, point.aq, piece, feature, state, travelled, index, newTrace) : $author$project$Surface$traceSphere$(context, crossings, point.aq, piece, feature, center, radius, state, travelled, index, newTrace);
 					default:
-						return $author$project$Surface$traceFeature$(context, crossings, point.ak, piece, feature, state, travelled, index, newTrace);
+						return $author$project$Surface$traceFeature$(context, crossings, point.aq, piece, feature, state, travelled, index, newTrace);
 				}
 			}
 		} else {
@@ -10271,22 +10938,22 @@ var $author$project$Surface$traceFan$ = function (context, walker, windows) {
 			0,
 			_Utils_update(
 				walker,
-				{g: (walker.g + angle) - ($elm$core$Basics$pi / 2)}),
+				{i: (walker.i + angle) - ($elm$core$Basics$pi / 2)}),
 			0,
 			0,
-			{aV: 1 / 0, iP: _List_Nil});
+			{a$: 1 / 0, iX: _List_Nil});
 		return {
-			fK: angle,
-			aV: trace.aV,
-			iP: $elm$core$List$reverse(trace.iP)
+			fS: angle,
+			a$: trace.a$,
+			iX: $elm$core$List$reverse(trace.iX)
 		};
 	};
 	var refine = F3(
 		function (depth, left, right) {
 			if ((depth > 0) && (_Utils_cmp(
-				$author$project$Surface$spread$(left.iP, right.iP),
+				$author$project$Surface$spread$(left.iX, right.iX),
 				$author$project$Surface$fanGap) > 0)) {
-				var middle = traceAt((left.fK + right.fK) / 2);
+				var middle = traceAt((left.fS + right.fS) / 2);
 				return _Utils_ap(
 					A3(refine, depth - 1, left, middle),
 					A3(refine, depth - 1, middle, right));
@@ -10330,9 +10997,9 @@ var $author$project$Surface$traceFan$ = function (context, walker, windows) {
 var $author$project$Surface$traceFan = F3($author$project$Surface$traceFan$);
 var $author$project$Surface$mapAround$ = function (radius, _v0, _v1) {
 	var walker = _v0;
-	var seams = _v1.a2;
-	var pieces = _v1.v;
-	var _v2 = $elm$core$Array$get$(walker.ak, pieces);
+	var seams = _v1.a8;
+	var pieces = _v1.A;
+	var _v2 = $elm$core$Array$get$(walker.aq, pieces);
 	if (!_v2.$) {
 		var piece = _v2.a;
 		var _v3 = function () {
@@ -10342,32 +11009,32 @@ var $author$project$Surface$mapAround$ = function (radius, _v0, _v1) {
 						return 1;
 					} else {
 						var feature = piece.a;
-						return $author$project$Surface$profileAt$(feature, walker.cD).d;
+						return $author$project$Surface$profileAt$(feature, walker.cM).f;
 					}
 				}();
 				var scale_ = $author$project$Surface$cmul$(
-					{Z: rho, ad: 0},
+					{ad: rho, aj: 0},
 					{
-						Z: -$elm$core$Basics$sin(walker.g),
-						ad: $elm$core$Basics$cos(walker.g)
+						ad: -$elm$core$Basics$sin(walker.i),
+						aj: $elm$core$Basics$cos(walker.i)
 					});
-				var chart = $author$project$Surface$localChart$(piece, walker.cB, walker.cD);
+				var chart = $author$project$Surface$localChart$(piece, walker.cK, walker.cM);
 				var start = {
-					bG: 0,
-					hW: $author$project$Surface$holeOnMap$(
+					bO: 0,
+					h3: $author$project$Surface$holeOnMap$(
 						piece,
 						{
-							gw: $author$project$Surface$cscale$(
+							gG: $author$project$Surface$cscale$(
 								-1,
 								$author$project$Surface$cmul$(scale_, chart)),
-							aA: scale_
+							aG: scale_
 						}),
-					gw: $author$project$Surface$cscale$(
+					gG: $author$project$Surface$cscale$(
 						-1,
 						$author$project$Surface$cmul$(scale_, chart)),
-					ak: walker.ak,
-					aA: scale_,
-					fE: $author$project$Surface$fullWindow
+					aq: walker.aq,
+					aG: scale_,
+					fM: $author$project$Surface$fullWindow
 				};
 				return $author$project$Surface$flattenHelper$(
 					radius,
@@ -10376,10 +11043,10 @@ var $author$project$Surface$mapAround$ = function (radius, _v0, _v1) {
 					_List_fromArray(
 						[
 							{
-							eW: -1,
-							D: start,
-							fk: _List_fromArray(
-								[walker.ak])
+							e1: -1,
+							H: start,
+							fr: _List_fromArray(
+								[walker.aq])
 						}
 						]),
 					_List_fromArray(
@@ -10395,19 +11062,19 @@ var $author$project$Surface$mapAround$ = function (radius, _v0, _v1) {
 		var placements = _v3.a;
 		var curved = _v3.b;
 		return {
-			hM: $author$project$Surface$traceFan$(
+			hW: $author$project$Surface$traceFan$(
 				{
-					aT: $elm$core$Basics$ceiling(radius / $author$project$Surface$fanSpacing),
-					v: pieces,
-					dg: $elm$core$Array$map$($author$project$Surface$isRigid, pieces),
-					a2: seams
+					aZ: $elm$core$Basics$ceiling(radius / $author$project$Surface$fanSpacing),
+					A: pieces,
+					dn: $elm$core$Array$map$($author$project$Surface$isRigid, pieces),
+					a8: seams
 				},
 				walker,
 				curved),
-			iE: placements
+			iN: placements
 		};
 	} else {
-		return {hM: _List_Nil, iE: _List_Nil};
+		return {hW: _List_Nil, iN: _List_Nil};
 	}
 };
 var $author$project$Surface$mapAround = F3($author$project$Surface$mapAround$);
@@ -10417,25 +11084,25 @@ var $author$project$Minimap$angleBetween$ = function (a, b) {
 };
 var $author$project$Minimap$angleBetween = F2($author$project$Minimap$angleBetween$);
 var $author$project$Minimap$placementImage$ = function (radius, point, placement) {
-	if (!_Utils_eq(placement.ak, point.ak)) {
+	if (!_Utils_eq(placement.aq, point.aq)) {
 		return $elm$core$Maybe$Nothing;
 	} else {
-		var w = $author$project$Surface$placeOnMap$(placement, point.G);
-		var lengthSquared = (w.ad * w.ad) + (w.Z * w.Z);
-		var inWindow = (_Utils_cmp(placement.fE.fY, $elm$core$Basics$pi) > -1) || (_Utils_cmp(
+		var w = $author$project$Surface$placeOnMap$(placement, point.K);
+		var lengthSquared = (w.aj * w.aj) + (w.ad * w.ad);
+		var inWindow = (_Utils_cmp(placement.fM.f5, $elm$core$Basics$pi) > -1) || (_Utils_cmp(
 			$elm$core$Basics$abs(
 				$author$project$Minimap$angleBetween$(
-					A2($elm$core$Basics$atan2, w.Z, w.ad),
-					placement.fE.cF)),
-			placement.fE.fY + 0.002) < 1);
+					A2($elm$core$Basics$atan2, w.ad, w.aj),
+					placement.fM.b)),
+			placement.fM.f5 + 0.002) < 1);
 		var behindHole = function () {
-			var _v0 = placement.hW;
+			var _v0 = placement.h3;
 			if (!_v0.$) {
 				var hole = _v0.a;
-				var t = (lengthSquared > 0) ? $elm$core$Basics$clamp$(0, 1, ((hole.cF.ad * w.ad) + (hole.cF.Z * w.Z)) / lengthSquared) : 0;
+				var t = (lengthSquared > 0) ? $elm$core$Basics$clamp$(0, 1, ((hole.b.aj * w.aj) + (hole.b.ad * w.ad)) / lengthSquared) : 0;
 				return _Utils_cmp(
-					A2($elm$core$Basics$pow, (t * w.ad) - hole.cF.ad, 2) + A2($elm$core$Basics$pow, (t * w.Z) - hole.cF.Z, 2),
-					hole.gH * hole.gH) < 0;
+					A2($elm$core$Basics$pow, (t * w.aj) - hole.b.aj, 2) + A2($elm$core$Basics$pow, (t * w.ad) - hole.b.ad, 2),
+					hole.p * hole.p) < 0;
 			} else {
 				return false;
 			}
@@ -10443,7 +11110,7 @@ var $author$project$Minimap$placementImage$ = function (radius, point, placement
 		return (inWindow && ((!behindHole) && (_Utils_cmp(
 			lengthSquared,
 			A2($elm$core$Basics$pow, 1.2 * radius, 2)) < 0))) ? $elm$core$Maybe$Just(
-			{k: w.ad, l: w.Z}) : $elm$core$Maybe$Nothing;
+			{m: w.aj, n: w.ad}) : $elm$core$Maybe$Nothing;
 	}
 };
 var $author$project$Minimap$placementImage = F3($author$project$Minimap$placementImage$);
@@ -10456,16 +11123,16 @@ var $author$project$Surface$withFrame$ = function (func, _v0, surface) {
 	return $elm$core$Maybe$map$(
 		function (piece) {
 			return func(
-				$author$project$Surface$tangentFrame$(piece, point.cB, point.cD));
+				$author$project$Surface$tangentFrame$(piece, point.cK, point.cM));
 		},
-		$author$project$Surface$getPiece$(point.ak, surface));
+		$author$project$Surface$getPiece$(point.aq, surface));
 };
 var $author$project$Surface$withFrame = F3($author$project$Surface$withFrame$);
 var $author$project$Surface$worldPosition = $author$project$Surface$withFrame(
 	A2(
 		$elm$core$Basics$composeR,
 		function ($) {
-			return $.H;
+			return $.L;
 		},
 		$author$project$Surface$toPoint));
 var $author$project$Minimap$imagesAround$ = function (surface, shapes, surfacePoint) {
@@ -10477,18 +11144,18 @@ var $author$project$Minimap$imagesAround$ = function (surface, shapes, surfacePo
 		var player = $ianmackenzie$elm_geometry$Point3d$toMeters(position);
 		var throughPlacements = $elm$core$Array$map$(
 			function (point) {
-				return (($author$project$Minimap$distance$(point.eb, player) - (radius + 0.05)) <= 0) ? $elm$core$List$foldl$(
+				return (($author$project$Minimap$distance$(point.gQ, player) - (radius + 0.05)) <= 0) ? $elm$core$List$foldl$(
 					$author$project$Minimap$addImage,
 					_List_Nil,
 					$elm$core$List$filterMap$(
 						A2($author$project$Minimap$placementImage, radius, point),
-						layout.iE)) : _List_Nil;
+						layout.iN)) : _List_Nil;
 			},
-			shapes.fg);
+			shapes.fn);
 		return $elm$core$List$foldl$(
 			$author$project$Minimap$addFanImages(shapes),
 			throughPlacements,
-			$author$project$Minimap$fanTriangles(layout.hM));
+			$author$project$Minimap$fanTriangles(layout.hW));
 	} else {
 		return $elm$core$Array$empty;
 	}
@@ -10552,17 +11219,17 @@ var $author$project$Minimap$pavingTriangles$ = function (_v0, _v1, _v2) {
 		function (a) {
 			var _v3 = _Utils_Tuple2(
 				$author$project$Minimap$closestMatch$(
-					$author$project$Minimap$distance$(p.eb, q.eb),
+					$author$project$Minimap$distance$(p.gQ, q.gQ),
 					a,
 					qImages),
 				$author$project$Minimap$closestMatch$(
-					$author$project$Minimap$distance$(p.eb, r.eb),
+					$author$project$Minimap$distance$(p.gQ, r.gQ),
 					a,
 					rImages));
 			if ((!_v3.a.$) && (!_v3.b.$)) {
 				var b = _v3.a.a;
 				var c = _v3.b.a;
-				return (($author$project$Minimap$mapDistance$(b, c) - (($author$project$Minimap$maxStretch * $author$project$Minimap$distance$(q.eb, r.eb)) + $author$project$Minimap$sameImage)) <= 0) ? $elm$core$Maybe$Just(
+				return (($author$project$Minimap$mapDistance$(b, c) - (($author$project$Minimap$maxStretch * $author$project$Minimap$distance$(q.gQ, r.gQ)) + $author$project$Minimap$sameImage)) <= 0) ? $elm$core$Maybe$Just(
 					_Utils_Tuple3(a, b, c)) : $elm$core$Maybe$Nothing;
 			} else {
 				return $elm$core$Maybe$Nothing;
@@ -10579,11 +11246,11 @@ var $author$project$Minimap$quad$ = function (width, a, b) {
 	var length = $author$project$Minimap$maxFloat$(
 		1.0e-9,
 		$author$project$Minimap$mapDistance$(a, b));
-	var ux = (((b.k - a.k) / length) * width) / 2;
-	var uy = (((b.l - a.l) / length) * width) / 2;
+	var ux = (((b.m - a.m) / length) * width) / 2;
+	var uy = (((b.n - a.n) / length) * width) / 2;
 	var corner = F3(
 		function (s, t, p) {
-			return {k: (p.k + (s * ux)) - (t * uy), l: (p.l + (s * uy)) + (t * ux)};
+			return {m: (p.m + (s * ux)) - (t * uy), n: (p.n + (s * uy)) + (t * ux)};
 		});
 	var b2 = A3(corner, 1, -1, b);
 	var b1 = A3(corner, 1, 1, b);
@@ -10609,7 +11276,7 @@ var $author$project$Minimap$wallQuads$ = function (width, points) {
 			$elm$core$List$concatMap$(
 				function (a) {
 					var _v3 = $author$project$Minimap$closestMatch$(
-						$author$project$Minimap$distance$(p.eb, q.eb),
+						$author$project$Minimap$distance$(p.gQ, q.gQ),
 						a,
 						qImages);
 					if (!_v3.$) {
@@ -10634,11 +11301,11 @@ var $author$project$Minimap$drawingAround$ = function (surface, shapes, surfaceP
 	var withImages = function (index) {
 		return $elm$core$Maybe$map2$(
 			$elm$core$Tuple$pair,
-			$elm$core$Array$get$(index, shapes.fg),
+			$elm$core$Array$get$(index, shapes.fn),
 			$elm$core$Array$get$(index, images));
 	};
 	return {
-		bg: $elm$core$List$concatMap$(
+		bm: $elm$core$List$concatMap$(
 			function (_v0) {
 				var i = _v0.a;
 				var j = _v0.b;
@@ -10651,17 +11318,110 @@ var $author$project$Minimap$drawingAround$ = function (surface, shapes, surfaceP
 						withImages(j),
 						withImages(k)));
 			},
-			shapes.iD),
-		jx: $elm$core$List$concatMap$(
+			shapes.iM),
+		jE: $elm$core$List$concatMap$(
 			function (wall) {
 				return $author$project$Minimap$wallQuads$(
 					(($author$project$Minimap$wallWidth / sizeInPixels) * 2) * radius,
 					$elm$core$List$filterMap$(withImages, wall));
 			},
-			shapes.jx)
+			shapes.jE)
 	};
 };
 var $author$project$Minimap$drawingAround = F3($author$project$Minimap$drawingAround$);
+var $author$project$GridLevel$fadd$ = function (a, b) {
+	return {m: a.m + b.m, n: a.n + b.n, o: a.o + b.o};
+};
+var $author$project$GridLevel$fadd = F2($author$project$GridLevel$fadd$);
+var $author$project$GridLevel$fscale$ = function (k, a) {
+	return {m: k * a.m, n: k * a.n, o: k * a.o};
+};
+var $author$project$GridLevel$fscale = F2($author$project$GridLevel$fscale$);
+var $author$project$GridLevel$toVec = function (v) {
+	return {m: v.m, n: v.n, o: v.o};
+};
+var $author$project$GridLevel$arcPoint$ = function (arc, angle) {
+	return $author$project$GridLevel$fadd$(
+		$author$project$GridLevel$toVec(arc.b),
+		$author$project$GridLevel$fscale$(
+			arc.p,
+			$author$project$GridLevel$fadd$(
+				$author$project$GridLevel$fscale$(
+					$elm$core$Basics$cos(angle),
+					$author$project$GridLevel$toVec(arc.c)),
+				$author$project$GridLevel$fscale$(
+					$elm$core$Basics$sin(angle),
+					$author$project$GridLevel$toVec(arc.e)))));
+};
+var $author$project$GridLevel$arcPoint = F2($author$project$GridLevel$arcPoint$);
+var $author$project$GridLevel$cellSize = 0.2;
+var $author$project$GridLevel$fdot$ = function (a, b) {
+	return ((a.m * b.m) + (a.n * b.n)) + (a.o * b.o);
+};
+var $author$project$GridLevel$fdot = F2($author$project$GridLevel$fdot$);
+var $author$project$GridLevel$fsub$ = function (a, b) {
+	return {m: a.m - b.m, n: a.n - b.n, o: a.o - b.o};
+};
+var $author$project$GridLevel$fsub = F2($author$project$GridLevel$fsub$);
+var $author$project$GridLevel$edgeSamples = function (edge) {
+	var steps = function () {
+		var _v3 = edge.t;
+		if (!_v3.$) {
+			return 1;
+		} else {
+			var arc = _v3.a;
+			return (4 * arc.p) + 4;
+		}
+	}();
+	var across = F3(
+		function (value, point, center) {
+			if (!value.$) {
+				var v = value.a;
+				return $author$project$GridLevel$toVec(v);
+			} else {
+				var s = value.a;
+				var d = $author$project$GridLevel$fsub$(point, center);
+				var l = $elm$core$Basics$sqrt(
+					$author$project$GridLevel$fdot$(d, d));
+				return (l < 1.0e-9) ? {m: 0, n: 0, o: 0} : $author$project$GridLevel$fscale$(s / l, d);
+			}
+		});
+	return $elm$core$List$map$(
+		function (i) {
+			var t = i / steps;
+			var _v0 = function () {
+				var _v1 = edge.t;
+				if (!_v1.$) {
+					var a = _v1.a;
+					var b = _v1.b;
+					return _Utils_Tuple2(
+						$author$project$GridLevel$fadd$(
+							$author$project$GridLevel$toVec(a),
+							$author$project$GridLevel$fscale$(
+								t,
+								$author$project$GridLevel$fsub$(
+									$author$project$GridLevel$toVec(b),
+									$author$project$GridLevel$toVec(a)))),
+						$author$project$GridLevel$toVec(a));
+				} else {
+					var arc = _v1.a;
+					return _Utils_Tuple2(
+						$author$project$GridLevel$arcPoint$(arc, (t * $elm$core$Basics$pi) / 2),
+						$author$project$GridLevel$toVec(arc.b));
+				}
+			}();
+			var point = _v0.a;
+			var center = _v0.b;
+			return {
+				ig: $author$project$GridLevel$fscale$(
+					-1,
+					A3(across, edge.ai, point, center)),
+				k: A3(across, edge.k, point, center),
+				gQ: $author$project$GridLevel$fscale$($author$project$GridLevel$cellSize, point)
+			};
+		},
+		$elm$core$List$range$(0, steps));
+};
 var $elm$json$Json$Encode$int = _Json_wrap;
 var $elm$json$Json$Encode$list$ = function (func, entries) {
 	return _Json_wrap(
@@ -10699,22 +11459,22 @@ var $author$project$Minimap$encodeDrawing = function (drawing) {
 						var c = _v0.c;
 						return A2(
 							$elm$core$List$cons,
-							millimeters(a.k),
+							millimeters(a.m),
 							A2(
 								$elm$core$List$cons,
-								millimeters(a.l),
+								millimeters(a.n),
 								A2(
 									$elm$core$List$cons,
-									millimeters(b.k),
+									millimeters(b.m),
 									A2(
 										$elm$core$List$cons,
-										millimeters(b.l),
+										millimeters(b.n),
 										A2(
 											$elm$core$List$cons,
-											millimeters(c.k),
+											millimeters(c.m),
 											A2(
 												$elm$core$List$cons,
-												millimeters(c.l),
+												millimeters(c.n),
 												acc))))));
 					}),
 				_List_Nil,
@@ -10725,10 +11485,10 @@ var $author$project$Minimap$encodeDrawing = function (drawing) {
 			[
 				_Utils_Tuple2(
 				'paving',
-				encodeTriangles(drawing.bg)),
+				encodeTriangles(drawing.bm)),
 				_Utils_Tuple2(
 				'walls',
-				encodeTriangles(drawing.jx))
+				encodeTriangles(drawing.jE))
 			]));
 };
 var $elm$json$Json$Encode$float = _Json_wrap;
@@ -10739,29 +11499,25 @@ var $author$project$Surface$encodeSurfacePoint = function (_v0) {
 			[
 				_Utils_Tuple2(
 				'piece',
-				$elm$json$Json$Encode$int(point.ak)),
+				$elm$json$Json$Encode$int(point.aq)),
 				_Utils_Tuple2(
 				'a',
-				$elm$json$Json$Encode$float(point.cB)),
+				$elm$json$Json$Encode$float(point.cK)),
 				_Utils_Tuple2(
 				'b',
-				$elm$json$Json$Encode$float(point.cD)),
+				$elm$json$Json$Encode$float(point.cM)),
 				_Utils_Tuple2(
 				'heading',
-				$elm$json$Json$Encode$float(point.g))
+				$elm$json$Json$Encode$float(point.i))
 			]));
 };
-var $elm$json$Json$Decode$field = _Json_decodeField;
 var $elm$json$Json$Decode$float = _Json_decodeFloat;
-var $elm$json$Json$Decode$map2 = _Json_map2;
 var $elm$json$Json$Decode$string = _Json_decodeString;
 var $author$project$MinimapWorker$importDecoder = A3(
 	$elm$json$Json$Decode$map2,
 	$elm$core$Tuple$pair,
 	A2($elm$json$Json$Decode$field, 'step', $elm$json$Json$Decode$string),
 	A2($elm$json$Json$Decode$field, 'scale', $elm$json$Json$Decode$float));
-var $elm$json$Json$Decode$map = _Json_map1;
-var $elm$json$Json$Decode$oneOf = _Json_oneOf;
 var $elm$json$Json$Decode$maybe = function (decoder) {
 	return $elm$json$Json$Decode$oneOf(
 		_List_fromArray(
@@ -10771,13 +11527,347 @@ var $elm$json$Json$Decode$maybe = function (decoder) {
 			]));
 };
 var $author$project$MinimapWorker$minimapDrawn = _Platform_outgoingPort('minimapDrawn', $elm$core$Basics$identity);
+var $elm$json$Json$Decode$null = _Json_decodeNull;
+var $elm$json$Json$Decode$nullable = function (decoder) {
+	return $elm$json$Json$Decode$oneOf(
+		_List_fromArray(
+			[
+				$elm$json$Json$Decode$null($elm$core$Maybe$Nothing),
+				A2($elm$json$Json$Decode$map, $elm$core$Maybe$Just, decoder)
+			]));
+};
+var $author$project$GridLevel$Along = function (a) {
+	return {$: 0, a: a};
+};
+var $author$project$GridLevel$Radial = function (a) {
+	return {$: 1, a: a};
+};
+var $author$project$GridLevel$vcross$ = function (a, b) {
+	return {m: (a.n * b.o) - (a.o * b.n), n: (a.o * b.m) - (a.m * b.o), o: (a.m * b.n) - (a.n * b.m)};
+};
+var $author$project$GridLevel$vcross = F2($author$project$GridLevel$vcross$);
+var $author$project$GridLevel$vsub$ = function (a, b) {
+	return {m: a.m - b.m, n: a.n - b.n, o: a.o - b.o};
+};
+var $author$project$GridLevel$vsub = F2($author$project$GridLevel$vsub$);
+var $author$project$GridLevel$flatOut$ = function (normal, curve) {
+	if (!curve.$) {
+		var a = curve.a;
+		var b = curve.b;
+		return $author$project$GridLevel$Along(
+			$author$project$GridLevel$vcross$(
+				$author$project$GridLevel$vsub$(b, a),
+				normal));
+	} else {
+		var arc = curve.a;
+		return _Utils_eq(
+			$author$project$GridLevel$vcross$(arc.c, arc.e),
+			normal) ? $author$project$GridLevel$Radial(1) : $author$project$GridLevel$Radial(-1);
+	}
+};
+var $author$project$GridLevel$flatOut = F2($author$project$GridLevel$flatOut$);
+var $author$project$GridLevel$vscale$ = function (k, a) {
+	return {m: k * a.m, n: k * a.n, o: k * a.o};
+};
+var $author$project$GridLevel$vscale = F2($author$project$GridLevel$vscale$);
+var $author$project$GridLevel$acrossCircle$ = function (revolution, _v0) {
+	var r = _v0.a;
+	var h = _v0.b;
+	return (!h) ? $author$project$GridLevel$Radial(r) : $author$project$GridLevel$Along(
+		$author$project$GridLevel$vscale$(h, revolution.w));
+};
+var $author$project$GridLevel$acrossCircle = F2($author$project$GridLevel$acrossCircle$);
+var $author$project$GridLevel$neg2 = function (_v0) {
+	var a = _v0.a;
+	var b = _v0.b;
+	return _Utils_Tuple2(-a, -b);
+};
+var $author$project$GridLevel$vadd$ = function (a, b) {
+	return {m: a.m + b.m, n: a.n + b.n, o: a.o + b.o};
+};
+var $author$project$GridLevel$vadd = F2($author$project$GridLevel$vadd$);
+var $author$project$GridLevel$profileDirection$ = function (revolution, radial, _v0) {
+	var r = _v0.a;
+	var h = _v0.b;
+	return $author$project$GridLevel$vadd$(
+		$author$project$GridLevel$vscale$(r, radial),
+		$author$project$GridLevel$vscale$(h, revolution.w));
+};
+var $author$project$GridLevel$profileDirection = F3($author$project$GridLevel$profileDirection$);
+var $author$project$GridLevel$profileEnds = function (profile) {
+	if (!profile.$) {
+		var p = profile.a;
+		var q = profile.b;
+		return _Utils_Tuple2(p, q);
+	} else {
+		var to = profile.a.e;
+		var from = profile.a.c;
+		return _Utils_Tuple2(from, to);
+	}
+};
+var $author$project$GridLevel$profilePoint$ = function (revolution, radial, _v0) {
+	var rho = _v0.a;
+	var h = _v0.b;
+	return $author$project$GridLevel$vadd$(
+		revolution.b,
+		$author$project$GridLevel$vadd$(
+			$author$project$GridLevel$vscale$(h, revolution.w),
+			$author$project$GridLevel$vscale$(rho, radial)));
+};
+var $author$project$GridLevel$profilePoint = F3($author$project$GridLevel$profilePoint$);
+var $author$project$GridLevel$sub2$ = function (_v0, _v1) {
+	var a = _v0.a;
+	var b = _v0.b;
+	var c = _v1.a;
+	var d = _v1.b;
+	return _Utils_Tuple2(a - c, b - d);
+};
+var $author$project$GridLevel$sub2 = F2($author$project$GridLevel$sub2$);
+var $author$project$GridLevel$sign = function (n) {
+	return (n > 0) ? 1 : ((n < 0) ? (-1) : 0);
+};
+var $author$project$GridLevel$unit2 = function (_v0) {
+	var a = _v0.a;
+	var b = _v0.b;
+	return _Utils_Tuple2(
+		$author$project$GridLevel$sign(a),
+		$author$project$GridLevel$sign(b));
+};
+var $author$project$GridLevel$profileTangents = function (profile) {
+	if (!profile.$) {
+		var p = profile.a;
+		var q = profile.b;
+		return _Utils_Tuple2(
+			$author$project$GridLevel$unit2(
+				$author$project$GridLevel$sub2$(q, p)),
+			$author$project$GridLevel$unit2(
+				$author$project$GridLevel$sub2$(q, p)));
+	} else {
+		var center = profile.a.b;
+		var to = profile.a.e;
+		var from = profile.a.c;
+		return _Utils_Tuple2(
+			$author$project$GridLevel$unit2(
+				$author$project$GridLevel$sub2$(to, center)),
+			$author$project$GridLevel$unit2(
+				$author$project$GridLevel$sub2$(center, from)));
+	}
+};
+var $author$project$GridLevel$rightNormal = function (_v0) {
+	var r = _v0.a;
+	var z = _v0.b;
+	return _Utils_Tuple2(z, -r);
+};
+var $author$project$GridLevel$vneg = $author$project$GridLevel$vscale(-1);
+var $author$project$GridLevel$revolutionEdges = function (revolution) {
+	var y = $author$project$GridLevel$vcross$(revolution.w, revolution.m);
+	var circle = function (_v6) {
+		var rho = _v6.a;
+		var h = _v6.b;
+		return $author$project$GridLevel$Arc(
+			{
+				b: $author$project$GridLevel$vadd$(
+					revolution.b,
+					$author$project$GridLevel$vscale$(h, revolution.w)),
+				c: revolution.m,
+				p: rho,
+				e: y
+			});
+	};
+	var _v0 = $author$project$GridLevel$profileTangents(revolution.u);
+	var t0 = _v0.a;
+	var t1 = _v0.b;
+	var side = F2(
+		function (radial, out) {
+			return {
+				t: function () {
+					var _v2 = revolution.u;
+					if (!_v2.$) {
+						var p = _v2.a;
+						var q = _v2.b;
+						return $author$project$GridLevel$Segment$(
+							$author$project$GridLevel$profilePoint$(revolution, radial, p),
+							$author$project$GridLevel$profilePoint$(revolution, radial, q));
+					} else {
+						var center = _v2.a.b;
+						var to = _v2.a.e;
+						var from = _v2.a.c;
+						return $author$project$GridLevel$Arc(
+							{
+								b: $author$project$GridLevel$profilePoint$(revolution, radial, center),
+								c: $author$project$GridLevel$profileDirection$(
+									revolution,
+									radial,
+									$author$project$GridLevel$unit2(
+										$author$project$GridLevel$sub2$(from, center))),
+								p: $elm$core$Basics$abs(
+									$author$project$GridLevel$sub2$(from, center).a) + $elm$core$Basics$abs(
+									$author$project$GridLevel$sub2$(from, center).b),
+								e: $author$project$GridLevel$profileDirection$(
+									revolution,
+									radial,
+									$author$project$GridLevel$unit2(
+										$author$project$GridLevel$sub2$(to, center)))
+							});
+					}
+				}(),
+				k: function () {
+					var _v3 = revolution.u;
+					if (!_v3.$) {
+						return $author$project$GridLevel$Along(
+							$author$project$GridLevel$profileDirection$(
+								revolution,
+								radial,
+								$author$project$GridLevel$rightNormal(t0)));
+					} else {
+						var center = _v3.a.b;
+						var to = _v3.a.e;
+						var from = _v3.a.c;
+						var _v4 = $author$project$GridLevel$sub2$(to, center);
+						var br = _v4.a;
+						var bh = _v4.b;
+						var _v5 = $author$project$GridLevel$sub2$(from, center);
+						var ar = _v5.a;
+						var ah = _v5.b;
+						return $author$project$GridLevel$Radial(
+							$author$project$GridLevel$sign((ar * bh) - (ah * br)));
+					}
+				}(),
+				ai: $author$project$GridLevel$Along(out)
+			};
+		});
+	var _v1 = $author$project$GridLevel$profileEnds(revolution.u);
+	var p0 = _v1.a;
+	var p1 = _v1.b;
+	var ends = _Utils_ap(
+		(p0.a > 0) ? _List_fromArray(
+			[
+				{
+				t: circle(p0),
+				k: $author$project$GridLevel$acrossCircle$(
+					revolution,
+					$author$project$GridLevel$rightNormal(t0)),
+				ai: $author$project$GridLevel$acrossCircle$(
+					revolution,
+					$author$project$GridLevel$neg2(t0))
+			}
+			]) : _List_Nil,
+		(p1.a > 0) ? _List_fromArray(
+			[
+				{
+				t: circle(p1),
+				k: $author$project$GridLevel$acrossCircle$(
+					revolution,
+					$author$project$GridLevel$rightNormal(t1)),
+				ai: $author$project$GridLevel$acrossCircle$(revolution, t1)
+			}
+			]) : _List_Nil);
+	return _Utils_ap(
+		ends,
+		_List_fromArray(
+			[
+				A2(
+				side,
+				revolution.m,
+				$author$project$GridLevel$vneg(y)),
+				A2(
+				side,
+				y,
+				$author$project$GridLevel$vneg(revolution.m))
+			]));
+};
+var $author$project$GridLevel$cellEdges = function (cell) {
+	if (!cell.$) {
+		var loop = cell.a.X;
+		var normal = cell.a.k;
+		return $elm$core$List$map$(
+			function (curve) {
+				return {
+					t: curve,
+					k: $author$project$GridLevel$Along(normal),
+					ai: $author$project$GridLevel$flatOut$(normal, curve)
+				};
+			},
+			loop);
+	} else {
+		var revolution = cell.a;
+		return $author$project$GridLevel$revolutionEdges(revolution);
+	}
+};
+var $elm$core$List$sort = function (xs) {
+	return A2($elm$core$List$sortBy, $elm$core$Basics$identity, xs);
+};
+var $author$project$GridLevel$vkey = function (v) {
+	return _List_fromArray(
+		[v.m, v.n, v.o]);
+};
+var $author$project$GridLevel$curveKey = function (curve) {
+	if (!curve.$) {
+		var a = curve.a;
+		var b = curve.b;
+		return A2(
+			$elm$core$List$cons,
+			0,
+			$elm$core$List$concat(
+				$elm$core$List$sort(
+					_List_fromArray(
+						[
+							$author$project$GridLevel$vkey(a),
+							$author$project$GridLevel$vkey(b)
+						]))));
+	} else {
+		var arc = curve.a;
+		return A2(
+			$elm$core$List$cons,
+			1,
+			_Utils_ap(
+				$author$project$GridLevel$vkey(arc.b),
+				_Utils_ap(
+					_List_fromArray(
+						[arc.p]),
+					$elm$core$List$concat(
+						$elm$core$List$sort(
+							_List_fromArray(
+								[
+									$author$project$GridLevel$vkey(arc.c),
+									$author$project$GridLevel$vkey(arc.e)
+								]))))));
+	}
+};
+var $author$project$GridLevel$edgeCounts = function (cells) {
+	return $elm$core$List$foldl$(
+		function (edge) {
+			return A2(
+				$elm$core$Dict$update,
+				$author$project$GridLevel$curveKey(edge.t),
+				function (count) {
+					return $elm$core$Maybe$Just(
+						$elm$core$Maybe$withDefault$(0, count) + 1);
+				});
+		},
+		$elm$core$Dict$empty,
+		$elm$core$List$concatMap$($author$project$GridLevel$cellEdges, cells));
+};
+var $author$project$GridLevel$openEdges = function (level) {
+	var edges = $elm$core$List$concatMap$($author$project$GridLevel$cellEdges, level.V);
+	var counts = $author$project$GridLevel$edgeCounts(level.V);
+	return $elm$core$List$filter$(
+		function (edge) {
+			return _Utils_eq(
+				$elm$core$Dict$get$(
+					$author$project$GridLevel$curveKey(edge.t),
+					counts),
+				$elm$core$Maybe$Just(1));
+		},
+		edges);
+};
 var $author$project$Shapes$add$ = function (a, b) {
-	return {k: a.k + b.k, l: a.l + b.l, m: a.m + b.m};
+	return {m: a.m + b.m, n: a.n + b.n, o: a.o + b.o};
 };
 var $author$project$Shapes$add = F2($author$project$Shapes$add$);
 var $author$project$Shapes$pathStep = 0.04;
 var $author$project$Shapes$scale$ = function (s, a) {
-	return {k: s * a.k, l: s * a.l, m: s * a.m};
+	return {m: s * a.m, n: s * a.n, o: s * a.o};
 };
 var $author$project$Shapes$scale = F2($author$project$Shapes$scale$);
 var $author$project$Shapes$clampFloat$ = function (low, high, x) {
@@ -10785,11 +11875,11 @@ var $author$project$Shapes$clampFloat$ = function (low, high, x) {
 };
 var $author$project$Shapes$clampFloat = F3($author$project$Shapes$clampFloat$);
 var $author$project$Shapes$cross$ = function (a, b) {
-	return {k: (a.l * b.m) - (a.m * b.l), l: (a.m * b.k) - (a.k * b.m), m: (a.k * b.l) - (a.l * b.k)};
+	return {m: (a.n * b.o) - (a.o * b.n), n: (a.o * b.m) - (a.m * b.o), o: (a.m * b.n) - (a.n * b.m)};
 };
 var $author$project$Shapes$cross = F2($author$project$Shapes$cross$);
 var $author$project$Shapes$dot$ = function (a, b) {
-	return ((a.k * b.k) + (a.l * b.l)) + (a.m * b.m);
+	return ((a.m * b.m) + (a.n * b.n)) + (a.o * b.o);
 };
 var $author$project$Shapes$dot = F2($author$project$Shapes$dot$);
 var $author$project$Shapes$isClosed = function (points) {
@@ -10814,7 +11904,7 @@ var $author$project$Shapes$normalize = function (a) {
 	return (length > 0) ? $author$project$Shapes$scale$(1 / length, a) : a;
 };
 var $author$project$Shapes$sub$ = function (a, b) {
-	return {k: a.k - b.k, l: a.l - b.l, m: a.m - b.m};
+	return {m: a.m - b.m, n: a.n - b.n, o: a.o - b.o};
 };
 var $author$project$Shapes$sub = F2($author$project$Shapes$sub$);
 var $author$project$Shapes$sections$ = function (onSurface, points) {
@@ -10829,8 +11919,8 @@ var $author$project$Shapes$sections$ = function (onSurface, points) {
 	var at = function (i) {
 		return $elm$core$Maybe$withDefault$(
 			{
-				e9: {k: 0, l: 1, m: 0},
-				eb: {k: 0, l: 0, m: 0}
+				k: {m: 0, n: 1, o: 0},
+				gQ: {m: 0, n: 0, o: 0}
 			},
 			$elm$core$Array$get$(
 				closed ? A2($elm$core$Basics$modBy, count, i) : $elm$core$Basics$clamp$(0, count - 1, i),
@@ -10840,13 +11930,13 @@ var $author$project$Shapes$sections$ = function (onSurface, points) {
 		var p = at(i);
 		var rightOf = function (d) {
 			return $author$project$Shapes$normalize(
-				$author$project$Shapes$cross$(d, p.e9));
+				$author$project$Shapes$cross$(d, p.k));
 		};
 		var towards = function (j) {
 			return $author$project$Shapes$normalize(
 				$author$project$Shapes$sub$(
-					at(j).eb,
-					p.eb));
+					at(j).gQ,
+					p.gQ));
 		};
 		var _v0 = ((!closed) && (!i)) ? _Utils_Tuple2(
 			towards(1),
@@ -10874,11 +11964,11 @@ var $author$project$Shapes$sections$ = function (onSurface, points) {
 				bisector,
 				rightOf(into)));
 		return {
-			ha: $author$project$Shapes$normalize(
+			hk: $author$project$Shapes$normalize(
 				$author$project$Shapes$add$(into, out)),
-			e9: p.e9,
-			eb: p.eb,
-			fj: $author$project$Shapes$scale$(mitre, bisector)
+			k: p.k,
+			gQ: p.gQ,
+			fq: $author$project$Shapes$scale$(mitre, bisector)
 		};
 	};
 	return function (all) {
@@ -10893,35 +11983,35 @@ var $author$project$Shapes$sections$ = function (onSurface, points) {
 var $author$project$Shapes$sections = F2($author$project$Shapes$sections$);
 var $author$project$Shapes$pathPaving$ = function (surface, width, points) {
 	var toTuple = function (v) {
-		return _Utils_Tuple3(v.k, v.l, v.m);
+		return _Utils_Tuple3(v.m, v.n, v.o);
 	};
 	var sides = function (s) {
 		return _List_fromArray(
 			[
 				toTuple(
 				$author$project$Shapes$add$(
-					s.eb,
-					$author$project$Shapes$scale$((-width) / 2, s.fj))),
+					s.gQ,
+					$author$project$Shapes$scale$((-width) / 2, s.fq))),
 				toTuple(
 				$author$project$Shapes$add$(
-					s.eb,
-					$author$project$Shapes$scale$(width / 2, s.fj)))
+					s.gQ,
+					$author$project$Shapes$scale$(width / 2, s.fq)))
 			]);
 	};
 	var onSurface = function (p) {
 		var _v0 = $author$project$Surface$nearestPoint$(
-			$ianmackenzie$elm_geometry$Point3d$meters$(p.k, p.l, p.m),
+			$ianmackenzie$elm_geometry$Point3d$meters$(p.m, p.n, p.o),
 			surface);
 		if (!_v0.$) {
 			var nearest = _v0.a;
 			return {
-				e9: $ianmackenzie$elm_geometry$Direction3d$unwrap(nearest.e9),
-				eb: $ianmackenzie$elm_geometry$Point3d$toMeters(nearest.eb)
+				k: $ianmackenzie$elm_geometry$Direction3d$unwrap(nearest.k),
+				gQ: $ianmackenzie$elm_geometry$Point3d$toMeters(nearest.gQ)
 			};
 		} else {
 			return {
-				e9: {k: 0, l: 1, m: 0},
-				eb: p
+				k: {m: 0, n: 1, o: 0},
+				gQ: p
 			};
 		}
 	};
@@ -10931,8 +12021,8 @@ var $author$project$Shapes$pathPaving$ = function (surface, width, points) {
 			$author$project$Shapes$pathStep,
 			$elm$core$List$map$($author$project$Shapes$fromTuple, points)));
 	return {
-		fg: $elm$core$List$concatMap$(sides, across),
-		aD: $elm$core$List$concatMap$(
+		fn: $elm$core$List$concatMap$(sides, across),
+		aJ: $elm$core$List$concatMap$(
 			function (i) {
 				return _List_fromArray(
 					[
@@ -10948,7 +12038,6 @@ var $author$project$Shapes$pathPaving$ = function (surface, width, points) {
 var $author$project$Shapes$pathPaving = F3($author$project$Shapes$pathPaving$);
 var $author$project$Shapes$pathWidth = 0.07;
 var $elm$json$Json$Decode$index = _Json_decodeIndex;
-var $elm$json$Json$Decode$list = _Json_decodeList;
 var $elm$json$Json$Decode$map3 = _Json_map3;
 var $author$project$MinimapWorker$linesDecoder = $elm$json$Json$Decode$list(
 	$elm$json$Json$Decode$list(
@@ -10965,10 +12054,927 @@ var $author$project$MinimapWorker$placedDecoder = A3(
 	$elm$json$Json$Decode$map2,
 	F2(
 		function (walls, paths) {
-			return {gE: paths, jx: walls};
+			return {gO: paths, jE: walls};
 		}),
 	A2($elm$json$Json$Decode$field, 'walls', $author$project$MinimapWorker$linesDecoder),
 	A2($elm$json$Json$Decode$field, 'paths', $author$project$MinimapWorker$linesDecoder));
+var $author$project$Surface$buildOpen = $author$project$Surface$buildWith(
+	{fi: true});
+var $author$project$GridLevel$curveStart = function (curve) {
+	if (!curve.$) {
+		var a = curve.a;
+		return a;
+	} else {
+		var arc = curve.a;
+		return $author$project$GridLevel$vadd$(
+			arc.b,
+			$author$project$GridLevel$vscale$(arc.p, arc.c));
+	}
+};
+var $author$project$GridLevel$vdot$ = function (a, b) {
+	return ((a.m * b.m) + (a.n * b.n)) + (a.o * b.o);
+};
+var $author$project$GridLevel$vdot = F2($author$project$GridLevel$vdot$);
+var $author$project$GridLevel$cylinderOf$ = function (id, cell) {
+	if (cell.$ === 1) {
+		var revolution = cell.a;
+		var _v1 = revolution.u;
+		if (!_v1.$) {
+			var _v2 = _v1.a;
+			var r0 = _v2.a;
+			var z0 = _v2.b;
+			var _v3 = _v1.b;
+			var r1 = _v3.a;
+			var z1 = _v3.b;
+			if (_Utils_eq(r0, r1) && (r0 > 0)) {
+				var along = $author$project$GridLevel$vdot$(revolution.b, revolution.w);
+				var onAxis = $author$project$GridLevel$vsub$(
+					revolution.b,
+					$author$project$GridLevel$vscale$(along, revolution.w));
+				return $elm$core$Maybe$Just(
+					{
+						c: along + $elm$core$Basics$min$(z0, z1),
+						bV: _Utils_ap(
+							$author$project$GridLevel$vkey(onAxis),
+							_Utils_ap(
+								$author$project$GridLevel$vkey(revolution.w),
+								_Utils_ap(
+									$author$project$GridLevel$vkey(revolution.m),
+									_List_fromArray(
+										[
+											r0,
+											$author$project$GridLevel$sign(z1 - z0)
+										])))),
+						bX: id,
+						cC: _Utils_update(
+							revolution,
+							{b: onAxis}),
+						$7: $elm$core$List$map$(
+							function ($) {
+								return $.t;
+							},
+							$elm$core$List$take$(
+								2,
+								$elm$core$List$reverse(
+									$author$project$GridLevel$revolutionEdges(revolution)))),
+						e: along + $elm$core$Basics$max$(z0, z1)
+					});
+			} else {
+				return $elm$core$Maybe$Nothing;
+			}
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $author$project$GridLevel$cylinderOf = F2($author$project$GridLevel$cylinderOf$);
+var $author$project$GridLevel$direction = function (v) {
+	return $ianmackenzie$elm_geometry$Direction3d$unsafe(
+		{m: v.m, n: v.n, o: v.o});
+};
+var $author$project$GridLevel$meters = function (v) {
+	return $ianmackenzie$elm_geometry$Point3d$meters$(v.m * $author$project$GridLevel$cellSize, v.n * $author$project$GridLevel$cellSize, v.o * $author$project$GridLevel$cellSize);
+};
+var $author$project$GridLevel$featureSpec = function (revolution) {
+	var inHalfPlane = function (_v1) {
+		var rho = _v1.a;
+		var h = _v1.b;
+		return $ianmackenzie$elm_geometry$Point2d$meters$(rho * $author$project$GridLevel$cellSize, h * $author$project$GridLevel$cellSize);
+	};
+	return {
+		h_: $ianmackenzie$elm_geometry$Frame3d$unsafe(
+			{
+				gK: $author$project$GridLevel$meters(revolution.b),
+				g6: $author$project$GridLevel$direction(revolution.m),
+				g7: $author$project$GridLevel$direction(
+					$author$project$GridLevel$vcross$(revolution.w, revolution.m)),
+				jO: $author$project$GridLevel$direction(revolution.w)
+			}),
+		u: function () {
+			var _v0 = revolution.u;
+			if (!_v0.$) {
+				var p = _v0.a;
+				var q = _v0.b;
+				return {
+					gX: _List_fromArray(
+						[
+							$author$project$Surface$Line(
+							{
+								f_: inHalfPlane(q)
+							})
+						]),
+					fz: inHalfPlane(p)
+				};
+			} else {
+				var center = _v0.a.b;
+				var to = _v0.a.e;
+				var from = _v0.a.c;
+				return {
+					gX: _List_fromArray(
+						[
+							$author$project$Surface$Circle(
+							{
+								b: inHalfPlane(center),
+								f_: inHalfPlane(to)
+							})
+						]),
+					fz: inHalfPlane(from)
+				};
+			}
+		}(),
+		jg: $author$project$Surface$PartTurn(
+			{
+				c: $ianmackenzie$elm_units$Angle$degrees(0),
+				e: $ianmackenzie$elm_units$Angle$degrees(90)
+			})
+	};
+};
+var $elm$core$Dict$fromList = function (assocs) {
+	return $elm$core$List$foldl$(
+		F2(
+			function (_v0, dict) {
+				var key = _v0.a;
+				var value = _v0.b;
+				return $elm$core$Dict$insert$(key, value, dict);
+			}),
+		$elm$core$Dict$empty,
+		assocs);
+};
+var $elm$core$Dict$member$ = function (key, dict) {
+	var _v0 = $elm$core$Dict$get$(key, dict);
+	if (!_v0.$) {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $elm$core$Dict$member = F2($elm$core$Dict$member$);
+var $author$project$GridLevel$flatComponents = function (flats) {
+	if (!flats.b) {
+		return _List_Nil;
+	} else {
+		var _v1 = flats.a;
+		var first = _v1.b;
+		var normal = first.k;
+		var flatArray = $elm$core$Dict$fromList(flats);
+		var cellsAlong = $elm$core$List$foldl$(
+			F2(
+				function (_v5, acc) {
+					var index = _v5.a;
+					var flat = _v5.b;
+					return $elm$core$List$foldl$(
+						function (curve) {
+							return A2(
+								$elm$core$Dict$update,
+								$author$project$GridLevel$curveKey(curve),
+								function (others) {
+									return $elm$core$Maybe$Just(
+										A2(
+											$elm$core$List$cons,
+											index,
+											$elm$core$Maybe$withDefault$(_List_Nil, others)));
+								});
+						},
+						acc,
+						flat.X);
+				}),
+			$elm$core$Dict$empty,
+			flats);
+		var neighbours = function (flat) {
+			return $elm$core$List$concatMap$(
+				function (curve) {
+					return $elm$core$Maybe$withDefault$(
+						_List_Nil,
+						$elm$core$Dict$get$(
+							$author$project$GridLevel$curveKey(curve),
+							cellsAlong));
+				},
+				flat.X);
+		};
+		var group = F3(
+			function (queue, seen, acc) {
+				group:
+				while (true) {
+					if (queue.b) {
+						var index = queue.a;
+						var rest = queue.b;
+						if ($elm$core$Dict$member$(index, seen)) {
+							var $temp$queue = rest;
+							queue = $temp$queue;
+							continue group;
+						} else {
+							var $temp$queue = _Utils_ap(
+								$elm$core$Maybe$withDefault$(
+									_List_Nil,
+									$elm$core$Maybe$map$(
+										neighbours,
+										$elm$core$Dict$get$(index, flatArray))),
+								rest),
+								$temp$seen = $elm$core$Dict$insert$(index, 0, seen),
+								$temp$acc = A2($elm$core$List$cons, index, acc);
+							queue = $temp$queue;
+							seen = $temp$seen;
+							acc = $temp$acc;
+							continue group;
+						}
+					} else {
+						return _Utils_Tuple2(acc, seen);
+					}
+				}
+			});
+		var groups = F3(
+			function (remaining, seen, acc) {
+				groups:
+				while (true) {
+					if (remaining.b) {
+						var index = remaining.a;
+						var rest = remaining.b;
+						if ($elm$core$Dict$member$(index, seen)) {
+							var $temp$remaining = rest;
+							remaining = $temp$remaining;
+							continue groups;
+						} else {
+							var _v4 = A3(
+								group,
+								_List_fromArray(
+									[index]),
+								seen,
+								_List_Nil);
+							var members = _v4.a;
+							var newSeen = _v4.b;
+							var $temp$remaining = rest,
+								$temp$seen = newSeen,
+								$temp$acc = A2($elm$core$List$cons, members, acc);
+							remaining = $temp$remaining;
+							seen = $temp$seen;
+							acc = $temp$acc;
+							continue groups;
+						}
+					} else {
+						return acc;
+					}
+				}
+			});
+		var boundary = function (members) {
+			return $elm$core$List$filter$(
+				function (curve) {
+					return _Utils_eq(
+						$elm$core$Maybe$Just(1),
+						$elm$core$Maybe$map$(
+							$elm$core$List$length,
+							$elm$core$Dict$get$(
+								$author$project$GridLevel$curveKey(curve),
+								cellsAlong)));
+				},
+				$elm$core$List$concatMap$(
+					function ($) {
+						return $.X;
+					},
+					$elm$core$List$filterMap$(
+						function (index) {
+							return $elm$core$Dict$get$(index, flatArray);
+						},
+						members)));
+		};
+		return $elm$core$List$map$(
+			function (members) {
+				return {
+					eM: boundary(members),
+					gA: members,
+					k: normal
+				};
+			},
+			A3(
+				groups,
+				$elm$core$List$map$($elm$core$Tuple$first, flats),
+				$elm$core$Dict$empty,
+				_List_Nil));
+	}
+};
+var $author$project$GridLevel$axes = _List_fromArray(
+	[
+		$author$project$GridLevel$ivec$(1, 0, 0),
+		$author$project$GridLevel$ivec$(0, 1, 0),
+		$author$project$GridLevel$ivec$(0, 0, 1)
+	]);
+var $author$project$GridLevel$planeAxes = function (normal) {
+	var u = $elm$core$Maybe$withDefault$(
+		$author$project$GridLevel$ivec$(1, 0, 0),
+		$elm$core$List$head(
+			$elm$core$List$filter$(
+				function (a) {
+					return !$author$project$GridLevel$vdot$(a, normal);
+				},
+				$author$project$GridLevel$axes)));
+	return _Utils_Tuple2(
+		u,
+		$author$project$GridLevel$vcross$(normal, u));
+};
+var $author$project$GridLevel$flatSpec$ = function (normal, boundary) {
+	var offset = $elm$core$Maybe$withDefault$(
+		0,
+		$elm$core$Maybe$map$(
+			A2(
+				$elm$core$Basics$composeR,
+				$author$project$GridLevel$curveStart,
+				$author$project$GridLevel$vdot(normal)),
+			$elm$core$Maybe$andThen$(
+				$elm$core$List$head,
+				$elm$core$List$head(boundary))));
+	var origin = $author$project$GridLevel$vscale$(offset, normal);
+	var _v0 = $author$project$GridLevel$planeAxes(normal);
+	var u = _v0.a;
+	var v = _v0.b;
+	var inPlane = function (p) {
+		return $ianmackenzie$elm_geometry$Point2d$meters$(
+			$author$project$GridLevel$vdot$(
+				$author$project$GridLevel$vsub$(p, origin),
+				u) * $author$project$GridLevel$cellSize,
+			$author$project$GridLevel$vdot$(
+				$author$project$GridLevel$vsub$(p, origin),
+				v) * $author$project$GridLevel$cellSize);
+	};
+	var edge = function (curve) {
+		if (!curve.$) {
+			var a = curve.a;
+			return $author$project$Surface$Straight(
+				inPlane(a));
+		} else {
+			var arc = curve.a;
+			return $author$project$Surface$Arc(
+				{
+					b: inPlane(arc.b),
+					fz: inPlane(
+						$author$project$GridLevel$curveStart(curve)),
+					jh: _Utils_eq(
+						$author$project$GridLevel$vcross$(arc.c, arc.e),
+						normal) ? $ianmackenzie$elm_units$Angle$degrees(90) : $ianmackenzie$elm_units$Angle$degrees(-90)
+				});
+		}
+	};
+	return {
+		eM: $elm$core$List$map$(
+			$elm$core$List$map(edge),
+			boundary),
+		iO: $ianmackenzie$elm_geometry$SketchPlane3d$unsafe(
+			{
+				gK: $author$project$GridLevel$meters(origin),
+				g6: $author$project$GridLevel$direction(u),
+				g7: $author$project$GridLevel$direction(v)
+			})
+	};
+};
+var $author$project$GridLevel$flatSpec = F2($author$project$GridLevel$flatSpec$);
+var $author$project$GridLevel$curveEnd = function (curve) {
+	if (!curve.$) {
+		var b = curve.b;
+		return b;
+	} else {
+		var arc = curve.a;
+		return $author$project$GridLevel$vadd$(
+			arc.b,
+			$author$project$GridLevel$vscale$(arc.p, arc.e));
+	}
+};
+var $elm$core$Dict$values = function (dict) {
+	return $elm$core$Dict$foldr$(
+		F3(
+			function (key, value, valueList) {
+				return A2($elm$core$List$cons, value, valueList);
+			}),
+		_List_Nil,
+		dict);
+};
+var $author$project$GridLevel$loops = function (curves) {
+	var take = F2(
+		function (point, dict) {
+			var _v7 = $elm$core$Dict$get$(
+				$author$project$GridLevel$vkey(point),
+				dict);
+			if ((!_v7.$) && _v7.a.b) {
+				var _v8 = _v7.a;
+				var curve = _v8.a;
+				var rest = _v8.b;
+				return $elm$core$Maybe$Just(
+					_Utils_Tuple2(
+						curve,
+						$elm$core$List$isEmpty(rest) ? $elm$core$Dict$remove$(
+							$author$project$GridLevel$vkey(point),
+							dict) : $elm$core$Dict$insert$(
+							$author$project$GridLevel$vkey(point),
+							rest,
+							dict)));
+			} else {
+				return $elm$core$Maybe$Nothing;
+			}
+		});
+	var follow = F3(
+		function (loopStart, dict, acc) {
+			follow:
+			while (true) {
+				if (acc.b) {
+					var last = acc.a;
+					if (_Utils_eq(
+						$author$project$GridLevel$curveEnd(last),
+						loopStart)) {
+						return _Utils_Tuple2(
+							$elm$core$List$reverse(acc),
+							dict);
+					} else {
+						var _v1 = A2(
+							take,
+							$author$project$GridLevel$curveEnd(last),
+							dict);
+						if (!_v1.$) {
+							var _v2 = _v1.a;
+							var next = _v2.a;
+							var rest = _v2.b;
+							var $temp$dict = rest,
+								$temp$acc = A2($elm$core$List$cons, next, acc);
+							dict = $temp$dict;
+							acc = $temp$acc;
+							continue follow;
+						} else {
+							return _Utils_Tuple2(
+								$elm$core$List$reverse(acc),
+								dict);
+						}
+					}
+				} else {
+					return _Utils_Tuple2(_List_Nil, dict);
+				}
+			}
+		});
+	var byStart = $elm$core$List$foldl$(
+		function (curve) {
+			return A2(
+				$elm$core$Dict$update,
+				$author$project$GridLevel$vkey(
+					$author$project$GridLevel$curveStart(curve)),
+				function (others) {
+					return $elm$core$Maybe$Just(
+						A2(
+							$elm$core$List$cons,
+							curve,
+							$elm$core$Maybe$withDefault$(_List_Nil, others)));
+				});
+		},
+		$elm$core$Dict$empty,
+		curves);
+	var all = F2(
+		function (dict, acc) {
+			all:
+			while (true) {
+				var _v3 = $elm$core$List$head(
+					$elm$core$List$concat(
+						$elm$core$Dict$values(dict)));
+				if (!_v3.$) {
+					var curve = _v3.a;
+					var _v4 = A2(
+						take,
+						$author$project$GridLevel$curveStart(curve),
+						dict);
+					if (!_v4.$) {
+						var _v5 = _v4.a;
+						var first = _v5.a;
+						var rest = _v5.b;
+						var _v6 = A3(
+							follow,
+							$author$project$GridLevel$curveStart(first),
+							rest,
+							_List_fromArray(
+								[first]));
+						var loop = _v6.a;
+						var remaining = _v6.b;
+						var $temp$dict = remaining,
+							$temp$acc = A2($elm$core$List$cons, loop, acc);
+						dict = $temp$dict;
+						acc = $temp$acc;
+						continue all;
+					} else {
+						return acc;
+					}
+				} else {
+					return acc;
+				}
+			}
+		});
+	return A2(all, byStart, _List_Nil);
+};
+var $author$project$GridLevel$unitOf = function (v) {
+	return {
+		m: $author$project$GridLevel$sign(v.m),
+		n: $author$project$GridLevel$sign(v.n),
+		o: $author$project$GridLevel$sign(v.o)
+	};
+};
+var $author$project$GridLevel$mergeAlong$ = function (otherSide, loop) {
+	var joins = F2(
+		function (a, b) {
+			var _v8 = _Utils_Tuple2(a, b);
+			if ((!_v8.a.$) && (!_v8.b.$)) {
+				var _v9 = _v8.a;
+				var a0 = _v9.a;
+				var a1 = _v9.b;
+				var _v10 = _v8.b;
+				var b0 = _v10.a;
+				var b1 = _v10.b;
+				return _Utils_eq(a1, b0) && (_Utils_eq(
+					$author$project$GridLevel$unitOf(
+						$author$project$GridLevel$vsub$(a1, a0)),
+					$author$project$GridLevel$unitOf(
+						$author$project$GridLevel$vsub$(b1, b0))) && _Utils_eq(
+					otherSide(a),
+					otherSide(b)));
+			} else {
+				return false;
+			}
+		});
+	var rotated = function () {
+		var _v4 = $elm$core$List$head(
+			$elm$core$List$filter$(
+				function (_v5) {
+					var _v6 = _v5.b;
+					var previous = _v6.a;
+					var curve = _v6.b;
+					return !A2(joins, previous, curve);
+				},
+				$elm$core$List$indexedMap$(
+					$elm$core$Tuple$pair,
+					A3(
+						$elm$core$List$map2,
+						$elm$core$Tuple$pair,
+						_Utils_ap(
+							$elm$core$List$drop$(
+								$elm$core$List$length(loop) - 1,
+								loop),
+							$elm$core$List$take$(
+								$elm$core$List$length(loop) - 1,
+								loop)),
+						loop))));
+		if (!_v4.$) {
+			var _v7 = _v4.a;
+			var index = _v7.a;
+			return _Utils_ap(
+				$elm$core$List$drop$(index, loop),
+				$elm$core$List$take$(index, loop));
+		} else {
+			return loop;
+		}
+	}();
+	return $elm$core$List$reverse(
+		$elm$core$List$foldl$(
+			F2(
+				function (curve, acc) {
+					var _v0 = _Utils_Tuple2(acc, curve);
+					if ((_v0.a.b && (!_v0.a.a.$)) && (!_v0.b.$)) {
+						var _v1 = _v0.a;
+						var _v2 = _v1.a;
+						var a0 = _v2.a;
+						var a1 = _v2.b;
+						var rest = _v1.b;
+						var _v3 = _v0.b;
+						var b1 = _v3.b;
+						return A2(
+							joins,
+							$author$project$GridLevel$Segment$(a0, a1),
+							curve) ? A2(
+							$elm$core$List$cons,
+							$author$project$GridLevel$Segment$(a0, b1),
+							rest) : A2($elm$core$List$cons, curve, acc);
+					} else {
+						return A2($elm$core$List$cons, curve, acc);
+					}
+				}),
+			_List_Nil,
+			rotated));
+};
+var $author$project$GridLevel$mergeAlong = F2($author$project$GridLevel$mergeAlong$);
+var $author$project$GridLevel$mergeRun = function (run) {
+	var _v0 = _Utils_Tuple2(
+		run,
+		$elm$core$List$reverse(run));
+	if (_v0.a.b && _v0.b.b) {
+		var _v1 = _v0.a;
+		var first = _v1.a;
+		var _v2 = _v0.b;
+		var last = _v2.a;
+		var _v3 = first.cC.u;
+		if (!_v3.$) {
+			var _v4 = _v3.a;
+			var r = _v4.a;
+			var z0 = _v4.b;
+			var _v5 = _v3.b;
+			var z1 = _v5.b;
+			var revolution = first.cC;
+			return $elm$core$Maybe$Just(
+				_Utils_update(
+					revolution,
+					{
+						u: (_Utils_cmp(z1, z0) > 0) ? $author$project$GridLevel$ProfileLine$(
+							_Utils_Tuple2(r, first.c),
+							_Utils_Tuple2(r, last.e)) : $author$project$GridLevel$ProfileLine$(
+							_Utils_Tuple2(r, last.e),
+							_Utils_Tuple2(r, first.c))
+					}));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $author$project$GridLevel$cellsSurface = function (cells) {
+	var labelOf = F2(
+		function (labels, id) {
+			return $elm$core$Maybe$withDefault$(
+				_List_fromArray(
+					[2, id]),
+				$elm$core$Dict$get$(id, labels));
+		});
+	var indexed = $elm$core$List$indexedMap$($elm$core$Tuple$pair, cells);
+	var owners = $elm$core$List$foldl$(
+		F2(
+			function (_v13, acc) {
+				var id = _v13.a;
+				var cell = _v13.b;
+				return $elm$core$List$foldl$(
+					function (edge) {
+						return A2(
+							$elm$core$Dict$update,
+							$author$project$GridLevel$curveKey(edge.t),
+							function (others) {
+								return $elm$core$Maybe$Just(
+									A2(
+										$elm$core$List$cons,
+										id,
+										$elm$core$Maybe$withDefault$(_List_Nil, others)));
+							});
+					},
+					acc,
+					$author$project$GridLevel$cellEdges(cell));
+			}),
+		$elm$core$Dict$empty,
+		indexed);
+	var cylinders = $elm$core$List$filterMap$(
+		function (_v12) {
+			var id = _v12.a;
+			var cell = _v12.b;
+			return $author$project$GridLevel$cylinderOf$(id, cell);
+		},
+		indexed);
+	var components = $elm$core$List$concatMap$(
+		$author$project$GridLevel$flatComponents,
+		$elm$core$Dict$values(
+			$elm$core$List$foldl$(
+				function (_v11) {
+					var id = _v11.a;
+					var flat = _v11.b;
+					return A2(
+						$elm$core$Dict$update,
+						_Utils_ap(
+							$author$project$GridLevel$vkey(flat.k),
+							_List_fromArray(
+								[
+									$elm$core$Maybe$withDefault$(
+									0,
+									$elm$core$Maybe$map$(
+										A2(
+											$elm$core$Basics$composeR,
+											$author$project$GridLevel$curveStart,
+											$author$project$GridLevel$vdot(flat.k)),
+										$elm$core$List$head(flat.X)))
+								])),
+						function (others) {
+							return $elm$core$Maybe$Just(
+								A2(
+									$elm$core$List$cons,
+									_Utils_Tuple2(id, flat),
+									$elm$core$Maybe$withDefault$(_List_Nil, others)));
+						});
+				},
+				$elm$core$Dict$empty,
+				$elm$core$List$filterMap$(
+					function (_v9) {
+						var id = _v9.a;
+						var cell = _v9.b;
+						if (!cell.$) {
+							var flat = cell.a;
+							return $elm$core$Maybe$Just(
+								_Utils_Tuple2(id, flat));
+						} else {
+							return $elm$core$Maybe$Nothing;
+						}
+					},
+					indexed))));
+	var initialLabels = $elm$core$Dict$fromList(
+		_Utils_ap(
+			$elm$core$List$map$(
+				function (cylinder) {
+					return _Utils_Tuple2(
+						cylinder.bX,
+						A2($elm$core$List$cons, 1, cylinder.bV));
+				},
+				cylinders),
+			$elm$core$List$concat(
+				$elm$core$List$indexedMap$(
+					F2(
+						function (index, component) {
+							return $elm$core$List$map$(
+								function (id) {
+									return _Utils_Tuple2(
+										id,
+										_List_fromArray(
+											[0, index]));
+								},
+								component.gA);
+						}),
+					components))));
+	var across = F3(
+		function (labels, own, curve) {
+			return $elm$core$Maybe$withDefault$(
+				_List_fromArray(
+					[-1]),
+				$elm$core$List$head(
+					$elm$core$List$filter$(
+						$elm$core$Basics$neq(own),
+						$elm$core$List$map$(
+							labelOf(labels),
+							$elm$core$Maybe$withDefault$(
+								_List_Nil,
+								$elm$core$Dict$get$(
+									$author$project$GridLevel$curveKey(curve),
+									owners))))));
+		});
+	var runsWith = function (labels) {
+		return $elm$core$List$concatMap$(
+			function (group) {
+				return $elm$core$List$map$(
+					A2($elm$core$Basics$composeR, $elm$core$Tuple$first, $elm$core$List$reverse),
+					$elm$core$List$foldl$(
+						F2(
+							function (cylinder, runs) {
+								var sides = $elm$core$List$map$(
+									A2(
+										across,
+										labels,
+										A2(labelOf, labels, cylinder.bX)),
+									cylinder.$7);
+								if (runs.b) {
+									var _v7 = runs.a;
+									var run = _v7.a;
+									var runSides = _v7.b;
+									var rest = runs.b;
+									if (run.b) {
+										var last = run.a;
+										return (_Utils_eq(last.e, cylinder.c) && _Utils_eq(runSides, sides)) ? A2(
+											$elm$core$List$cons,
+											_Utils_Tuple2(
+												A2($elm$core$List$cons, cylinder, run),
+												runSides),
+											rest) : A2(
+											$elm$core$List$cons,
+											_Utils_Tuple2(
+												_List_fromArray(
+													[cylinder]),
+												sides),
+											runs);
+									} else {
+										return A2(
+											$elm$core$List$cons,
+											_Utils_Tuple2(
+												_List_fromArray(
+													[cylinder]),
+												sides),
+											rest);
+									}
+								} else {
+									return _List_fromArray(
+										[
+											_Utils_Tuple2(
+											_List_fromArray(
+												[cylinder]),
+											sides)
+										]);
+								}
+							}),
+						_List_Nil,
+						A2(
+							$elm$core$List$sortBy,
+							function ($) {
+								return $.c;
+							},
+							group)));
+			},
+			$elm$core$Dict$values(
+				$elm$core$List$foldl$(
+					function (cylinder) {
+						return A2(
+							$elm$core$Dict$update,
+							cylinder.bV,
+							function (others) {
+								return $elm$core$Maybe$Just(
+									A2(
+										$elm$core$List$cons,
+										cylinder,
+										$elm$core$Maybe$withDefault$(_List_Nil, others)));
+							});
+					},
+					$elm$core$Dict$empty,
+					cylinders)));
+	};
+	var settle = F2(
+		function (labels, count) {
+			settle:
+			while (true) {
+				var runs = runsWith(labels);
+				var newLabels = $elm$core$List$foldl$(
+					function (_v1) {
+						var id = _v1.a;
+						var label = _v1.b;
+						return A2($elm$core$Dict$insert, id, label);
+					},
+					labels,
+					$elm$core$List$concatMap$(
+						function (run) {
+							if (run.b) {
+								var first = run.a;
+								return $elm$core$List$map$(
+									function (cylinder) {
+										return _Utils_Tuple2(
+											cylinder.bX,
+											A2(
+												$elm$core$List$cons,
+												1,
+												_Utils_ap(
+													cylinder.bV,
+													_List_fromArray(
+														[first.c]))));
+									},
+									run);
+							} else {
+								return _List_Nil;
+							}
+						},
+						runs));
+				if (_Utils_eq(newLabels, labels) || (count <= 0)) {
+					return _Utils_Tuple2(labels, runs);
+				} else {
+					var $temp$labels = newLabels,
+						$temp$count = count - 1;
+					labels = $temp$labels;
+					count = $temp$count;
+					continue settle;
+				}
+			}
+		});
+	var _v2 = A2(settle, initialLabels, 20);
+	var finalLabels = _v2.a;
+	var finalRuns = _v2.b;
+	var otherRound = $elm$core$List$filterMap$(
+		function (_v3) {
+			var id = _v3.a;
+			var cell = _v3.b;
+			var _v4 = _Utils_Tuple2(
+				cell,
+				$elm$core$Dict$get$(id, finalLabels));
+			if ((_v4.a.$ === 1) && (_v4.b.$ === 1)) {
+				var revolution = _v4.a.a;
+				var _v5 = _v4.b;
+				return $elm$core$Maybe$Just(revolution);
+			} else {
+				return $elm$core$Maybe$Nothing;
+			}
+		},
+		indexed);
+	return A2(
+		$author$project$Surface$buildOpen,
+		$elm$core$List$indexedMap$(
+			F2(
+				function (index, component) {
+					return $author$project$GridLevel$flatSpec$(
+						component.k,
+						$elm$core$List$map$(
+							$author$project$GridLevel$mergeAlong(
+								A2(
+									across,
+									finalLabels,
+									_List_fromArray(
+										[0, index]))),
+							$author$project$GridLevel$loops(component.eM)));
+				}),
+			components),
+		$elm$core$List$map$(
+			$author$project$GridLevel$featureSpec,
+			_Utils_ap(
+				$elm$core$List$filterMap$($author$project$GridLevel$mergeRun, finalRuns),
+				otherRound)));
+};
+var $author$project$GridLevel$surface = function (level) {
+	return $author$project$GridLevel$cellsSurface(level.V);
+};
 var $author$project$Step$Decode$Failed = function (a) {
 	return {$: 1, a: a};
 };
@@ -10979,7 +12985,7 @@ var $author$project$Step$Decode$Succeeded = F2($author$project$Step$Decode$Succe
 var $author$project$Step$Decode$UnexpectedType = {$: 2};
 var $author$project$Step$Decode$errorMessage = function (message) {
 	return $author$project$Step$Decode$Failed(
-		{bs: _List_Nil, bv: message});
+		{by: _List_Nil, bB: message});
 };
 var $author$project$Step$Decode$internalError = function (message) {
 	return $author$project$Step$Decode$errorMessage('Internal error in STEP parsing: ' + message);
@@ -10998,13 +13004,13 @@ var $author$project$Step$Decode$decodeEntity$ = function (_v0, entityLine) {
 				return $author$project$Step$Decode$wrongNumberOfSubmatches;
 			}
 		case 1:
-			var message = _v1.a.bv;
-			var entityIds = _v1.a.bs;
+			var message = _v1.a.bB;
+			var entityIds = _v1.a.by;
 			var updatedEntityIds = _Utils_eq(
 				$elm$core$List$head(entityIds),
-				$elm$core$Maybe$Just(entityLine.S)) ? entityIds : A2($elm$core$List$cons, entityLine.S, entityIds);
+				$elm$core$Maybe$Just(entityLine.bX)) ? entityIds : A2($elm$core$List$cons, entityLine.bX, entityIds);
 			return $author$project$Step$Decode$Failed(
-				{bs: updatedEntityIds, bv: message});
+				{by: updatedEntityIds, bB: message});
 		default:
 			return $author$project$Step$Decode$UnexpectedType;
 	}
@@ -11014,8 +13020,8 @@ var $author$project$Step$Decode$idString = function (id) {
 	return '#' + $elm$core$String$fromInt(id);
 };
 var $author$project$Step$Decode$reportError = function (_v0) {
-	var message = _v0.bv;
-	var entityIds = _v0.bs;
+	var message = _v0.bB;
+	var entityIds = _v0.by;
 	var entityChain = $elm$core$String$join$(
 		'->',
 		$elm$core$List$map$($author$project$Step$Decode$idString, entityIds));
@@ -11030,7 +13036,7 @@ var $author$project$Step$Decode$decodeAllHelp$ = function (entityDecoder, file, 
 	} else {
 		if (!currentResult.$) {
 			var accumulated = currentResult.a;
-			var entityLine = {R: givenContext, Y: file, S: id, ag: entityString};
+			var entityLine = {W: givenContext, ac: file, bX: id, am: entityString};
 			var _v2 = $author$project$Step$Decode$decodeEntity$(entityDecoder, entityLine);
 			switch (_v2.$) {
 				case 2:
@@ -11117,9 +13123,9 @@ var $elm$core$Tuple$mapFirst = F2($elm$core$Tuple$mapFirst$);
 var $author$project$StepImport$convertFace$ = function (convert, face_) {
 	var placement_ = function (p) {
 		return {
-			s: $elm$core$Maybe$map$(convert.dN, p.s),
-			u: convert.dd(p.u),
-			cs: $elm$core$Maybe$map$(convert.dN, p.cs)
+			w: $elm$core$Maybe$map$(convert.dU, p.w),
+			z: convert.dk(p.z),
+			cB: $elm$core$Maybe$map$(convert.dU, p.cB)
 		};
 	};
 	var curve_ = function (c) {
@@ -11129,8 +13135,8 @@ var $author$project$StepImport$convertFace$ = function (convert, face_) {
 			var circle = c.a;
 			return $author$project$StepImport$CircleCurve(
 				{
-					D: placement_(circle.D),
-					gH: convert.aL(circle.gH)
+					H: placement_(circle.H),
+					p: convert.aR(circle.p)
 				});
 		}
 	};
@@ -11138,27 +13144,27 @@ var $author$project$StepImport$convertFace$ = function (convert, face_) {
 		return _Utils_update(
 			e,
 			{
-				y: curve_(e.y),
-				h: convert.dd(e.h),
-				c: convert.dd(e.c)
+				t: curve_(e.t),
+				f_: convert.dk(e.f_),
+				fz: convert.dk(e.fz)
 			});
 	};
 	return _Utils_update(
 		face_,
 		{
-			an: $elm$core$List$map$(
+			at: $elm$core$List$map$(
 				function (b) {
 					return _Utils_update(
 						b,
 						{
-							bK: $elm$core$List$map$(
+							bS: $elm$core$List$map$(
 								$elm$core$Tuple$mapFirst(edge),
-								b.bK)
+								b.bS)
 						});
 				},
-				face_.an),
-			bL: function () {
-				var _v0 = face_.bL;
+				face_.at),
+			bT: function () {
+				var _v0 = face_.bT;
 				switch (_v0.$) {
 					case 0:
 						var p = _v0.a;
@@ -11169,29 +13175,29 @@ var $author$project$StepImport$convertFace$ = function (convert, face_) {
 						var r = _v0.b;
 						return $author$project$StepImport$Cylinder$(
 							placement_(p),
-							convert.aL(r));
+							convert.aR(r));
 					case 2:
 						var p = _v0.a;
 						var r = _v0.b;
 						var semiAngle = _v0.c;
 						return $author$project$StepImport$Cone$(
 							placement_(p),
-							convert.aL(r),
-							convert.fK(semiAngle));
+							convert.aR(r),
+							convert.fS(semiAngle));
 					case 3:
 						var p = _v0.a;
 						var r = _v0.b;
 						return $author$project$StepImport$Sphere$(
 							placement_(p),
-							convert.aL(r));
+							convert.aR(r));
 					default:
 						var p = _v0.a;
 						var major = _v0.b;
 						var minor = _v0.c;
 						return $author$project$StepImport$Torus$(
 							placement_(p),
-							convert.aL(major),
-							convert.aL(minor));
+							convert.aR(major),
+							convert.aR(minor));
 				}
 			}()
 		});
@@ -11213,7 +13219,7 @@ var $author$project$Surface$errorToString = function (error) {
 };
 var $elm$core$String$contains = _String_contains;
 var $elm$regex$Regex$Match$ = function (match, index, number, submatches) {
-	return {dW: index, h8: match, fa: number, ft: submatches};
+	return {d1: index, ii: match, fg: number, fB: submatches};
 };
 var $elm$regex$Regex$Match = F4($elm$regex$Regex$Match$);
 var $elm$regex$Regex$find = _Regex_findAtMost(_Regex_infinity);
@@ -11221,7 +13227,7 @@ var $elm$regex$Regex$fromStringWith = _Regex_fromStringWith;
 var $elm$regex$Regex$fromString = function (string) {
 	return A2(
 		$elm$regex$Regex$fromStringWith,
-		{hq: false, ij: false},
+		{hz: false, it: false},
 		string);
 };
 var $elm$regex$Regex$never = _Regex_never;
@@ -11239,7 +13245,7 @@ var $author$project$StepImport$explain$ = function (text, message) {
 				A2(
 					$elm$core$Basics$composeR,
 					function ($) {
-						return $.ft;
+						return $.fB;
 					},
 					A2(
 						$elm$core$Basics$composeR,
@@ -11255,7 +13261,7 @@ var $author$project$StepImport$explain$ = function (text, message) {
 		A2(
 			$elm$core$Basics$composeR,
 			function ($) {
-				return $.ft;
+				return $.fB;
 			},
 			A2(
 				$elm$core$Basics$composeR,
@@ -11405,7 +13411,7 @@ var $author$project$Step$Pattern$compile = function (pattern) {
 		$elm$regex$Regex$never,
 		A2(
 			$elm$regex$Regex$fromStringWith,
-			{hq: true, ij: false},
+			{hz: true, it: false},
 			$author$project$Step$Pattern$toString$($author$project$Step$Pattern$capturing, pattern)));
 };
 var $elm$regex$Regex$replace = _Regex_replaceAtMost(_Regex_infinity);
@@ -11437,41 +13443,41 @@ var $author$project$Step$String$replaceHexString$ = function (chunkSize, hexStri
 		$elm$core$String$foldr,
 		F2(
 			function (hexCharacter, _v0) {
-				var multiplier = _v0.d1;
-				var current = _v0.dJ;
-				var index = _v0.dW;
-				var unicodeCharacters = _v0.dp;
+				var multiplier = _v0.d8;
+				var current = _v0.dQ;
+				var index = _v0.d1;
+				var unicodeCharacters = _v0.dw;
 				var updated = current + (multiplier * $author$project$Step$Hex$charToInt(hexCharacter));
 				var nextIndex = index + 1;
-				return (_Utils_cmp(nextIndex, chunkSize) < 0) ? {dJ: updated, dW: nextIndex, d1: 16 * multiplier, dp: unicodeCharacters} : {
-					dJ: 0,
-					dW: 0,
-					d1: 1,
-					dp: A2(
+				return (_Utils_cmp(nextIndex, chunkSize) < 0) ? {dQ: updated, d1: nextIndex, d8: 16 * multiplier, dw: unicodeCharacters} : {
+					dQ: 0,
+					d1: 0,
+					d8: 1,
+					dw: A2(
 						$elm$core$List$cons,
 						$elm$core$Char$fromCode(updated),
 						unicodeCharacters)
 				};
 			}),
-		{dJ: 0, dW: 0, d1: 1, dp: _List_Nil},
+		{dQ: 0, d1: 0, d8: 1, dw: _List_Nil},
 		hexString);
-	return $elm$core$String$fromList(foldResult.dp);
+	return $elm$core$String$fromList(foldResult.dw);
 };
 var $author$project$Step$String$replaceHexString = F2($author$project$Step$String$replaceHexString$);
 var $author$project$Step$String$replaceX = function (_v0) {
-	var match = _v0.h8;
+	var match = _v0.ii;
 	return $author$project$Step$String$replaceHexString$(
 		2,
 		$elm$core$String$dropLeft$(3, match));
 };
 var $author$project$Step$String$replaceX2 = function (_v0) {
-	var match = _v0.h8;
+	var match = _v0.ii;
 	return $author$project$Step$String$replaceHexString$(
 		4,
 		A3($elm$core$String$slice, 4, -4, match));
 };
 var $author$project$Step$String$replaceX4 = function (_v0) {
-	var match = _v0.h8;
+	var match = _v0.ii;
 	return $author$project$Step$String$replaceHexString$(
 		8,
 		A3($elm$core$String$slice, 4, -4, match));
@@ -11507,7 +13513,7 @@ var $author$project$Step$Preprocess$collectUnparsedEntities$ = function (regexMa
 		if (regexMatches.b) {
 			var first = regexMatches.a;
 			var rest = regexMatches.b;
-			var _v1 = first.ft;
+			var _v1 = first.fB;
 			if ((((_v1.b && (!_v1.a.$)) && _v1.b.b) && (!_v1.b.a.$)) && (!_v1.b.b.b)) {
 				var idString = _v1.a.a;
 				var _v2 = _v1.b;
@@ -11590,7 +13596,7 @@ var $author$project$Step$Preprocess$rawEntityRegex = $elm$core$Maybe$withDefault
 	$elm$regex$Regex$never,
 	A2(
 		$elm$regex$Regex$fromStringWith,
-		{hq: false, ij: true},
+		{hz: false, it: true},
 		$author$project$Step$Preprocess$simpleEntityPattern));
 var $author$project$Step$Preprocess$entities = function (contents) {
 	var _v0 = $author$project$Step$Preprocess$collectUnparsedEntities$(
@@ -11626,7 +13632,7 @@ var $author$project$Step$Pattern$escape = function (givenString) {
 		$elm$regex$Regex$replace,
 		$author$project$Step$Pattern$specialCharacterRegex,
 		function (_v0) {
-			var match = _v0.h8;
+			var match = _v0.ii;
 			return '\\' + match;
 		},
 		givenString);
@@ -11728,15 +13734,15 @@ var $author$project$Step$Preprocess$split = function (contents) {
 			A2(
 				$elm$core$Basics$composeR,
 				function ($) {
-					return $.h8;
+					return $.ii;
 				},
 				decode),
 			A2($elm$regex$Regex$find, stringRegex, rawString));
 	};
 	var _v0 = A2($elm$regex$Regex$find, headerRegex, contents);
 	if (_v0.b && (!_v0.b.b)) {
-		var submatches = _v0.a.ft;
-		var match = _v0.a.h8;
+		var submatches = _v0.a.fB;
+		var match = _v0.a.ii;
 		if ((((((((((((((((((((submatches.b && (!submatches.a.$)) && submatches.b.b) && (!submatches.b.a.$)) && submatches.b.b.b) && (!submatches.b.b.a.$)) && submatches.b.b.b.b) && (!submatches.b.b.b.a.$)) && submatches.b.b.b.b.b) && (!submatches.b.b.b.b.a.$)) && submatches.b.b.b.b.b.b) && (!submatches.b.b.b.b.b.a.$)) && submatches.b.b.b.b.b.b.b) && (!submatches.b.b.b.b.b.b.a.$)) && submatches.b.b.b.b.b.b.b.b) && (!submatches.b.b.b.b.b.b.b.a.$)) && submatches.b.b.b.b.b.b.b.b.b) && (!submatches.b.b.b.b.b.b.b.b.a.$)) && submatches.b.b.b.b.b.b.b.b.b.b) && (!submatches.b.b.b.b.b.b.b.b.b.a.$)) && (!submatches.b.b.b.b.b.b.b.b.b.b.b)) {
 			var description = submatches.a.a;
 			var _v2 = submatches.b;
@@ -11760,16 +13766,16 @@ var $author$project$Step$Preprocess$split = function (contents) {
 			return $elm$core$Maybe$Just(
 				_Utils_Tuple2(
 					{
-						he: decodeList(author),
-						hf: decode(authorization),
-						hF: decodeList(description),
-						hN: decode(fileName),
-						h_: decode(implementationLevel),
-						iz: decodeList(organization),
-						iA: decode(originatingSystem),
-						iG: decode(preprocessorVersion),
-						iQ: decodeList(schemaIdentifiers),
-						jp: decode(timeStamp)
+						ho: decodeList(author),
+						hp: decode(authorization),
+						hO: decodeList(description),
+						hX: decode(fileName),
+						h7: decode(implementationLevel),
+						iI: decodeList(organization),
+						iJ: decode(originatingSystem),
+						iP: decode(preprocessorVersion),
+						iY: decodeList(schemaIdentifiers),
+						jx: decode(timeStamp)
 					},
 					$author$project$Step$Preprocess$entities(
 						$elm$core$String$dropLeft$(
@@ -11801,20 +13807,20 @@ var $author$project$StepImport$FlatPiece = function (a) {
 	return {$: 0, a: a};
 };
 var $author$project$StepImport$Vec$ = function (x, y, z) {
-	return {k: x, l: y, m: z};
+	return {m: x, n: y, o: z};
 };
 var $author$project$StepImport$Vec = F3($author$project$StepImport$Vec$);
 var $author$project$StepImport$add$ = function (a, b) {
-	return {k: a.k + b.k, l: a.l + b.l, m: a.m + b.m};
+	return {m: a.m + b.m, n: a.n + b.n, o: a.o + b.o};
 };
 var $author$project$StepImport$add = F2($author$project$StepImport$add$);
 var $author$project$StepImport$dot$ = function (a, b) {
-	return ((a.k * b.k) + (a.l * b.l)) + (a.m * b.m);
+	return ((a.m * b.m) + (a.n * b.n)) + (a.o * b.o);
 };
 var $author$project$StepImport$dot = F2($author$project$StepImport$dot$);
 var $author$project$StepImport$angleTolerance = 1.0e-6;
 var $author$project$StepImport$cross$ = function (a, b) {
-	return {k: (a.l * b.m) - (a.m * b.l), l: (a.m * b.k) - (a.k * b.m), m: (a.k * b.l) - (a.l * b.k)};
+	return {m: (a.n * b.o) - (a.o * b.n), n: (a.o * b.m) - (a.m * b.o), o: (a.m * b.n) - (a.n * b.m)};
 };
 var $author$project$StepImport$cross = F2($author$project$StepImport$cross$);
 var $author$project$StepImport$lengthOf = function (a) {
@@ -11822,7 +13828,7 @@ var $author$project$StepImport$lengthOf = function (a) {
 		$author$project$StepImport$dot$(a, a));
 };
 var $author$project$StepImport$sub$ = function (a, b) {
-	return {k: a.k - b.k, l: a.l - b.l, m: a.m - b.m};
+	return {m: a.m - b.m, n: a.n - b.n, o: a.o - b.o};
 };
 var $author$project$StepImport$sub = F2($author$project$StepImport$sub$);
 var $author$project$StepImport$distance$ = function (a, b) {
@@ -11831,7 +13837,7 @@ var $author$project$StepImport$distance$ = function (a, b) {
 };
 var $author$project$StepImport$distance = F2($author$project$StepImport$distance$);
 var $author$project$StepImport$scale$ = function (s, a) {
-	return {k: s * a.k, l: s * a.l, m: s * a.m};
+	return {m: s * a.m, n: s * a.n, o: s * a.o};
 };
 var $author$project$StepImport$scale = F2($author$project$StepImport$scale$);
 var $author$project$StepImport$normalize = function (a) {
@@ -11845,7 +13851,7 @@ var $author$project$StepImport$point2d = function (_v0) {
 	var x = _v0.a;
 	var y = _v0.b;
 	return $ianmackenzie$elm_geometry$Point2d$unsafe(
-		{k: x, l: y});
+		{m: x, n: y});
 };
 var $author$project$StepImport$positiveAngle = function (angle) {
 	var wrapped = angle - ((2 * $elm$core$Basics$pi) * $elm$core$Basics$floor(angle / (2 * $elm$core$Basics$pi)));
@@ -11873,23 +13879,23 @@ var $author$project$StepImport$rotateAround = F4($author$project$StepImport$rota
 var $author$project$StepImport$reverseRun = function (run) {
 	return _Utils_update(
 		run,
-		{h: run.c, bc: !run.bc, c: run.h});
+		{f_: run.fz, bi: !run.bi, fz: run.f_});
 };
 var $author$project$StepImport$runsOf = function (bound_) {
 	var runs = $elm$core$List$map$(
 		function (_v0) {
 			var edge = _v0.a;
 			var sameSense = _v0.b;
-			return sameSense ? {y: edge.y, h: edge.h, bc: edge.T, S: edge.S, c: edge.c} : {y: edge.y, h: edge.c, bc: !edge.T, S: edge.S, c: edge.h};
+			return sameSense ? {t: edge.t, f_: edge.f_, bi: edge.Y, bX: edge.bX, fz: edge.fz} : {t: edge.t, f_: edge.fz, bi: !edge.Y, bX: edge.bX, fz: edge.f_};
 		},
-		bound_.bK);
-	return bound_.T ? runs : $elm$core$List$map$(
+		bound_.bS);
+	return bound_.Y ? runs : $elm$core$List$map$(
 		$author$project$StepImport$reverseRun,
 		$elm$core$List$reverse(runs));
 };
 var $author$project$StepImport$sweptAround$ = function (center, axis, run) {
-	var b = $author$project$StepImport$sub$(run.h, center);
-	var a = $author$project$StepImport$sub$(run.c, center);
+	var b = $author$project$StepImport$sub$(run.f_, center);
+	var a = $author$project$StepImport$sub$(run.fz, center);
 	var ccw = $author$project$StepImport$positiveAngle(
 		A2(
 			$elm$core$Basics$atan2,
@@ -11904,7 +13910,7 @@ var $author$project$StepImport$sweptAround$ = function (center, axis, run) {
 				axis,
 				$author$project$StepImport$cross$(b, a)),
 			$author$project$StepImport$dot$(a, b)));
-	return run.bc ? ccw : (-cw);
+	return run.bi ? ccw : (-cw);
 };
 var $author$project$StepImport$sweptAround = F3($author$project$StepImport$sweptAround$);
 var $author$project$StepImport$tolerance = 1.0e-6;
@@ -11912,14 +13918,14 @@ var $author$project$StepImport$featureOf$ = function (frame, outward, bounds) {
 	var runs = $elm$core$List$filter$(
 		function (run) {
 			return (_Utils_cmp(
-				$author$project$StepImport$distance$(run.c, run.h),
-				$author$project$StepImport$tolerance) > 0) || (!_Utils_eq(run.y, $author$project$StepImport$LineCurve));
+				$author$project$StepImport$distance$(run.fz, run.f_),
+				$author$project$StepImport$tolerance) > 0) || (!_Utils_eq(run.t, $author$project$StepImport$LineCurve));
 		},
 		$elm$core$List$concatMap$($author$project$StepImport$runsOf, bounds));
 	var relative = function (p) {
-		return $author$project$StepImport$sub$(p, frame.u);
+		return $author$project$StepImport$sub$(p, frame.z);
 	};
-	var axis = frame.s;
+	var axis = frame.w;
 	var radial = function (p) {
 		var d = relative(p);
 		return $author$project$StepImport$sub$(
@@ -11934,8 +13940,8 @@ var $author$project$StepImport$featureOf$ = function (frame, outward, bounds) {
 	};
 	var isMeridian = function (run) {
 		var far = (_Utils_cmp(
-			offAxis(run.c),
-			offAxis(run.h)) > 0) ? run.c : run.h;
+			offAxis(run.fz),
+			offAxis(run.f_)) > 0) ? run.fz : run.f_;
 		if (_Utils_cmp(
 			offAxis(far),
 			$author$project$StepImport$tolerance) < 0) {
@@ -11957,17 +13963,17 @@ var $author$project$StepImport$featureOf$ = function (frame, outward, bounds) {
 						radial(far)),
 					-$author$project$StepImport$tolerance) > -1);
 			};
-			return inPlane(run.c) && (inPlane(run.h) && function () {
-				var _v12 = run.y;
+			return inPlane(run.fz) && (inPlane(run.f_) && function () {
+				var _v12 = run.t;
 				if (!_v12.$) {
 					return true;
 				} else {
 					var circle = _v12.a;
-					return inPlane(circle.D.u) && (_Utils_cmp(
+					return inPlane(circle.H.z) && (_Utils_cmp(
 						$author$project$StepImport$lengthOf(
 							$author$project$StepImport$cross$(
 								$author$project$StepImport$normalize(
-									$elm$core$Maybe$withDefault$(planeNormal, circle.D.s)),
+									$elm$core$Maybe$withDefault$(planeNormal, circle.H.w)),
 								planeNormal)),
 						$author$project$StepImport$angleTolerance) < 0);
 				}
@@ -11976,17 +13982,17 @@ var $author$project$StepImport$featureOf$ = function (frame, outward, bounds) {
 	};
 	var meridians = $elm$core$List$filter$(isMeridian, runs);
 	var isParallel = function (run) {
-		var _v11 = run.y;
+		var _v11 = run.t;
 		if (_v11.$ === 1) {
 			var circle = _v11.a;
 			return (_Utils_cmp(
 				$author$project$StepImport$lengthOf(
 					$author$project$StepImport$cross$(
 						$author$project$StepImport$normalize(
-							$elm$core$Maybe$withDefault$(axis, circle.D.s)),
+							$elm$core$Maybe$withDefault$(axis, circle.H.w)),
 						axis)),
 				$author$project$StepImport$angleTolerance) < 0) && (_Utils_cmp(
-				offAxis(circle.D.u),
+				offAxis(circle.H.z),
 				$author$project$StepImport$tolerance) < 0);
 		} else {
 			return false;
@@ -12032,13 +14038,13 @@ var $author$project$StepImport$featureOf$ = function (frame, outward, bounds) {
 													var c = center.a;
 													return $author$project$Surface$Circle(
 														{
-															cF: toProfile(c),
-															h: toProfile(end)
+															b: toProfile(c),
+															f_: toProfile(end)
 														});
 												} else {
 													return $author$project$Surface$Line(
 														{
-															h: toProfile(end)
+															f_: toProfile(end)
 														});
 												}
 											}()
@@ -12048,57 +14054,57 @@ var $author$project$StepImport$featureOf$ = function (frame, outward, bounds) {
 						rest).b;
 				});
 			var points = function () {
-				var _v7 = run.y;
+				var _v7 = run.t;
 				if (!_v7.$) {
 					return _List_fromArray(
 						[
-							_Utils_Tuple2(run.h, $elm$core$Maybe$Nothing)
+							_Utils_Tuple2(run.f_, $elm$core$Maybe$Nothing)
 						]);
 				} else {
 					var circle = _v7.a;
 					var circleAxis = $author$project$StepImport$normalize(
-						$elm$core$Maybe$withDefault$(axis, circle.D.s));
-					var center = circle.D.u;
+						$elm$core$Maybe$withDefault$(axis, circle.H.w));
+					var center = circle.H.z;
 					var swept = $author$project$StepImport$sweptAround$(center, circleAxis, run);
 					return (_Utils_cmp(
 						$elm$core$Basics$abs(swept),
 						0.99 * $elm$core$Basics$pi) > 0) ? _List_fromArray(
 						[
 							_Utils_Tuple2(
-							$author$project$StepImport$rotateAround$(center, circleAxis, swept / 2, run.c),
+							$author$project$StepImport$rotateAround$(center, circleAxis, swept / 2, run.fz),
 							$elm$core$Maybe$Just(center)),
 							_Utils_Tuple2(
-							run.h,
+							run.f_,
 							$elm$core$Maybe$Just(center))
 						]) : _List_fromArray(
 						[
 							_Utils_Tuple2(
-							run.h,
+							run.f_,
 							$elm$core$Maybe$Just(center))
 						]);
 				}
 			}();
 			var _v5 = function () {
-				var _v6 = run.y;
+				var _v6 = run.t;
 				if (!_v6.$) {
 					return _Utils_Tuple2(
 						$author$project$StepImport$scale$(
 							0.5,
-							$author$project$StepImport$add$(run.c, run.h)),
-						$author$project$StepImport$sub$(run.h, run.c));
+							$author$project$StepImport$add$(run.fz, run.f_)),
+						$author$project$StepImport$sub$(run.f_, run.fz));
 				} else {
 					var circle = _v6.a;
 					var circleAxis = $author$project$StepImport$normalize(
-						$elm$core$Maybe$withDefault$(axis, circle.D.s));
-					var swept = $author$project$StepImport$sweptAround$(circle.D.u, circleAxis, run);
-					var m = $author$project$StepImport$rotateAround$(circle.D.u, circleAxis, swept / 2, run.c);
+						$elm$core$Maybe$withDefault$(axis, circle.H.w));
+					var swept = $author$project$StepImport$sweptAround$(circle.H.z, circleAxis, run);
+					var m = $author$project$StepImport$rotateAround$(circle.H.z, circleAxis, swept / 2, run.fz);
 					return _Utils_Tuple2(
 						m,
 						$author$project$StepImport$scale$(
 							swept,
 							$author$project$StepImport$cross$(
 								circleAxis,
-								$author$project$StepImport$sub$(m, circle.D.u))));
+								$author$project$StepImport$sub$(m, circle.H.z))));
 				}
 			}();
 			var middle = _v5.a;
@@ -12110,13 +14116,13 @@ var $author$project$StepImport$featureOf$ = function (frame, outward, bounds) {
 			if (rightWay) {
 				return $elm$core$Result$Ok(
 					{
-						gN: A2(segments, run.c, points),
-						c: toProfile(run.c)
+						gX: A2(segments, run.fz, points),
+						fz: toProfile(run.fz)
 					});
 			} else {
 				var nodes = A2(
 					$elm$core$List$cons,
-					run.c,
+					run.fz,
 					$elm$core$List$map$($elm$core$Tuple$first, points));
 				var centers = $elm$core$List$map$($elm$core$Tuple$second, points);
 				var reversedPoints = A3(
@@ -12128,15 +14134,15 @@ var $author$project$StepImport$featureOf$ = function (frame, outward, bounds) {
 					$elm$core$List$reverse(centers));
 				return $elm$core$Result$Ok(
 					{
-						gN: A2(segments, run.h, reversedPoints),
-						c: toProfile(run.h)
+						gX: A2(segments, run.f_, reversedPoints),
+						fz: toProfile(run.f_)
 					});
 			}
 		} else {
 			return $elm$core$Result$Err('none of its edges go along its axis, so its profile isn\'t known');
 		}
 	}();
-	var y = $author$project$StepImport$cross$(axis, frame.k);
+	var y = $author$project$StepImport$cross$(axis, frame.m);
 	var theta = function (p) {
 		return A2(
 			$elm$core$Basics$atan2,
@@ -12145,40 +14151,40 @@ var $author$project$StepImport$featureOf$ = function (frame, outward, bounds) {
 				y),
 			$author$project$StepImport$dot$(
 				relative(p),
-				frame.k));
+				frame.m));
 	};
 	var sweep = function () {
 		if (parallels.b) {
 			var run = parallels.a;
 			if (_Utils_cmp(
-				$author$project$StepImport$distance$(run.c, run.h),
+				$author$project$StepImport$distance$(run.fz, run.f_),
 				$author$project$StepImport$tolerance) < 0) {
 				return $elm$core$Result$Ok($author$project$Surface$FullTurn);
 			} else {
 				var circleAxis = function () {
-					var _v3 = run.y;
+					var _v3 = run.t;
 					if (_v3.$ === 1) {
 						var circle = _v3.a;
-						return $elm$core$Maybe$withDefault$(axis, circle.D.s);
+						return $elm$core$Maybe$withDefault$(axis, circle.H.w);
 					} else {
 						return axis;
 					}
 				}();
 				var around = _Utils_eq(
-					run.bc,
+					run.bi,
 					$author$project$StepImport$dot$(circleAxis, axis) > 0) ? 1 : (-1);
 				var _v2 = (around > 0) ? _Utils_Tuple2(
-					theta(run.c),
-					theta(run.h)) : _Utils_Tuple2(
-					theta(run.h),
-					theta(run.c));
+					theta(run.fz),
+					theta(run.f_)) : _Utils_Tuple2(
+					theta(run.f_),
+					theta(run.fz));
 				var from = _v2.a;
 				var to = _v2.b;
 				return $elm$core$Result$Ok(
 					$author$project$Surface$PartTurn(
 						{
-							hR: $ianmackenzie$elm_units$Angle$radians(from),
-							jr: $ianmackenzie$elm_units$Angle$radians(
+							c: $ianmackenzie$elm_units$Angle$radians(from),
+							e: $ianmackenzie$elm_units$Angle$radians(
 								from + $author$project$StepImport$positiveAngle(to - from))
 						}));
 			}
@@ -12189,21 +14195,21 @@ var $author$project$StepImport$featureOf$ = function (frame, outward, bounds) {
 	if (stray.b) {
 		var run = stray.a;
 		return $elm$core$Result$Err(
-			'edge #' + ($elm$core$String$fromInt(run.S) + ' neither goes around its axis nor along it (two fillets meeting at a sharp corner make edges like this)'));
+			'edge #' + ($elm$core$String$fromInt(run.bX) + ' neither goes around its axis nor along it (two fillets meeting at a sharp corner make edges like this)'));
 	} else {
 		return $elm$core$Result$map2$(
 			F2(
 				function (sweep_, profile_) {
 					return {
-						hQ: $ianmackenzie$elm_geometry$Frame3d$unsafe(
+						h_: $ianmackenzie$elm_geometry$Frame3d$unsafe(
 							{
-								gA: $ianmackenzie$elm_geometry$Point3d$fromMeters(frame.u),
-								gY: $ianmackenzie$elm_geometry$Direction3d$unsafe(frame.k),
-								gZ: $ianmackenzie$elm_geometry$Direction3d$unsafe(y),
-								jH: $ianmackenzie$elm_geometry$Direction3d$unsafe(axis)
+								gK: $ianmackenzie$elm_geometry$Point3d$fromMeters(frame.z),
+								g6: $ianmackenzie$elm_geometry$Direction3d$unsafe(frame.m),
+								g7: $ianmackenzie$elm_geometry$Direction3d$unsafe(y),
+								jO: $ianmackenzie$elm_geometry$Direction3d$unsafe(axis)
 							}),
-						iI: profile_,
-						i8: sweep_
+						u: profile_,
+						jg: sweep_
 					};
 				}),
 			sweep,
@@ -12232,41 +14238,41 @@ var $author$project$StepImport$signedArea = function (points) {
 				$elm$core$List$take$(1, points))));
 };
 var $author$project$StepImport$flatOf$ = function (frame, sense, bounds) {
-	var x = frame.k;
+	var x = frame.m;
 	var oriented = F2(
 		function (wantPositive, loop) {
-			return _Utils_eq(loop.eB > 0, wantPositive) ? loop.fl : $elm$core$List$map$(
+			return _Utils_eq(loop.eH > 0, wantPositive) ? loop.fs : $elm$core$List$map$(
 				$author$project$StepImport$reverseRun,
-				$elm$core$List$reverse(loop.fl));
+				$elm$core$List$reverse(loop.fs));
 		});
-	var normal = $author$project$StepImport$scale$(sense, frame.s);
+	var normal = $author$project$StepImport$scale$(sense, frame.w);
 	var y = $author$project$StepImport$cross$(normal, x);
 	var to2d = function (p) {
-		var d = $author$project$StepImport$sub$(p, frame.u);
+		var d = $author$project$StepImport$sub$(p, frame.z);
 		return _Utils_Tuple2(
 			$author$project$StepImport$dot$(d, x),
 			$author$project$StepImport$dot$(d, y));
 	};
 	var edgeOf = function (run) {
-		var _v2 = run.y;
+		var _v2 = run.t;
 		if (!_v2.$) {
 			return {
-				dO: $author$project$Surface$Straight(
+				dV: $author$project$Surface$Straight(
 					$author$project$StepImport$point2d(
-						to2d(run.c))),
-				iP: _List_fromArray(
+						to2d(run.fz))),
+				iX: _List_fromArray(
 					[
-						to2d(run.c)
+						to2d(run.fz)
 					]),
-				c: to2d(run.c)
+				fz: to2d(run.fz)
 			};
 		} else {
 			var circle = _v2.a;
-			var center = circle.D.u;
+			var center = circle.H.z;
 			var axis = $author$project$StepImport$normalize(
-				$elm$core$Maybe$withDefault$(normal, circle.D.s));
+				$elm$core$Maybe$withDefault$(normal, circle.H.w));
 			var swept = $author$project$StepImport$sweptAround$(center, axis, run) * (($author$project$StepImport$dot$(axis, normal) < 0) ? (-1) : 1);
-			var _v3 = to2d(run.c);
+			var _v3 = to2d(run.fz);
 			var sx = _v3.a;
 			var sy = _v3.b;
 			var _v4 = to2d(center);
@@ -12276,15 +14282,15 @@ var $author$project$StepImport$flatOf$ = function (frame, sense, bounds) {
 			var r = $elm$core$Basics$sqrt(
 				A2($elm$core$Basics$pow, sx - cx, 2) + A2($elm$core$Basics$pow, sy - cy, 2));
 			return {
-				dO: $author$project$Surface$Arc(
+				dV: $author$project$Surface$Arc(
 					{
-						cF: $author$project$StepImport$point2d(
+						b: $author$project$StepImport$point2d(
 							_Utils_Tuple2(cx, cy)),
-						c: $author$project$StepImport$point2d(
+						fz: $author$project$StepImport$point2d(
 							_Utils_Tuple2(sx, sy)),
-						i9: $ianmackenzie$elm_units$Angle$radians(swept)
+						jh: $ianmackenzie$elm_units$Angle$radians(swept)
 					}),
-				iP: $elm$core$List$map$(
+				iX: $elm$core$List$map$(
 					function (i) {
 						return function (a) {
 							return _Utils_Tuple2(
@@ -12293,7 +14299,7 @@ var $author$project$StepImport$flatOf$ = function (frame, sense, bounds) {
 						}(a0 + ((swept * i) / 16));
 					},
 					$elm$core$List$range$(0, 15)),
-				c: _Utils_Tuple2(sx, sy)
+				fz: _Utils_Tuple2(sx, sy)
 			};
 		}
 	};
@@ -12301,24 +14307,24 @@ var $author$project$StepImport$flatOf$ = function (frame, sense, bounds) {
 		function (bound_) {
 			var runs = $author$project$StepImport$runsOf(bound_);
 			return {
-				eB: $author$project$StepImport$signedArea(
+				eH: $author$project$StepImport$signedArea(
 					$elm$core$List$concatMap$(
 						A2(
 							$elm$core$Basics$composeR,
 							edgeOf,
 							function ($) {
-								return $.iP;
+								return $.iX;
 							}),
 						runs)),
-				bS: bound_.bS,
-				fl: runs
+				b0: bound_.b0,
+				fs: runs
 			};
 		},
 		bounds);
 	var outer = function () {
 		var _v1 = $elm$core$List$filter$(
 			function ($) {
-				return $.bS;
+				return $.b0;
 			},
 			loops);
 		if (_v1.b) {
@@ -12331,7 +14337,7 @@ var $author$project$StepImport$flatOf$ = function (frame, sense, bounds) {
 					A2(
 						$elm$core$Basics$composeR,
 						function ($) {
-							return $.eB;
+							return $.eH;
 						},
 						A2($elm$core$Basics$composeR, $elm$core$Basics$abs, $elm$core$Basics$negate)),
 					loops));
@@ -12341,14 +14347,14 @@ var $author$project$StepImport$flatOf$ = function (frame, sense, bounds) {
 		var outer_ = outer.a;
 		return $elm$core$Result$Ok(
 			{
-				hp: A2(
+				eM: A2(
 					$elm$core$List$cons,
 					$elm$core$List$map$(
 						A2(
 							$elm$core$Basics$composeR,
 							edgeOf,
 							function ($) {
-								return $.dO;
+								return $.dV;
 							}),
 						A2(oriented, true, outer_)),
 					$elm$core$List$map$(
@@ -12360,18 +14366,18 @@ var $author$project$StepImport$flatOf$ = function (frame, sense, bounds) {
 									$elm$core$Basics$composeR,
 									edgeOf,
 									function ($) {
-										return $.dO;
+										return $.dV;
 									}))),
 						$elm$core$List$filter$(
 							function (loop) {
 								return !_Utils_eq(loop, outer_);
 							},
 							loops))),
-				iF: $ianmackenzie$elm_geometry$SketchPlane3d$unsafe(
+				iO: $ianmackenzie$elm_geometry$SketchPlane3d$unsafe(
 					{
-						gA: $ianmackenzie$elm_geometry$Point3d$fromMeters(frame.u),
-						gY: $ianmackenzie$elm_geometry$Direction3d$unsafe(x),
-						gZ: $ianmackenzie$elm_geometry$Direction3d$unsafe(y)
+						gK: $ianmackenzie$elm_geometry$Point3d$fromMeters(frame.z),
+						g6: $ianmackenzie$elm_geometry$Direction3d$unsafe(x),
+						g7: $ianmackenzie$elm_geometry$Direction3d$unsafe(y)
 					})
 			});
 	} else {
@@ -12380,7 +14386,7 @@ var $author$project$StepImport$flatOf$ = function (frame, sense, bounds) {
 };
 var $author$project$StepImport$flatOf = F3($author$project$StepImport$flatOf$);
 var $author$project$StepImport$perpendicularTo = function (v) {
-	return ($elm$core$Basics$abs(v.k) < 0.9) ? $author$project$StepImport$normalize(
+	return ($elm$core$Basics$abs(v.m) < 0.9) ? $author$project$StepImport$normalize(
 		$author$project$StepImport$cross$(
 			v,
 			$author$project$StepImport$Vec$(1, 0, 0))) : $author$project$StepImport$normalize(
@@ -12393,33 +14399,33 @@ var $elm$core$List$singleton = function (value) {
 		[value]);
 };
 var $author$project$StepImport$pieceOf = function (face_) {
-	var sense = face_.T ? 1 : (-1);
+	var sense = face_.Y ? 1 : (-1);
 	var radialFrom = F2(
 		function (frame, p) {
-			var d = $author$project$StepImport$sub$(p, frame.u);
+			var d = $author$project$StepImport$sub$(p, frame.z);
 			return $author$project$StepImport$sub$(
 				d,
 				$author$project$StepImport$scale$(
-					$author$project$StepImport$dot$(d, frame.s),
-					frame.s));
+					$author$project$StepImport$dot$(d, frame.w),
+					frame.w));
 		});
 	var frameOf = function (p) {
 		var axis = $author$project$StepImport$normalize(
 			$elm$core$Maybe$withDefault$(
 				$author$project$StepImport$Vec$(0, 0, 1),
-				p.s));
+				p.w));
 		var ref = $elm$core$Maybe$withDefault$(
 			$author$project$StepImport$perpendicularTo(axis),
-			p.cs);
+			p.cB);
 		var x = $author$project$StepImport$normalize(
 			$author$project$StepImport$sub$(
 				ref,
 				$author$project$StepImport$scale$(
 					$author$project$StepImport$dot$(ref, axis),
 					axis)));
-		return {s: axis, u: p.u, k: x};
+		return {w: axis, z: p.z, m: x};
 	};
-	var _v0 = face_.bL;
+	var _v0 = face_.bT;
 	switch (_v0.$) {
 		case 0:
 			var p = _v0.a;
@@ -12428,7 +14434,7 @@ var $author$project$StepImport$pieceOf = function (face_) {
 				$author$project$StepImport$flatOf$(
 					frameOf(p),
 					sense,
-					face_.an));
+					face_.at));
 		case 1:
 			var p = _v0.a;
 			var frame = frameOf(p);
@@ -12442,7 +14448,7 @@ var $author$project$StepImport$pieceOf = function (face_) {
 							$author$project$StepImport$normalize(
 								A2(radialFrom, frame, q)));
 					},
-					face_.an));
+					face_.at));
 		case 2:
 			var p = _v0.a;
 			var semiAngle = _v0.c;
@@ -12460,9 +14466,9 @@ var $author$project$StepImport$pieceOf = function (face_) {
 										A2(radialFrom, frame, q)),
 									$author$project$StepImport$scale$(
 										$elm$core$Basics$tan(semiAngle),
-										frame.s))));
+										frame.w))));
 					},
-					face_.an));
+					face_.at));
 		case 4:
 			var p = _v0.a;
 			var major = _v0.b;
@@ -12478,20 +14484,20 @@ var $author$project$StepImport$pieceOf = function (face_) {
 								$author$project$StepImport$sub$(
 									q,
 									$author$project$StepImport$add$(
-										frame.u,
+										frame.z,
 										$author$project$StepImport$scale$(
 											major,
 											$author$project$StepImport$normalize(
 												A2(radialFrom, frame, q)))))));
 					},
-					face_.an));
+					face_.at));
 		default:
 			var p = _v0.a;
 			var outward = function (q) {
 				return $author$project$StepImport$scale$(
 					sense,
 					$author$project$StepImport$normalize(
-						$author$project$StepImport$sub$(q, p.u)));
+						$author$project$StepImport$sub$(q, p.z)));
 			};
 			var tryAxes = function (axes) {
 				tryAxes:
@@ -12504,10 +14510,10 @@ var $author$project$StepImport$pieceOf = function (face_) {
 								_Utils_update(
 									p,
 									{
-										s: $elm$core$Maybe$Just(axis)
+										w: $elm$core$Maybe$Just(axis)
 									})),
 							outward,
-							face_.an);
+							face_.at);
 						if (!_v2.$) {
 							var feature = _v2.a;
 							return $elm$core$Result$Ok(feature);
@@ -12528,22 +14534,22 @@ var $author$project$StepImport$pieceOf = function (face_) {
 			};
 			var circleAxes = $elm$core$List$filterMap$(
 				function (run) {
-					var _v3 = run.y;
+					var _v3 = run.t;
 					if (_v3.$ === 1) {
 						var circle = _v3.a;
-						return circle.D.s;
+						return circle.H.w;
 					} else {
 						return $elm$core$Maybe$Nothing;
 					}
 				},
-				$elm$core$List$concatMap$($author$project$StepImport$runsOf, face_.an));
+				$elm$core$List$concatMap$($author$project$StepImport$runsOf, face_.at));
 			return $elm$core$Result$map$(
 				$author$project$StepImport$FeaturePiece,
 				tryAxes(
 					_Utils_ap(
 						$elm$core$Maybe$withDefault$(
 							_List_Nil,
-							$elm$core$Maybe$map$($elm$core$List$singleton, p.s)),
+							$elm$core$Maybe$map$($elm$core$List$singleton, p.w)),
 						circleAxes)));
 	}
 };
@@ -12635,7 +14641,7 @@ var $author$project$Step$Decode$listHelp$ = function (chompItem, entityLine, mat
 	listHelp:
 	while (true) {
 		if (matches.b) {
-			var submatches = matches.a.ft;
+			var submatches = matches.a.fB;
 			var rest = matches.b;
 			var _v1 = A2(chompItem, entityLine, submatches);
 			switch (_v1.$) {
@@ -12730,22 +14736,11 @@ var $author$project$Step$Decode$derivedValue = function (result) {
 			}));
 };
 var $author$project$StepImport$Edge$ = function (id, start, end, curve, sameSense) {
-	return {y: curve, h: end, S: id, T: sameSense, c: start};
+	return {t: curve, f_: end, bX: id, Y: sameSense, fz: start};
 };
 var $author$project$StepImport$Edge = F5($author$project$StepImport$Edge$);
 var $author$project$Step$Pattern$enum = $author$project$Step$Pattern$capture(
 	$author$project$Step$Pattern$Pattern('\\.\\w+\\.'));
-var $elm$core$Dict$fromList = function (assocs) {
-	return $elm$core$List$foldl$(
-		F2(
-			function (_v0, dict) {
-				var key = _v0.a;
-				var value = _v0.b;
-				return $elm$core$Dict$insert$(key, value, dict);
-			}),
-		$elm$core$Dict$empty,
-		assocs);
-};
 var $elm$core$String$toUpper = _String_toUpper;
 var $author$project$Step$Decode$enum = function (cases) {
 	var normalized = $elm$core$List$map$(
@@ -12848,7 +14843,7 @@ var $author$project$Step$Decode$oneOf = function (entityDecoders) {
 		$author$project$Step$Decode$chompOneOf(entityDecoders));
 };
 var $author$project$StepImport$Placement$ = function (origin, axis, ref) {
-	return {s: axis, u: origin, cs: ref};
+	return {w: axis, z: origin, cB: ref};
 };
 var $author$project$StepImport$Placement = F3($author$project$StepImport$Placement$);
 var $author$project$Step$Pattern$Maybe = function (a) {
@@ -12906,12 +14901,12 @@ var $author$project$Step$Decode$simpleEntityDecoder$ = function (callback, typeN
 	return $author$project$Step$Decode$makeEntityDecoder(
 		F2(
 			function (entityLine, _v0) {
-				var _v1 = A2($elm$regex$Regex$find, regex, entityLine.ag);
+				var _v1 = A2($elm$regex$Regex$find, regex, entityLine.am);
 				if (!_v1.b) {
 					return $author$project$Step$Decode$UnexpectedType;
 				} else {
 					if (!_v1.b.b) {
-						var submatches = _v1.a.ft;
+						var submatches = _v1.a.fB;
 						var _v2 = A2(chompAttributes, entityLine, submatches);
 						switch (_v2.$) {
 							case 0:
@@ -13060,7 +15055,7 @@ var $author$project$StepImport$direction = $author$project$Step$Decode$simpleEnt
 		var x = _v0.a;
 		var y = _v0.b;
 		var z = _v0.c;
-		return {k: x, l: y, m: z};
+		return {m: x, n: y, o: z};
 	},
 	$author$project$Step$Decode$ignoreContext,
 	$author$project$Step$Decode$ignoreId,
@@ -13120,7 +15115,7 @@ var $author$project$StepImport$point = $author$project$Step$Decode$simpleEntity2
 		var x = _v0.a;
 		var y = _v0.b;
 		var z = _v0.c;
-		return {k: x, l: y, m: z};
+		return {m: x, n: y, o: z};
 	},
 	$author$project$Step$Decode$ignoreContext,
 	$author$project$Step$Decode$ignoreId,
@@ -13134,9 +15129,9 @@ var $author$project$Step$Decode$dropId$ = function (_v0, value) {
 var $author$project$Step$Decode$dropId = F2($author$project$Step$Decode$dropId$);
 var $author$project$Step$Decode$entityHasUnexpectedType = function (id) {
 	return {
-		bs: _List_fromArray(
+		by: _List_fromArray(
 			[id]),
-		bv: 'Entity has unexpected type'
+		bB: 'Entity has unexpected type'
 	};
 };
 var $author$project$Step$Decode$noEntityWithId = function (id) {
@@ -13157,12 +15152,12 @@ var $author$project$Step$Decode$referenceWithId$ = function (combine, entityDeco
 							$elm$core$String$dropLeft$(1, submatch));
 						if (!_v1.$) {
 							var childId = _v1.a;
-							var _v2 = entityLine.Y;
+							var _v2 = entityLine.ac;
 							var entities = _v2.b;
 							var _v3 = $elm$core$Array$get$(childId, entities);
 							if (!_v3.$) {
 								var childEntityString = _v3.a;
-								var childEntityLine = {R: entityLine.R, Y: entityLine.Y, S: childId, ag: childEntityString};
+								var childEntityLine = {W: entityLine.W, ac: entityLine.ac, bX: childId, am: childEntityString};
 								var _v4 = $author$project$Step$Decode$decodeEntity$(entityDecoder, childEntityLine);
 								switch (_v4.$) {
 									case 0:
@@ -13332,7 +15327,7 @@ function $author$project$StepImport$cyclic$curve() {
 				F2(
 					function (placement_, radius) {
 						return $author$project$StepImport$CircleCurve(
-							{D: placement_, gH: radius});
+							{H: placement_, p: radius});
 					}),
 				$author$project$Step$Decode$ignoreContext,
 				$author$project$Step$Decode$ignoreId,
@@ -13354,7 +15349,7 @@ var $author$project$Step$Decode$keepId = $author$project$Step$Decode$Decoder$(
 	F2(
 		function (entityLine, submatches) {
 			return $author$project$Step$Decode$Succeeded$(
-				$elm$core$Basics$apR(entityLine.S),
+				$elm$core$Basics$apR(entityLine.bX),
 				submatches);
 		}));
 var $author$project$Step$Decode$simpleEntity5$ = function (callback, contextDecoder, idDecoder, typeName, firstAttributeDecoder, secondAttributeDecoder, thirdAttributeDecoder, fourthAttributeDecoder, fifthAttributeDecoder) {
@@ -13442,7 +15437,7 @@ var $author$project$StepImport$bound = function () {
 			return $author$project$Step$Decode$simpleEntity3$(
 				F2(
 					function (edges, sameSense) {
-						return {bK: edges, bS: outer, T: sameSense};
+						return {bS: edges, b0: outer, Y: sameSense};
 					}),
 				$author$project$Step$Decode$ignoreContext,
 				$author$project$Step$Decode$ignoreId,
@@ -13512,7 +15507,7 @@ var $author$project$StepImport$geometry = $author$project$Step$Decode$oneOf(
 var $author$project$StepImport$face = $author$project$Step$Decode$simpleEntity4$(
 	F4(
 		function (id, bounds, geometry_, sameSense) {
-			return {an: bounds, bL: geometry_, S: id, T: sameSense};
+			return {at: bounds, bT: geometry_, bX: id, Y: sameSense};
 		}),
 	$author$project$Step$Decode$ignoreContext,
 	$author$project$Step$Decode$keepId,
@@ -13540,7 +15535,7 @@ var $author$project$StepImport$unitsOf = function (text) {
 			A2(
 				$elm$core$Basics$composeR,
 				function ($) {
-					return $.ft;
+					return $.fB;
 				},
 				A2(
 					$elm$core$Basics$composeR,
@@ -13581,7 +15576,7 @@ var $author$project$StepImport$unitsOf = function (text) {
 				A2(
 					$elm$core$Basics$composeR,
 					function ($) {
-						return $.ft;
+						return $.fB;
 					},
 					A2(
 						$elm$core$Basics$composeR,
@@ -13606,7 +15601,7 @@ var $author$project$StepImport$unitsOf = function (text) {
 				A2(
 					$elm$core$Basics$composeR,
 					function ($) {
-						return $.ft;
+						return $.fB;
 					},
 					A2(
 						$elm$core$Basics$composeR,
@@ -13662,7 +15657,7 @@ var $author$project$StepImport$unitsOf = function (text) {
 		}
 		return 1;
 	}();
-	return {fK: angle, aL: length};
+	return {fS: angle, aR: length};
 };
 var $author$project$StepImport$surface$ = function (userScale, text) {
 	var _v0 = $author$project$Step$Decode$parse(text);
@@ -13676,19 +15671,19 @@ var $author$project$StepImport$surface$ = function (userScale, text) {
 					var faces = _v2.a;
 					var units = $author$project$StepImport$unitsOf(text);
 					var convert = {
-						fK: function (a) {
-							return a * units.fK;
+						fS: function (a) {
+							return a * units.fS;
 						},
-						dN: function (d) {
-							return {k: d.k, l: d.m, m: -d.l};
+						dU: function (d) {
+							return {m: d.m, n: d.o, o: -d.n};
 						},
-						aL: function (l) {
-							return (l * units.aL) * userScale;
+						aR: function (l) {
+							return (l * units.aR) * userScale;
 						},
-						dd: function (p) {
+						dk: function (p) {
 							return $author$project$StepImport$scale$(
-								units.aL * userScale,
-								{k: p.k, l: p.m, m: -p.l});
+								units.aR * userScale,
+								{m: p.m, n: p.o, o: -p.n});
 						}
 					};
 					return $elm$core$Result$andThen$(
@@ -13697,7 +15692,8 @@ var $author$project$StepImport$surface$ = function (userScale, text) {
 								function (error) {
 									return 'The faces don\'t fit together: ' + $author$project$Surface$errorToString(error);
 								},
-								$author$project$Surface$build$(
+								A2(
+									$author$project$Surface$build,
 									$elm$core$List$filterMap$(
 										function (piece) {
 											if (!piece.$) {
@@ -13724,7 +15720,7 @@ var $author$project$StepImport$surface$ = function (userScale, text) {
 								function (face_) {
 									return $elm$core$Result$mapError$(
 										function (message) {
-											return 'Face #' + ($elm$core$String$fromInt(face_.S) + (': ' + message));
+											return 'Face #' + ($elm$core$String$fromInt(face_.bX) + (': ' + message));
 										},
 										$author$project$StepImport$pieceOf(face_));
 								},
@@ -13752,19 +15748,17 @@ var $author$project$StepImport$surface$ = function (userScale, text) {
 };
 var $author$project$StepImport$surface = F2($author$project$StepImport$surface$);
 var $author$project$Surface$SurfacePoint = $elm$core$Basics$identity;
-var $elm$json$Json$Decode$int = _Json_decodeInt;
-var $elm$json$Json$Decode$map4 = _Json_map4;
 var $author$project$Surface$surfacePointDecoder = A5(
 	$elm$json$Json$Decode$map4,
 	F4(
 		function (piece, a, b, heading) {
-			return {cB: a, cD: b, g: heading, ak: piece};
+			return {cK: a, cM: b, i: heading, aq: piece};
 		}),
 	A2($elm$json$Json$Decode$field, 'piece', $elm$json$Json$Decode$int),
 	A2($elm$json$Json$Decode$field, 'a', $elm$json$Json$Decode$float),
 	A2($elm$json$Json$Decode$field, 'b', $elm$json$Json$Decode$float),
 	A2($elm$json$Json$Decode$field, 'heading', $elm$json$Json$Decode$float));
-var $author$project$MinimapWorker$update$ = function (_v0, model) {
+var $author$project$MinimapWorker$update$ = function (_v0, model_) {
 	var value = _v0;
 	var _v1 = A2($elm$json$Json$Decode$decodeValue, $author$project$MinimapWorker$importDecoder, value);
 	if (!_v1.$) {
@@ -13773,13 +15767,55 @@ var $author$project$MinimapWorker$update$ = function (_v0, model) {
 		var scale = _v2.b;
 		return _Utils_Tuple2(
 			{
-				bT: {dc: _List_Nil, jx: _List_Nil},
-				bX: $author$project$Shapes$empty,
-				cu: $elm$core$Result$toMaybe(
+				bF: {cz: _List_Nil, jE: _List_Nil},
+				bG: $author$project$Shapes$empty,
+				b4: $elm$core$Result$toMaybe(
 					$author$project$StepImport$surface$(scale, text))
 			},
 			$elm$core$Platform$Cmd$none);
 	} else {
+		var model = function () {
+			var _v6 = A2(
+				$elm$json$Json$Decode$decodeValue,
+				A2(
+					$elm$json$Json$Decode$field,
+					'ground',
+					$elm$json$Json$Decode$nullable($author$project$GridLevel$decoder)),
+				value);
+			if (!_v6.$) {
+				if (!_v6.a.$) {
+					var ground = _v6.a.a;
+					var surface = $elm$core$Result$toMaybe(
+						$author$project$GridLevel$surface(ground));
+					var edges = $elm$core$List$map$(
+						A2(
+							$elm$core$Basics$composeR,
+							$author$project$GridLevel$edgeSamples,
+							$elm$core$List$map(
+								function (_v7) {
+									var position = _v7.gQ;
+									return _Utils_Tuple3(position.m, position.n, position.o);
+								})),
+						$author$project$GridLevel$openEdges(ground));
+					return {
+						bF: {cz: _List_Nil, jE: edges},
+						bG: $elm$core$Maybe$withDefault$(
+							$author$project$Shapes$empty,
+							$elm$core$Maybe$map$(
+								function (surface_) {
+									return $author$project$Shapes$prepare$(surface_, edges, _List_Nil);
+								},
+								surface)),
+						b4: surface
+					};
+				} else {
+					var _v8 = _v6.a;
+					return $author$project$MinimapWorker$init;
+				}
+			} else {
+				return model_;
+			}
+		}();
 		var _v3 = _Utils_Tuple2(
 			A2(
 				$elm$json$Json$Decode$decodeValue,
@@ -13790,7 +15826,7 @@ var $author$project$MinimapWorker$update$ = function (_v0, model) {
 					$elm$json$Json$Decode$maybe(
 						A2($elm$json$Json$Decode$field, 'placed', $author$project$MinimapWorker$placedDecoder))),
 				value),
-			model.cu);
+			model.b4);
 		if ((!_v3.a.$) && (!_v3.b.$)) {
 			var _v4 = _v3.a.a;
 			var point = _v4.a;
@@ -13798,24 +15834,24 @@ var $author$project$MinimapWorker$update$ = function (_v0, model) {
 			var surface = _v3.b.a;
 			var withPlaced = function () {
 				if (!placed.$) {
-					var paths = placed.a.gE;
-					var walls = placed.a.jx;
+					var paths = placed.a.gO;
+					var walls = placed.a.jE;
 					return $author$project$Shapes$prepare$(
 						surface,
-						_Utils_ap(model.bT.jx, walls),
+						_Utils_ap(model.bF.jE, walls),
 						_Utils_ap(
-							model.bT.dc,
+							model.bF.cz,
 							$elm$core$List$map$(
 								A2($author$project$Shapes$pathPaving, surface, $author$project$Shapes$pathWidth),
 								paths)));
 				} else {
-					return model.bX;
+					return model.bG;
 				}
 			}();
 			return _Utils_Tuple2(
 				_Utils_update(
 					model,
-					{bX: withPlaced}),
+					{bG: withPlaced}),
 				$author$project$MinimapWorker$minimapDrawn(
 					$elm$json$Json$Encode$object(
 						_List_fromArray(
@@ -13837,19 +15873,13 @@ var $author$project$MinimapWorker$update = F2($author$project$MinimapWorker$upda
 var $elm$core$Platform$worker = _Platform_worker;
 var $author$project$MinimapWorker$main = $elm$core$Platform$worker(
 	{
-		h1: function (_v0) {
-			return _Utils_Tuple2(
-				{
-					bT: {dc: $author$project$WorldShapes$pavings, jx: $author$project$WorldShapes$walls},
-					bX: $author$project$MeshData$mapShapes,
-					cu: $elm$core$Result$toMaybe($author$project$MeshData$surface)
-				},
-				$elm$core$Platform$Cmd$none);
+		ia: function (_v0) {
+			return _Utils_Tuple2($author$project$MinimapWorker$init, $elm$core$Platform$Cmd$none);
 		},
-		i7: function (_v1) {
+		jf: function (_v1) {
 			return $author$project$MinimapWorker$drawMinimap($elm$core$Basics$identity);
 		},
-		ju: $author$project$MinimapWorker$update
+		jB: $author$project$MinimapWorker$update
 	});
 _Platform_export({'MinimapWorker':{'init':$author$project$MinimapWorker$main(
 	$elm$json$Json$Decode$succeed(0))(0)}});function _Debug_toAnsiString(ansi, value)

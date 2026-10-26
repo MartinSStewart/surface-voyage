@@ -1,5 +1,5 @@
 module Surface exposing
-    ( Surface, build, Error(..), errorToString
+    ( Surface, build, buildOpen, Error(..), errorToString
     , FlatSpec, FlatEdge(..), FeatureSpec, ProfileSegment(..), Sweep(..)
     , FlatCoordinate, FeatureCoordinate, ProfileCoordinate
     , SurfacePoint, nearestSurfacePoint, nearestPoint, worldPosition, normal, worldDirection, pointTowards, rotateBy
@@ -10,7 +10,7 @@ module Surface exposing
     , Complex, Layout, Placement, Window, FanRay, FanSample, mapAround, fanSpacing, chartCoordinate, nearestPiece, placeOnMap
     )
 
-{-| A closed surface made of flat regions and features.
+{-| A surface made of flat regions and features: closed, or with open edges (see `buildOpen`).
 
 A flat region is a polygon on a plane whose edges are straight lines or circular arcs.
 
@@ -29,7 +29,7 @@ Conventions:
     (rho, z) half-plane. For example a fillet whose profile goes up the z axis at a fixed rho faces
     away from the axis.
 
-@docs Surface, build, Error, errorToString
+@docs Surface, build, buildOpen, Error, errorToString
 @docs FlatSpec, FlatEdge, FeatureSpec, ProfileSegment, Sweep
 @docs FlatCoordinate, FeatureCoordinate, ProfileCoordinate
 @docs SurfacePoint, nearestSurfacePoint, nearestPoint, worldPosition, normal, worldDirection, pointTowards, rotateBy
@@ -43,6 +43,7 @@ Conventions:
 
 import Angle exposing (Angle)
 import Array exposing (Array)
+import Dict exposing (Dict)
 import Direction3d exposing (Direction3d)
 import Frame3d exposing (Frame3d)
 import Json.Decode
@@ -370,14 +371,27 @@ tolerance =
 
 
 build : List (FlatSpec coordinates) -> List (FeatureSpec coordinates) -> Result Error (Surface coordinates)
-build flatSpecs featureSpecs =
+build =
+    buildWith { open = False }
+
+
+{-| Like `build`, but edges that no other piece meets are left open: the surface ends there, and
+walking stops at them.
+-}
+buildOpen : List (FlatSpec coordinates) -> List (FeatureSpec coordinates) -> Result Error (Surface coordinates)
+buildOpen =
+    buildWith { open = True }
+
+
+buildWith : { open : Bool } -> List (FlatSpec coordinates) -> List (FeatureSpec coordinates) -> Result Error (Surface coordinates)
+buildWith options flatSpecs featureSpecs =
     case ( combineResults (List.map buildFlat flatSpecs), combineResults (List.map buildFeature featureSpecs) ) of
         ( Ok flats, Ok features ) ->
             let
                 pieces =
                     List.map FlatPiece flats ++ List.map FeaturePiece features |> Array.fromList
             in
-            findSeams pieces |> Result.map (\seams -> Surface { pieces = pieces, seams = seams, boxes = Array.map boxAround pieces })
+            findSeams options pieces |> Result.map (\seams -> Surface { pieces = pieces, seams = seams, boxes = Array.map boxAround pieces })
 
         ( Err error, _ ) ->
             Err error
@@ -692,8 +706,8 @@ sweepRange feature =
             ( 0, 2 * pi )
 
 
-findSeams : Array Piece -> Result Error (Array (Array (Maybe ( Int, Int ))))
-findSeams pieces =
+findSeams : { open : Bool } -> Array Piece -> Result Error (Array (Array (Maybe ( Int, Int ))))
+findSeams { open } pieces =
     let
         allEdges : List ( Int, Int )
         allEdges =
@@ -708,9 +722,31 @@ findSeams pieces =
                 Nothing ->
                     Nothing
 
-        edgeSamples : List ( ( Int, Int ), List Vec )
+        -- Edges that meet have the same middle (the centre, for a full circle, as it could start
+        -- anywhere), so only edges whose middles are close are compared
+        middleOf points =
+            case points of
+                [ p0, p1, p2, p3, p4 ] ->
+                    if lengthOf (sub p0 p4) < tolerance then
+                        add (add p0 p1) (add p2 p3) |> scale 0.25 |> Just
+
+                    else
+                        Just p2
+
+                _ ->
+                    Nothing
+
+        edgeSamples : Array { edge : ( Int, Int ), points : List Vec, middle : Vec }
         edgeSamples =
-            List.filterMap (\edge -> samples edge |> Maybe.map (Tuple.pair edge)) allEdges
+            List.filterMap
+                (\edge ->
+                    samples edge
+                        |> Maybe.andThen
+                            (\points -> middleOf points |> Maybe.map (\middle -> { edge = edge, points = points, middle = middle }))
+                )
+                allEdges
+                |> List.sortBy (.middle >> .x)
+                |> Array.fromList
 
         liesOn ( pieceIndex, edgeIndex ) points =
             case Array.get pieceIndex pieces of
@@ -728,27 +764,60 @@ findSeams pieces =
                 Nothing ->
                     False
 
-        matchesFor ( edge, points ) =
-            List.filter
-                (\( otherEdge, otherPoints ) ->
-                    Tuple.first otherEdge /= Tuple.first edge && liesOn otherEdge points && liesOn edge otherPoints
-                )
-                edgeSamples
-                |> List.map Tuple.first
+        meet first second =
+            Tuple.first first.edge
+                /= Tuple.first second.edge
+                && lengthOf (sub first.middle second.middle)
+                < 10 * tolerance
+                && liesOn second.edge first.points
+                && liesOn first.edge second.points
+
+        -- Each edge with the edges after it in order of their middles' x that meet it
+        pairsFrom index acc =
+            case Array.get index edgeSamples of
+                Just first ->
+                    pairsFrom (index + 1) (pairsWith first (index + 1) acc)
+
+                Nothing ->
+                    acc
+
+        pairsWith first index acc =
+            case Array.get index edgeSamples of
+                Just second ->
+                    if second.middle.x - first.middle.x > 10 * tolerance then
+                        acc
+
+                    else if meet first second then
+                        pairsWith first (index + 1) (( first.edge, second.edge ) :: ( second.edge, first.edge ) :: acc)
+
+                    else
+                        pairsWith first (index + 1) acc
+
+                Nothing ->
+                    acc
+
+        matches : Dict ( Int, Int ) (List ( Int, Int ))
+        matches =
+            pairsFrom 0 []
+                |> List.foldl (\( edge, other ) -> Dict.update edge (\others -> Just (other :: Maybe.withDefault [] others))) Dict.empty
 
         describe ( pieceIndex, edgeIndex ) =
             "edge " ++ String.fromInt edgeIndex ++ " of piece " ++ String.fromInt pieceIndex
     in
-    List.foldl
-        (\(( edge, _ ) as edgeAndSamples) result ->
+    Array.foldl
+        (\{ edge } result ->
             case result of
                 Ok seams ->
-                    case matchesFor edgeAndSamples of
+                    case Dict.get edge matches |> Maybe.withDefault [] of
                         [ other ] ->
                             Ok (setSeam edge other seams)
 
                         [] ->
-                            Err (UnmatchedEdge (describe edge))
+                            if open then
+                                result
+
+                            else
+                                Err (UnmatchedEdge (describe edge))
 
                         _ ->
                             Err (EdgeSharedBy3OrMorePieces (describe edge))

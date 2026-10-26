@@ -77,6 +77,9 @@ view :
         , preview : List (WebGL.Mesh WallVertex)
         , player : WebGL.Mesh WallVertex
         , crouching : Bool
+
+        -- The size of the grid to draw lines on the world for, or 0 for none
+        , grid : Float
         }
     -> Html msg
 view config meshes =
@@ -97,7 +100,7 @@ view config meshes =
         [ Html.Attributes.width windowWidth
         , Html.Attributes.height windowHeight
         ]
-        (List.map (\mesh -> entity worldVS worldFS mesh (uniforms config cameraMatrix_ Mat4.identity)) meshes.world
+        (List.map (\mesh -> entity worldVS groundFS mesh (uniforms config cameraMatrix_ Mat4.identity meshes.grid)) meshes.world
             ++ (case playerPosition of
                     Just playerPosition_ ->
                         let
@@ -242,11 +245,12 @@ cameraSketchPlane config =
     plane |> SketchPlane3d.rotateAround (SketchPlane3d.xAxis plane) (Angle.radians -config.cameraPitch)
 
 
-uniforms : Config a -> Mat4 -> Mat4 -> Uniforms
-uniforms config cameraMatrix_ local =
+uniforms : Config a -> Mat4 -> Mat4 -> Float -> Uniforms
+uniforms config cameraMatrix_ local grid =
     { local = local
     , perspective = perspective config.windowSize
     , camera = cameraMatrix_
+    , grid = grid
     }
 
 
@@ -329,6 +333,7 @@ type alias Uniforms =
     { local : Mat4
     , perspective : Mat4
     , camera : Mat4
+    , grid : Float
     }
 
 
@@ -449,7 +454,7 @@ moveActionFS =
     |]
 
 
-worldVS : Shader Vertex Uniforms { color_ : Vec3, normal_ : Vec3 }
+worldVS : Shader Vertex Uniforms { color_ : Vec3, normal_ : Vec3, position_ : Vec3 }
 worldVS =
     [glsl|
         attribute vec3 position;
@@ -460,10 +465,44 @@ worldVS =
         uniform mat4 local;
         varying vec3 color_;
         varying vec3 normal_;
+        varying vec3 position_;
         void main () {
             gl_Position = perspective * camera * local * vec4(position, 1.0);
             color_ = color;
             normal_ = normal;
+            position_ = position;
+        }
+    |]
+
+
+{-| Lit like `worldFS`, with lines where the planes of a grid of cells `grid` meters across cut the
+surface, unless `grid` is 0. Where the surface lies along one of the planes, that plane's lines
+aren't drawn, as they'd cover it.
+-}
+groundFS : Shader {} Uniforms { color_ : Vec3, normal_ : Vec3, position_ : Vec3 }
+groundFS =
+    [glsl|
+        precision mediump float;
+        uniform float grid;
+        varying vec3 color_;
+        varying vec3 normal_;
+        varying vec3 position_;
+        void main () {
+            vec3 light = normalize(vec3(0.4, 1.0, 0.3));
+            vec3 n = normalize(normal_);
+            float shade = 0.75 + 0.25 * dot(n, light);
+            vec3 color = color_ * shade;
+            if (grid > 0.0) {
+                vec3 cell = position_ / grid;
+                vec3 away = abs(cell - floor(cell + 0.5)) * grid;
+                float width = 0.002;
+                float line = 0.0;
+                if (abs(n.x) < 0.9 && away.x < width) { line = 1.0; }
+                if (abs(n.y) < 0.9 && away.y < width) { line = 1.0; }
+                if (abs(n.z) < 0.9 && away.z < width) { line = 1.0; }
+                color = color * (1.0 - 0.2 * line);
+            }
+            gl_FragColor = vec4(color, 1.0);
         }
     |]
 

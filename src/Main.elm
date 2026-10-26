@@ -18,8 +18,10 @@ import Element.Font
 import Element.Input
 import Environment
 import File exposing (File)
+import File.Download
 import File.Select
 import GameLogic
+import GridLevel
 import Html exposing (Html)
 import Html.Events
 import Html.Events.Extra.Mouse
@@ -99,8 +101,18 @@ type alias LoadedModel_ =
     -- What the player has placed, what was placed before each change (for undoing), and whether the
     -- minimap has been sent it yet
     , placed : LevelEditor.Placed
-    , undo : List LevelEditor.Placed
+    , undo : List Undo
     , placedUnsent : Bool
+
+    -- The level's ground, when it's made of grid pieces (see `GridLevel`), and its open edges. Which
+    -- way round the next piece goes, whether it goes along the whole side of the edge, and how it
+    -- would look on the edge it would go on. And whether the minimap has been sent the ground yet.
+    , ground : Maybe GridLevel.Level
+    , groundEdges : List GridLevel.Edge
+    , groundFlipped : Bool
+    , wholeSide : Bool
+    , groundPreview : Maybe GroundPreview
+    , groundUnsent : Bool
 
     -- How the level and what's placed in it are drawn (see `View.view`)
     , layers : List View.Layer
@@ -118,6 +130,24 @@ type alias LoadedModel_ =
 
     -- How many minimap drawings still to come are of the world before the last import
     , staleMinimaps : Int
+    }
+
+
+{-| What was placed, and the ground, before a change, to go back to when it's undone.
+-}
+type alias Undo =
+    { placed : LevelEditor.Placed
+    , ground : Maybe GridLevel.Level
+    }
+
+
+{-| The piece the player has picked put on the edges nearest them: the level with it on, or why it
+can't go there, and how it looks.
+-}
+type alias GroundPreview =
+    { for : { edges : List GridLevel.Edge, piece : GridLevel.Piece, flipped : Bool }
+    , result : Result String (List GridLevel.Cell)
+    , mesh : WebGL.Mesh MeshBuilder.Vertex
     }
 
 
@@ -221,6 +251,12 @@ initLoadedModel windowSize =
                     , placed = LevelEditor.empty
                     , undo = []
                     , placedUnsent = False
+                    , ground = Nothing
+                    , groundEdges = []
+                    , groundFlipped = False
+                    , wholeSide = False
+                    , groundPreview = Nothing
+                    , groundUnsent = False
                     , layers = layers surface defaultLevel LevelEditor.empty
                     , pathMesh = WebGL.triangles []
                     , wallCollision = wallCollision surface defaultLevel LevelEditor.empty
@@ -271,6 +307,13 @@ type LoadedMsg_
     | ImportScaleChanged String
     | EditPressed
     | ToolPressed Tool
+    | NewLevelPressed
+    | FlipPressed
+    | WholeSidePressed
+    | SaveLevelPressed
+    | LoadLevelPressed
+    | LevelFileSelected File
+    | LevelFileLoaded String
 
 
 type MouseEventType
@@ -346,6 +389,41 @@ updateLoadedModel msg model =
 
         ToolPressed tool ->
             selectTool tool model |> addCmdNone
+
+        NewLevelPressed ->
+            newGroundLevel model |> addCmdNone
+
+        FlipPressed ->
+            { model | groundFlipped = not model.groundFlipped } |> addCmdNone
+
+        WholeSidePressed ->
+            { model | wholeSide = not model.wholeSide } |> addCmdNone
+
+        SaveLevelPressed ->
+            case model.ground of
+                Just ground ->
+                    ( model, File.Download.string "level.json" "application/json" (Json.Encode.encode 0 (GridLevel.encode ground)) )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        LoadLevelPressed ->
+            ( model, File.Select.file [ ".json", "application/json" ] LevelFileSelected )
+
+        LevelFileSelected file ->
+            ( model, File.toString file |> Task.perform LevelFileLoaded )
+
+        LevelFileLoaded text ->
+            case Json.Decode.decodeString GridLevel.decoder text of
+                Ok ground ->
+                    { model | placed = LevelEditor.empty, undo = [] }
+                        |> setGround (Just ground)
+                        |> startOnGround
+                        |> setPlaced LevelEditor.empty
+                        |> addCmdNone
+
+                Err _ ->
+                    { model | importError = Just "That file isn't a level saved from the game" } |> addCmdNone
 
         MouseEvent event ->
             mouseEvent event model
@@ -427,6 +505,9 @@ importLevel text model =
                 , placed = LevelEditor.empty
                 , undo = []
                 , placedUnsent = False
+                , ground = Nothing
+                , groundEdges = []
+                , groundPreview = Nothing
                 , layers = layers surface level LevelEditor.empty
                 , pathMesh = WebGL.triangles []
                 , wallCollision = wallCollision surface level LevelEditor.empty
@@ -592,6 +673,18 @@ editKeys model =
     else if not model.editing then
         model
 
+    else if isGroundTool model.tool && pressed (Keyboard.Character "N") then
+        newGroundLevel model
+
+    else if isGroundTool model.tool && pressed (Keyboard.Character "R") then
+        { model | groundFlipped = not model.groundFlipped }
+
+    else if isGroundTool model.tool && pressed (Keyboard.Character "Q") then
+        { model | wholeSide = not model.wholeSide }
+
+    else if isGroundTool model.tool && pressed Keyboard.Spacebar then
+        placeGround model
+
     else if pressed Keyboard.Escape then
         { model | placing = Nothing }
 
@@ -616,7 +709,7 @@ editKeys model =
                 { model | placing = Nothing }
 
             ( Nothing, previous :: older ) ->
-                { model | undo = older } |> setPlaced previous
+                { model | undo = older } |> restore previous
 
             ( Nothing, [] ) ->
                 model
@@ -624,7 +717,7 @@ editKeys model =
     else
         case
             List.indexedMap Tuple.pair LevelEditor.tools
-                |> List.filter (\( i, _ ) -> pressed (Keyboard.Character (String.fromInt (i + 1))))
+                |> List.filter (\( i, _ ) -> pressed (Keyboard.Character (toolKey i)))
                 |> List.head
         of
             Just ( _, tool ) ->
@@ -632,6 +725,227 @@ editKeys model =
 
             Nothing ->
                 model
+
+
+{-| The number key for the tool at an index: 1 to 9, then 0.
+-}
+toolKey : Int -> String
+toolKey index =
+    String.fromInt (modBy 10 (index + 1))
+
+
+isGroundTool : Tool -> Bool
+isGroundTool tool =
+    case tool of
+        GroundTool _ ->
+            True
+
+        _ ->
+            False
+
+
+{-| Start a new level made of grid pieces: a flat rectangle, with the player in the middle.
+-}
+newGroundLevel : LoadedModel_ -> LoadedModel_
+newGroundLevel model =
+    { model | placed = LevelEditor.empty, undo = [], placing = Nothing }
+        |> setGround (Just GridLevel.start)
+        |> startOnGround
+        |> setPlaced LevelEditor.empty
+
+
+startOnGround : LoadedModel_ -> LoadedModel_
+startOnGround model =
+    case
+        Surface.nearestSurfacePoint GridLevel.startPosition.position model.surface
+            |> Maybe.map (Surface.pointTowards GridLevel.startPosition.facing model.surface)
+    of
+        Just surfacePoint ->
+            { model
+                | surfacePoint = surfacePoint
+                , height = 0
+                , moveAction = Nothing
+                , cameraNormal = cameraNormal model.surface surfacePoint |> Maybe.withDefault Direction3d.y
+                , cameraUp = cameraUp model.surface surfacePoint |> Maybe.withDefault Direction3d.z
+            }
+
+        Nothing ->
+            model
+
+
+{-| Put the piece picked on the edges highlighted, if it fits there.
+-}
+placeGround : LoadedModel_ -> LoadedModel_
+placeGround model =
+    case model.groundPreview of
+        Just shown ->
+            case shown.result of
+                Ok cells ->
+                    case Maybe.map (GridLevel.add cells) model.ground of
+                        Just (Ok ground) ->
+                            { model | undo = { placed = model.placed, ground = model.ground } :: model.undo }
+                                |> setGround (Just ground)
+
+                        Just (Err message) ->
+                            { model | groundPreview = Just { shown | result = Err message } }
+
+                        Nothing ->
+                            model
+
+                Err _ ->
+                    model
+
+        Nothing ->
+            model
+
+
+{-| Change the ground the level is made of (or go back to the world made in code, for Nothing), with
+the player staying where they are on it.
+-}
+setGround : Maybe GridLevel.Level -> LoadedModel_ -> LoadedModel_
+setGround ground model =
+    let
+        built =
+            case ground of
+                Just ground_ ->
+                    GridLevel.surface ground_ |> Result.toMaybe |> Maybe.map (\surface -> ( surface, groundLevel surface ))
+
+                Nothing ->
+                    MeshData.surface |> Result.toMaybe |> Maybe.map (\surface -> ( surface, defaultLevel ))
+    in
+    case built of
+        Just ( surface, level ) ->
+            let
+                position =
+                    Surface.worldPosition model.surfacePoint model.surface
+
+                ahead =
+                    Maybe.map2 (\p d -> Point3d.translateIn d (Length.centimeters 5) p)
+                        position
+                        (Surface.worldDirection model.surface model.surfacePoint)
+
+                surfacePoint =
+                    position
+                        |> Maybe.andThen (\p -> Surface.nearestSurfacePoint p surface)
+                        |> Maybe.map
+                            (\point ->
+                                case ahead of
+                                    Just ahead_ ->
+                                        Surface.pointTowards ahead_ surface point
+
+                                    Nothing ->
+                                        point
+                            )
+            in
+            case surfacePoint of
+                Just surfacePoint_ ->
+                    { model
+                        | ground = ground
+                        , groundEdges = Maybe.map GridLevel.openEdges ground |> Maybe.withDefault []
+                        , groundPreview = Nothing
+                        , groundUnsent = True
+                        , surface = surface
+                        , surfacePoint = surfacePoint_
+                        , level = level
+                        , minimap = Nothing
+                        , minimapRequest = Nothing
+                        , staleMinimaps =
+                            if model.minimapRequest == Nothing then
+                                model.staleMinimaps
+
+                            else
+                                model.staleMinimaps + 1
+                    }
+                        |> setPlaced model.placed
+
+                Nothing ->
+                    model
+
+        Nothing ->
+            model
+
+
+{-| How a level made of grid pieces is drawn: just its ground, nothing on it.
+-}
+groundLevel : Surface WorldCoordinate -> Level
+groundLevel surface =
+    { world = WorldMesh.mesh surface []
+    , walls = WebGL.triangles []
+    , roofs = []
+    , wallLines = []
+    , buildings = Buildings.none
+    , collision = WallCollision.none
+    }
+
+
+{-| Go back to before a change.
+-}
+restore : Undo -> LoadedModel_ -> LoadedModel_
+restore previous model =
+    (if previous.ground == model.ground then
+        model
+
+     else
+        setGround previous.ground model
+    )
+        |> setPlaced previous.placed
+
+
+{-| Keep the piece picked showing on the open edge nearest the player.
+-}
+stepGroundPreview : LoadedModel_ -> LoadedModel_
+stepGroundPreview model =
+    case ( model.tool, model.ground, Surface.worldPosition model.surfacePoint model.surface ) of
+        ( GroundTool piece, Just ground, Just position ) ->
+            if model.editing then
+                case GridLevel.nearestEdge model.groundEdges (Point3d.toMeters position) of
+                    Just edge ->
+                        let
+                            for =
+                                { edges =
+                                    if model.wholeSide then
+                                        GridLevel.wholeSide model.groundEdges edge
+
+                                    else
+                                        [ edge ]
+                                , piece = piece
+                                , flipped = model.groundFlipped
+                                }
+                        in
+                        if Maybe.map .for model.groundPreview == Just for then
+                            model
+
+                        else
+                            let
+                                cells =
+                                    GridLevel.attach piece model.groundFlipped for.edges
+
+                                result =
+                                    cells
+                                        |> Result.fromMaybe "That piece can't go on this edge"
+                                        |> Result.andThen (\cells_ -> GridLevel.fits cells_ ground |> Result.map (\() -> cells_))
+                            in
+                            { model
+                                | groundPreview =
+                                    Just
+                                        { for = for
+                                        , result = result
+                                        , mesh =
+                                            WorldMesh.groundPreview
+                                                (cells |> Maybe.andThen (GridLevel.cellsSurface >> Result.toMaybe))
+                                                (Result.toMaybe result /= Nothing)
+                                                (List.map GridLevel.edgeSamples for.edges)
+                                        }
+                            }
+
+                    Nothing ->
+                        { model | groundPreview = Nothing }
+
+            else
+                model
+
+        _ ->
+            model
 
 
 toggleEditing : LoadedModel_ -> LoadedModel_
@@ -727,6 +1041,9 @@ target model tool elevation points position =
 
         StairsTool ->
             LevelEditor.stairsTop (allBuildings model).roofs elevation position
+
+        GroundTool _ ->
+            position
 
 
 {-| Walls and paths: add the way to `target` to the line, and go on from there. Roofs: add a corner.
@@ -843,6 +1160,9 @@ finishPlacing model =
                         Nothing ->
                             done
 
+                GroundTool _ ->
+                    done
+
         Nothing ->
             model
 
@@ -894,7 +1214,7 @@ stairsFor placing =
 -}
 place : LevelEditor.Placed -> LoadedModel_ -> LoadedModel_
 place placed model =
-    { model | undo = model.placed :: model.undo } |> setPlaced placed
+    { model | undo = { placed = model.placed, ground = model.ground } :: model.undo } |> setPlaced placed
 
 
 setPlaced : LevelEditor.Placed -> LoadedModel_ -> LoadedModel_
@@ -1106,6 +1426,7 @@ step model =
         |> stepHeight
         |> stepCamera
         |> stepPlacing
+        |> stepGroundPreview
 
 
 frameDuration =
@@ -1231,11 +1552,21 @@ stepMinimap model =
         encodeLines =
             Json.Encode.list (Json.Encode.list (\( x, y, z ) -> Json.Encode.list Json.Encode.float [ x, y, z ]))
     in
-    if model.minimapRequest == Nothing && (movedFar || model.placedUnsent) then
-        ( { model | minimapRequest = Just model.surfacePoint, placedUnsent = False }
+    if model.minimapRequest == Nothing && (movedFar || model.placedUnsent || model.groundUnsent) then
+        ( { model | minimapRequest = Just model.surfacePoint, placedUnsent = False, groundUnsent = False }
         , Json.Encode.object
             (( "point", Surface.encodeSurfacePoint model.surfacePoint )
-                :: (if model.placedUnsent then
+                :: (case ( model.groundUnsent, model.ground ) of
+                        ( True, Just ground ) ->
+                            [ ( "ground", GridLevel.encode ground ) ]
+
+                        ( True, Nothing ) ->
+                            [ ( "ground", Json.Encode.null ) ]
+
+                        ( False, _ ) ->
+                            []
+                   )
+                ++ (if model.placedUnsent then
                         [ ( "placed"
                           , Json.Encode.object
                                 [ ( "walls", encodeLines (List.map .points model.placed.walls) )
@@ -1428,7 +1759,13 @@ viewSuccessModel model =
             Html.Events.preventDefaultOn "mousedown"
                 (Json.Decode.field "button" Json.Decode.int |> Json.Decode.map (\button -> ( NoOp, button == 1 )))
         , Element.inFront <|
-            Element.column [ Element.spacing 6, Element.padding 4 ]
+            Element.column
+                [ Element.spacing 6
+                , Element.padding 4
+
+                -- Clear of the minimap
+                , Element.width (Element.maximum (Tuple.first (Vector2i.toTuple Pixels.inPixels model.windowSize) - Pixels.inPixels Minimap.size - 40) Element.shrink)
+                ]
                 [ Element.text "Move with arrow keys or mouse click, hold Shift to crouch. Hold the middle mouse button and drag to turn the camera"
                 , editorControls model
                 , importControls model
@@ -1458,7 +1795,23 @@ viewSuccessModel model =
         ]
         (Element.html
             (View.view model
-                { world = model.level.world :: model.pathMesh :: (Maybe.map (.ground >> List.singleton) model.placing |> Maybe.withDefault [])
+                { world =
+                    model.level.world
+                        :: model.pathMesh
+                        :: (Maybe.map (.ground >> List.singleton) model.placing |> Maybe.withDefault [])
+                        ++ (case ( model.editing && isGroundTool model.tool, model.groundPreview ) of
+                                ( True, Just groundPreview ) ->
+                                    [ groundPreview.mesh ]
+
+                                _ ->
+                                    []
+                           )
+                , grid =
+                    if model.editing && model.ground /= Nothing then
+                        GridLevel.cellSize
+
+                    else
+                        0
                 , layers = model.layers
                 , preview = Maybe.map (.walls >> List.singleton) model.placing |> Maybe.withDefault []
                 , player = WorldMesh.playerMesh
@@ -1496,14 +1849,53 @@ editorControls model =
         , Element.htmlAttribute <| Html.Events.custom "mousedown" (Json.Decode.succeed { message = NoOp, stopPropagation = True, preventDefault = True })
         ]
         (if model.editing then
-            [ Element.row [ Element.spacing 8 ]
-                (button True EditPressed "Stop editing (E)"
-                    :: List.indexedMap
-                        (\i tool -> button (tool == model.tool) (ToolPressed tool) (String.fromInt (i + 1) ++ " " ++ LevelEditor.toolName tool))
+            let
+                toolButtons =
+                    List.indexedMap
+                        (\i tool -> ( tool, button (tool == model.tool) (ToolPressed tool) (toolKey i ++ " " ++ LevelEditor.toolName tool) ))
                         LevelEditor.tools
+
+                ( groundButtons, otherButtons ) =
+                    List.partition (Tuple.first >> isGroundTool) toolButtons
+            in
+            [ Element.wrappedRow [ Element.spacing 8 ] (button True EditPressed "Stop editing (E)" :: List.map Tuple.second otherButtons)
+            , Element.wrappedRow [ Element.spacing 8 ]
+                (Element.text "Ground:"
+                    :: List.map Tuple.second groundButtons
+                    ++ [ button False NewLevelPressed "New level (N)"
+                       , button False LoadLevelPressed "Load level"
+                       ]
+                    ++ (if model.ground /= Nothing then
+                            [ button False SaveLevelPressed "Save level" ]
+
+                        else
+                            []
+                       )
                 )
-            , Element.text (LevelEditor.toolHint model.tool { placing = model.placing /= Nothing })
-            , Element.text "You go through walls while editing. Escape stops placing, Backspace takes away what you placed last"
+            , Element.paragraph [] [ Element.text (LevelEditor.toolHint model.tool { placing = model.placing /= Nothing }) ]
+            , case model.tool of
+                GroundTool piece ->
+                    if model.ground == Nothing then
+                        Element.text "This level isn't made of grid pieces. Press N to start a new one from a flat rectangle"
+
+                    else
+                        Element.column [ Element.spacing 4 ]
+                            [ Element.row [ Element.spacing 8 ]
+                                [ button model.groundFlipped FlipPressed "Flip (R)"
+                                , button model.wholeSide WholeSidePressed "Whole side (Q)"
+                                ]
+                            , Element.paragraph [] [ Element.text (GridLevel.pieceHint piece model.groundFlipped) ]
+                            , case Maybe.map .result model.groundPreview of
+                                Just (Err message) ->
+                                    Element.el [ Element.Font.color (Element.rgb 0.75 0 0) ] (Element.text message)
+
+                                _ ->
+                                    Element.none
+                            ]
+
+                _ ->
+                    Element.none
+            , Element.paragraph [] [ Element.text "You go through walls while editing. Escape stops placing, Backspace takes away what you placed last" ]
             ]
 
          else
