@@ -673,7 +673,7 @@ editKeys model =
     else if not model.editing then
         model
 
-    else if isGroundTool model.tool && pressed (Keyboard.Character "N") then
+    else if pressed (Keyboard.Character "N") then
         newGroundLevel model
 
     else if isGroundTool model.tool && pressed (Keyboard.Character "R") then
@@ -748,7 +748,17 @@ isGroundTool tool =
 -}
 newGroundLevel : LoadedModel_ -> LoadedModel_
 newGroundLevel model =
-    { model | placed = LevelEditor.empty, undo = [], placing = Nothing }
+    { model
+        | placed = LevelEditor.empty
+        , undo = []
+        , placing = Nothing
+        , tool =
+            if isGroundTool model.tool then
+                model.tool
+
+            else
+                GroundTool GridLevel.SmallSquare
+    }
         |> setGround (Just GridLevel.start)
         |> startOnGround
         |> setPlaced LevelEditor.empty

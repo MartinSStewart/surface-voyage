@@ -1586,13 +1586,16 @@ the same.
 mergeAlong : (Curve -> List Int) -> List Curve -> List Curve
 mergeAlong otherSide loop =
     let
-        joins a b =
+        inLine a b =
             case ( a, b ) of
                 ( Segment a0 a1, Segment b0 b1 ) ->
-                    a1 == b0 && unitOf (vsub a1 a0) == unitOf (vsub b1 b0) && otherSide a == otherSide b
+                    a1 == b0 && unitOf (vsub a1 a0) == unitOf (vsub b1 b0)
 
                 _ ->
                     False
+
+        joins a b =
+            inLine a b && otherSide a == otherSide b
 
         -- Start where two edges don't join, so a line isn't split where the loop starts
         rotated =
@@ -1608,21 +1611,28 @@ mergeAlong otherSide loop =
                 Nothing ->
                     loop
     in
+    -- Each edge so far with what's on the other side of the unit edges it was joined from
     List.foldl
         (\curve acc ->
-            case ( acc, curve ) of
-                ( (Segment a0 a1) :: rest, Segment _ b1 ) ->
-                    if joins (Segment a0 a1) curve then
-                        Segment a0 b1 :: rest
+            case acc of
+                ( Segment a0 a1, side ) :: rest ->
+                    if inLine (Segment a0 a1) curve && side == otherSide curve then
+                        case curve of
+                            Segment _ b1 ->
+                                ( Segment a0 b1, side ) :: rest
+
+                            Arc _ ->
+                                ( curve, otherSide curve ) :: acc
 
                     else
-                        curve :: acc
+                        ( curve, otherSide curve ) :: acc
 
                 _ ->
-                    curve :: acc
+                    ( curve, otherSide curve ) :: acc
         )
         []
         rotated
+        |> List.map Tuple.first
         |> List.reverse
 
 

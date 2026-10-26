@@ -92,7 +92,7 @@ toolHint tool { placing } =
             "Space adds a corner where you are, Enter adds the last one and puts the roof on"
 
         ( GroundTool _, _ ) ->
-            "Space puts the piece on the highlighted edge, the open edge nearest you. Q puts it along the whole side. N starts a new level"
+            "Space puts the piece on the highlighted edge, the open edge nearest you. Q puts it along the whole side"
 
 
 {-| Everything the player has placed, oldest first.

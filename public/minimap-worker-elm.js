@@ -12571,7 +12571,7 @@ var $author$project$GridLevel$unitOf = function (v) {
 	};
 };
 var $author$project$GridLevel$mergeAlong$ = function (otherSide, loop) {
-	var joins = F2(
+	var inLine = F2(
 		function (a, b) {
 			var _v8 = _Utils_Tuple2(a, b);
 			if ((!_v8.a.$) && (!_v8.b.$)) {
@@ -12581,16 +12581,20 @@ var $author$project$GridLevel$mergeAlong$ = function (otherSide, loop) {
 				var _v10 = _v8.b;
 				var b0 = _v10.a;
 				var b1 = _v10.b;
-				return _Utils_eq(a1, b0) && (_Utils_eq(
+				return _Utils_eq(a1, b0) && _Utils_eq(
 					$author$project$GridLevel$unitOf(
 						$author$project$GridLevel$vsub$(a1, a0)),
 					$author$project$GridLevel$unitOf(
-						$author$project$GridLevel$vsub$(b1, b0))) && _Utils_eq(
-					otherSide(a),
-					otherSide(b)));
+						$author$project$GridLevel$vsub$(b1, b0)));
 			} else {
 				return false;
 			}
+		});
+	var joins = F2(
+		function (a, b) {
+			return A2(inLine, a, b) && _Utils_eq(
+				otherSide(a),
+				otherSide(b));
 		});
 	var rotated = function () {
 		var _v4 = $elm$core$List$head(
@@ -12625,31 +12629,59 @@ var $author$project$GridLevel$mergeAlong$ = function (otherSide, loop) {
 		}
 	}();
 	return $elm$core$List$reverse(
-		$elm$core$List$foldl$(
-			F2(
-				function (curve, acc) {
-					var _v0 = _Utils_Tuple2(acc, curve);
-					if ((_v0.a.b && (!_v0.a.a.$)) && (!_v0.b.$)) {
-						var _v1 = _v0.a;
-						var _v2 = _v1.a;
-						var a0 = _v2.a;
-						var a1 = _v2.b;
-						var rest = _v1.b;
-						var _v3 = _v0.b;
-						var b1 = _v3.b;
-						return A2(
-							joins,
-							$author$project$GridLevel$Segment$(a0, a1),
-							curve) ? A2(
-							$elm$core$List$cons,
-							$author$project$GridLevel$Segment$(a0, b1),
-							rest) : A2($elm$core$List$cons, curve, acc);
-					} else {
-						return A2($elm$core$List$cons, curve, acc);
-					}
-				}),
-			_List_Nil,
-			rotated));
+		$elm$core$List$map$(
+			$elm$core$Tuple$first,
+			$elm$core$List$foldl$(
+				F2(
+					function (curve, acc) {
+						if (acc.b && (!acc.a.a.$)) {
+							var _v1 = acc.a;
+							var _v2 = _v1.a;
+							var a0 = _v2.a;
+							var a1 = _v2.b;
+							var side = _v1.b;
+							var rest = acc.b;
+							if (A2(
+								inLine,
+								$author$project$GridLevel$Segment$(a0, a1),
+								curve) && _Utils_eq(
+								side,
+								otherSide(curve))) {
+								if (!curve.$) {
+									var b1 = curve.b;
+									return A2(
+										$elm$core$List$cons,
+										_Utils_Tuple2(
+											$author$project$GridLevel$Segment$(a0, b1),
+											side),
+										rest);
+								} else {
+									return A2(
+										$elm$core$List$cons,
+										_Utils_Tuple2(
+											curve,
+											otherSide(curve)),
+										acc);
+								}
+							} else {
+								return A2(
+									$elm$core$List$cons,
+									_Utils_Tuple2(
+										curve,
+										otherSide(curve)),
+									acc);
+							}
+						} else {
+							return A2(
+								$elm$core$List$cons,
+								_Utils_Tuple2(
+									curve,
+									otherSide(curve)),
+								acc);
+						}
+					}),
+				_List_Nil,
+				rotated)));
 };
 var $author$project$GridLevel$mergeAlong = F2($author$project$GridLevel$mergeAlong$);
 var $author$project$GridLevel$mergeRun = function (run) {
