@@ -727,11 +727,22 @@ editKeys model =
                 model
 
 
-{-| The number key for the tool at an index: 1 to 9, then 0.
+{-| The key for the tool at an index: 1 to 9, then 0, - and =.
 -}
 toolKey : Int -> String
 toolKey index =
-    String.fromInt (modBy 10 (index + 1))
+    case index of
+        9 ->
+            "0"
+
+        10 ->
+            "-"
+
+        11 ->
+            "="
+
+        _ ->
+            String.fromInt (index + 1)
 
 
 isGroundTool : Tool -> Bool

@@ -116,6 +116,8 @@ type alias Level =
 type Piece
     = SmallSquare
     | LargeSquare
+    | InsideCurve
+    | OutsideCurve
     | SmallBend
     | LargeBend
     | SharpTurn
@@ -124,7 +126,7 @@ type Piece
 
 pieces : List Piece
 pieces =
-    [ SmallSquare, LargeSquare, SmallBend, LargeBend, SharpTurn, WideTurn ]
+    [ SmallSquare, LargeSquare, InsideCurve, OutsideCurve, SmallBend, LargeBend, SharpTurn, WideTurn ]
 
 
 pieceName : Piece -> String
@@ -136,6 +138,12 @@ pieceName piece =
         LargeSquare ->
             "Large square"
 
+        InsideCurve ->
+            "Inside curve"
+
+        OutsideCurve ->
+            "Outside curve"
+
         SmallBend ->
             "Small bend"
 
@@ -143,10 +151,10 @@ pieceName piece =
             "Large bend"
 
         SharpTurn ->
-            "Sharp turn"
+            "Sharp corner"
 
         WideTurn ->
-            "Wide turn"
+            "Wide corner"
 
 
 {-| What the R key changes for a piece.
@@ -166,7 +174,7 @@ pieceHint piece flipped =
             "A cell of flat ground"
 
         LargeSquare ->
-            "4 by 4 cells of flat ground, going " ++ either "right" "left" ++ " (R)"
+            "4 by 4 cells of flat ground. R flips which way along the edge it goes"
 
         SmallBend ->
             "Bends " ++ either "up" "down" ++ " (R) with a radius of a cell"
@@ -174,11 +182,17 @@ pieceHint piece flipped =
         LargeBend ->
             "Bends " ++ either "up" "down" ++ " (R) with a radius of 3 cells"
 
+        InsideCurve ->
+            "Flat ground inside a quarter circle, 4 cells across (or the whole side with Q). R flips which way along the edge it goes. On a curved edge it fills in the inside of the curve"
+
+        OutsideCurve ->
+            "Flat ground outside a quarter circle, filling the square round it, 4 cells across (or the whole side with Q). R flips which way along the edge it goes. On a curved edge it fills in the outside of the curve"
+
         SharpTurn ->
-            "Turns " ++ either "left" "right" ++ " (R) round the end of the edge. On the end of a bend it takes the bend round a corner"
+            "Takes the open end of a bend round a sharp corner, one way or the other (R)"
 
         WideTurn ->
-            "Turns " ++ either "left" "right" ++ " (R) round a point 2 cells past the end of the edge. On the end of a bend it takes the bend round a corner"
+            "Takes the open end of a bend round a corner 2 cells wide, one way or the other (R)"
 
 
 
@@ -354,7 +368,28 @@ ringCell normal center from to inner outer =
 {-| A flat cell from a loop, turned round if it goes clockwise round the normal.
 -}
 flatCell : IVec -> List Curve -> Cell
-flatCell normal loop =
+flatCell normal longLoop =
+    let
+        -- Straight edges a cell long, so they meet other cells' edges whole
+        loop =
+            List.concatMap
+                (\curve ->
+                    case curve of
+                        Segment a b ->
+                            let
+                                step =
+                                    unitOf (vsub b a)
+
+                                count =
+                                    vdot (vsub b a) step
+                            in
+                            List.range 0 (count - 1) |> List.map (\i -> Segment (vadd a (vscale i step)) (vadd a (vscale (i + 1) step)))
+
+                        Arc _ ->
+                            [ curve ]
+                )
+                longLoop
+    in
     if signedArea normal loop >= 0 then
         FlatCell { normal = normal, loop = loop }
 
@@ -651,6 +686,12 @@ attach piece flipped edges =
         LargeBend ->
             each (bend 3 side)
 
+        InsideCurve ->
+            curvePiece True flipped edges
+
+        OutsideCurve ->
+            curvePiece False flipped edges
+
         SharpTurn ->
             turn 0 flipped edges
 
@@ -827,7 +868,8 @@ bend r side edge =
             Nothing
 
 
-{-| A quarter turn round an axis `offset` cells past one end of the edges (the far end when flipped).
+{-| The open end of a bend swung a quarter turn round an axis `offset` cells past one end of its arc
+(the other end when flipped), taking the bend round a corner.
 -}
 turn : Int -> Bool -> List Edge -> Maybe (List Cell)
 turn offset flipped edges =
@@ -837,37 +879,6 @@ turn offset flipped edges =
 
         first :: _ ->
             case ( first.curve, first.out, first.normal ) of
-                ( Segment _ _, Along o, Along n ) ->
-                    let
-                        segments =
-                            alignedSegments edges
-                    in
-                    case ( List.head segments, List.reverse segments |> List.head ) of
-                        ( Just ( a, b ), Just ( _, last ) ) ->
-                            let
-                                t =
-                                    vsub b a
-
-                                ( center, from ) =
-                                    if flipped then
-                                        ( vadd last (vscale offset t), vneg t )
-
-                                    else
-                                        ( vsub a (vscale offset t), t )
-
-                                radius p =
-                                    abs (vdot (vsub p center) t)
-                            in
-                            segments
-                                |> List.map
-                                    (\( p, q ) ->
-                                        ringCell n center from o (min (radius p) (radius q)) (max (radius p) (radius q))
-                                    )
-                                |> Just
-
-                        _ ->
-                            Nothing
-
                 ( Arc arc, Along d, Radial normal ) ->
                     -- The end of a bend: swing its arc round an axis along one of the arc's ends
                     let
@@ -896,6 +907,89 @@ turn offset flipped edges =
 
                 _ ->
                     Nothing
+
+
+{-| Flat ground with a quarter circle edge: inside the circle (a quarter of a disc) or outside it
+(the rest of the square round it). On straight edges it's 4 cells across, from the start of the
+edge (the end when flipped), or as wide as all the edges. On a curved edge of flat ground it fills
+in the curve, inwards or outwards, whichever way the edge faces.
+-}
+curvePiece : Bool -> Bool -> List Edge -> Maybe (List Cell)
+curvePiece inside flipped edges =
+    case edges of
+        first :: _ ->
+            case ( first.curve, first.out, first.normal ) of
+                ( Segment _ _, Along o, Along n ) ->
+                    let
+                        segments =
+                            alignedSegments edges
+                    in
+                    case ( List.head segments, List.reverse segments |> List.head ) of
+                        ( Just ( a, b ), Just ( _, last ) ) ->
+                            let
+                                t =
+                                    vsub b a
+
+                                size =
+                                    if List.length segments > 1 then
+                                        List.length segments
+
+                                    else
+                                        4
+
+                                ( p0, along ) =
+                                    if flipped then
+                                        ( last, vneg t )
+
+                                    else
+                                        ( a, t )
+
+                                p1 =
+                                    vadd p0 (vscale size along)
+                            in
+                            if inside then
+                                Just [ ringCell n p0 along o 0 size ]
+
+                            else
+                                Just
+                                    [ flatCell n
+                                        [ Segment p0 p1
+                                        , Segment p1 (vadd p1 (vscale size o))
+                                        , Arc { center = vadd p0 (vscale size o), radius = size, from = along, to = vneg o }
+                                        ]
+                                    ]
+
+                        _ ->
+                            Nothing
+
+                ( Arc arc, Radial out, Along n ) ->
+                    let
+                        at k dir =
+                            vadd arc.center (vscale k dir)
+
+                        corner =
+                            vadd (at arc.radius arc.from) (vscale arc.radius arc.to)
+                    in
+                    if inside && out < 0 then
+                        Just [ ringCell n arc.center arc.from arc.to 0 arc.radius ]
+
+                    else if not inside && out > 0 then
+                        Just
+                            [ flatCell n
+                                [ Segment (at arc.radius arc.to) corner
+                                , Segment corner (at arc.radius arc.from)
+                                , Arc arc
+                                ]
+                            ]
+
+                    else
+                        Nothing
+
+                _ ->
+                    Nothing
+
+        [] ->
+            Nothing
 
 
 {-| Straight edges in a row, as their ends, all going the same way as the first.
@@ -1176,30 +1270,41 @@ distanceTo pointInMeters curve =
 spot : Cell -> Vec
 spot cell =
     case cell of
-        FlatCell { loop } ->
+        FlatCell { normal, loop } ->
             let
-                arcs =
+                -- Arcs with the cell inside them, and arcs with the cell outside them
+                arcs side =
                     List.filterMap
                         (\curve ->
                             case curve of
                                 Arc arc ->
-                                    Just arc
+                                    if flatOut normal curve == Radial side then
+                                        Just arc
+
+                                    else
+                                        Nothing
 
                                 Segment _ _ ->
                                     Nothing
                         )
                         loop
-            in
-            case List.sortBy (.radius >> negate) arcs of
-                outer :: rest ->
-                    let
-                        inner =
-                            List.head rest |> Maybe.map .radius |> Maybe.withDefault 0
-                    in
-                    fadd (toVec outer.center)
-                        (fscale (toFloat (outer.radius + inner) / 2 / sqrt 2) (fadd (toVec outer.from) (toVec outer.to)))
 
-                [] ->
+                largest list =
+                    List.sortBy (.radius >> negate) list |> List.head
+
+                onDiagonal arc distance =
+                    fadd (toVec arc.center) (fscale (distance / sqrt 2) (fadd (toVec arc.from) (toVec arc.to)))
+            in
+            case ( largest (arcs 1), largest (arcs -1) ) of
+                ( Just outer, inner ) ->
+                    -- A quarter of a ring or disc
+                    onDiagonal outer (toFloat (outer.radius + (Maybe.map .radius inner |> Maybe.withDefault 0)) / 2)
+
+                ( Nothing, Just inner ) ->
+                    -- A square outside a quarter circle: between the circle and the square's corner
+                    onDiagonal inner (toFloat inner.radius * (1 + sqrt 2) / 2)
+
+                ( Nothing, Nothing ) ->
                     let
                         corners =
                             List.map (curveStart >> toVec) loop
