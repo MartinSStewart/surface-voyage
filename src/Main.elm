@@ -7,6 +7,7 @@ import Browser.Dom
 import Browser.Events
 import Buildings exposing (Buildings)
 import Camera3d
+import Details
 import Direction2d exposing (Direction2d)
 import Direction3d exposing (Direction3d)
 import Duration exposing (Duration)
@@ -121,10 +122,11 @@ type alias LoadedModel_ =
 
 
 {-| How a world is drawn, the walls and buildings (roofs and stairs, see `Buildings`) it comes with,
-and the walls that stop the player.
+the walls that stop the player, and the pebbles, rocks and plants lying about (see `Details`).
 -}
 type alias Level =
     { world : WebGL.Mesh MeshBuilder.Vertex
+    , details : Details.Patches
     , walls : WebGL.Mesh WorldMesh.WallVertex
     , roofs : List ( Buildings.Roof, WebGL.Mesh WorldMesh.WallVertex )
     , wallLines : List Buildings.Wall
@@ -136,6 +138,7 @@ type alias Level =
 defaultLevel : Level
 defaultLevel =
     { world = MeshData.webGlMesh
+    , details = MeshData.details
     , walls = MeshData.wallMesh
     , roofs = MeshData.roofMeshes
     , wallLines = List.map (\points -> { points = points, bottom = 0 }) WorldShapes.walls
@@ -395,6 +398,7 @@ importLevel text model =
             let
                 level =
                     { world = WorldMesh.mesh surface []
+                    , details = Details.scatter surface |> Details.patches
                     , walls = WebGL.triangles []
                     , roofs = []
                     , wallLines = []
@@ -912,7 +916,8 @@ allBuildings model =
 
 
 {-| What's drawn flat on the surface, storey by storey (see `View.Layer`): the level's own walls and
-roofs, then what's been placed.
+roofs, then what's been placed. The pebbles, rocks and plants go on the ground floor, where nothing
+placed is.
 -}
 layers : Surface WorldCoordinate -> Level -> LevelEditor.Placed -> List View.Layer
 layers surface level placed =
@@ -928,10 +933,15 @@ layers surface level placed =
                 |> List.maximum
                 |> Maybe.withDefault 0
 
+        details =
+            Details.meshes
+                (Details.obstacles surface { walls = placed.walls, pavings = [], paths = placed.paths, stairs = placed.stairs })
+                level.details
+
         layer i =
             { walls =
                 (if i == 0 then
-                    [ level.walls ]
+                    details ++ [ level.walls ]
 
                  else
                     []

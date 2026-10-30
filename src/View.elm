@@ -509,7 +509,8 @@ the surface there, and the eye is above that. Each corner is drawn where the lin
 through it meets the ground, so walls lean straight away from the player, more the further away they
 are. Corners are kept below 80% of the eye's height, so tall walls don't stretch away forever, and
 are moved no more than `maxShift`, so far away walls don't either. They're drawn in the tangent plane where the wall stands, however far that is from it, so near edges
-and curves they can hang off the surface or sink into it.
+and curves they can hang off the surface or sink into it. Walls standing on ground that the camera sees from behind aren't
+drawn, as that ground isn't either (from in the hole, the camera can be past the other side of the surface).
 
 Walls overlap on the surface, so their depth is set by how far from the eye they are rather than
 where they're drawn: nearer is on top. And each storey (`layer`, see `Layer`) is on top of the ones
@@ -559,6 +560,10 @@ wallVS =
             vec3 image = onSurface + shift + 0.004 * outward;
             vec4 clip = perspective * camera * vec4(image, 1.0);
             clip.z -= (0.0001 * (1.0 + 4.0 / (1.0 + distance(corner, eye))) + 0.001 * layer) * clip.w;
+            if (dot((camera * vec4(standsOn, 1.0)).xyz, (camera * vec4(outward, 0.0)).xyz) > 0.0) {
+                // It stands on ground the camera sees from behind, which isn't drawn either
+                clip.z = 2.0 * clip.w;
+            }
             gl_Position = clip;
             color_ = color;
             normal_ = (local * vec4(normal, 0.0)).xyz;
