@@ -886,7 +886,8 @@ setGround ground model =
             model
 
 
-{-| How a level made of grid pieces is drawn: just its ground, nothing on it.
+{-| How a level made of grid pieces is drawn: its ground with pebbles, rocks, plants and trees
+scattered over it (see `Details`), nothing else on it.
 -}
 groundLevel : Surface WorldCoordinate -> Level
 groundLevel surface =
@@ -896,6 +897,7 @@ groundLevel surface =
     , wallLines = []
     , buildings = Buildings.none
     , collision = WallCollision.none
+    , details = Details.scatter surface |> Details.patches
     }
 
 
