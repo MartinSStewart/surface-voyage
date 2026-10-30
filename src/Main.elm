@@ -223,7 +223,7 @@ initLoadedModel windowSize =
                     , placedUnsent = False
                     , layers = layers surface defaultLevel LevelEditor.empty
                     , pathMesh = WebGL.triangles []
-                    , wallCollision = MeshData.wallCollision
+                    , wallCollision = wallCollision surface defaultLevel LevelEditor.empty
                     , level = defaultLevel
                     , importScale = "1"
                     , importError = Nothing
@@ -429,7 +429,7 @@ importLevel text model =
                 , placedUnsent = False
                 , layers = layers surface level LevelEditor.empty
                 , pathMesh = WebGL.triangles []
-                , wallCollision = WallCollision.none
+                , wallCollision = wallCollision surface level LevelEditor.empty
               }
             , Json.Encode.object [ ( "step", Json.Encode.string text ), ( "scale", Json.Encode.float scale ) ]
                 |> MinimapPort.drawMinimap
@@ -904,8 +904,25 @@ setPlaced placed model =
         , placedUnsent = True
         , layers = layers model.surface model.level placed
         , pathMesh = WorldMesh.pathMesh model.surface { preview = False } placed.paths
-        , wallCollision = WallCollision.add model.surface placed.walls model.level.collision
+        , wallCollision = wallCollision model.surface model.level placed
     }
+
+
+{-| All the walls that stop the player: the level's own, the trunks of its trees that nothing's been
+placed on (see `Details`), and the placed ones.
+-}
+wallCollision : Surface WorldCoordinate -> Level -> LevelEditor.Placed -> WallCollision.Walls
+wallCollision surface level placed =
+    WallCollision.add surface
+        (placed.walls ++ Details.trunks (placedObstacles surface placed) level.details)
+        level.collision
+
+
+{-| What's been placed that the level's pebbles, rocks, plants and trees are kept off.
+-}
+placedObstacles : Surface WorldCoordinate -> LevelEditor.Placed -> Details.Obstacles
+placedObstacles surface placed =
+    Details.obstacles surface { walls = placed.walls, pavings = [], paths = placed.paths, stairs = placed.stairs }
 
 
 {-| The level's buildings and the ones placed.
@@ -934,9 +951,7 @@ layers surface level placed =
                 |> Maybe.withDefault 0
 
         details =
-            Details.meshes
-                (Details.obstacles surface { walls = placed.walls, pavings = [], paths = placed.paths, stairs = placed.stairs })
-                level.details
+            Details.meshes (placedObstacles surface placed) level.details
 
         layer i =
             { walls =

@@ -1,7 +1,7 @@
-module Details exposing (Detail, Obstacles, Patches, clearOf, meshes, obstacles, patches, scatter)
+module Details exposing (Detail, Kind(..), Obstacles, Patches, clearOf, meshes, obstacles, patches, scatter, trunks)
 
-{-| Small things lying about on the ground so it doesn't look bare: pebbles, rocks, tufts of grass
-and flowers.
+{-| Things lying about on the ground so it doesn't look bare: pebbles, rocks, tufts of grass and
+flowers, and trees here and there (see `trunks` for keeping the player out of them).
 
 Where they go is random, but always the same for the same surface: each triangle of the surface (see
 `Surface.tessellate`) picks its own from a seed made from where it is. They're thicker on the ground
@@ -37,6 +37,8 @@ type Kind
     | Rock
     | Tuft
     | Flower
+    | RoundTree
+    | Pine
 
 
 {-| Something lying on the surface at `position`, standing along `normal`. `size` is how far it
@@ -70,6 +72,14 @@ mostPerSquareMeter =
     90
 
 
+{-| The most trees there are on a square meter, in the thickest woods. Trees only grow where the
+ground is thick with things.
+-}
+mostTreesPerSquareMeter : Float
+mostTreesPerSquareMeter =
+    5
+
+
 {-| How far apart, in meters, places that are thick with things or rocky are.
 -}
 thicknessScale : Float
@@ -86,11 +96,24 @@ rockinessScale =
 -}
 scatter : Surface coordinates -> List Detail
 scatter surface =
-    Surface.tessellate step surface |> List.concatMap onTriangle
+    Surface.tessellate step surface
+        |> List.concatMap
+            (\triangle ->
+                onTriangle mostPerSquareMeter 0 candidate triangle
+                    ++ onTriangle mostTreesPerSquareMeter 1 tree triangle
+            )
 
 
-onTriangle : ( Surface.MeshVertex, Surface.MeshVertex, Surface.MeshVertex ) -> List Detail
-onTriangle ( a, b, c ) =
+{-| Up to `most` things on a square meter of a triangle, picked by `pick`, each seeded differently
+for each `salt`.
+-}
+onTriangle :
+    Float
+    -> Int
+    -> (Surface.MeshVertex -> Surface.MeshVertex -> Surface.MeshVertex -> Generator (Maybe Detail))
+    -> ( Surface.MeshVertex, Surface.MeshVertex, Surface.MeshVertex )
+    -> List Detail
+onTriangle most salt pick ( a, b, c ) =
     let
         ab =
             sub b.position a.position
@@ -99,7 +122,7 @@ onTriangle ( a, b, c ) =
             sub c.position a.position
 
         expected =
-            lengthOf (cross ab ac) / 2 * mostPerSquareMeter
+            lengthOf (cross ab ac) / 2 * most
 
         centre =
             scale (1 / 3) (add a.position (add b.position c.position))
@@ -116,18 +139,18 @@ onTriangle ( a, b, c ) =
                     )
     in
     Random.step
-        (count |> Random.andThen (\n -> Random.list n (candidate a b c)))
-        (Random.initialSeed (hashPoint 10000 centre 0))
+        (count |> Random.andThen (\n -> Random.list n (pick a b c)))
+        (Random.initialSeed (hashPoint 10000 centre salt))
         |> Tuple.first
         |> List.filterMap identity
 
 
-{-| Something at a random point on a triangle, if the ground there is thick enough with things.
+{-| A random point on a triangle, and the surface's normal there.
 -}
-candidate : Surface.MeshVertex -> Surface.MeshVertex -> Surface.MeshVertex -> Generator (Maybe Detail)
-candidate a b c =
-    Random.map4
-        (\( u0, v0 ) keep pick ( sizing, seed ) ->
+pointOn : Surface.MeshVertex -> Surface.MeshVertex -> Surface.MeshVertex -> Generator { position : Vec, normal : Vec }
+pointOn a b c =
+    Random.map2
+        (\u0 v0 ->
             let
                 ( u, v ) =
                     if u0 + v0 > 1 then
@@ -138,13 +161,60 @@ candidate a b c =
 
                 w =
                     1 - u - v
+            in
+            { position = add (scale w a.position) (add (scale u b.position) (scale v c.position))
+            , normal = add (scale w a.normal) (add (scale u b.normal) (scale v c.normal)) |> normalize
+            }
+        )
+        (Random.float 0 1)
+        (Random.float 0 1)
 
-                position =
-                    add (scale w a.position) (add (scale u b.position) (scale v c.position))
 
-                normal =
-                    add (scale w a.normal) (add (scale u b.normal) (scale v c.normal)) |> normalize
+{-| A tree at a random point on a triangle, if it's in the thickest parts. Mostly round ones, with
+pines where it's rocky.
+-}
+tree : Surface.MeshVertex -> Surface.MeshVertex -> Surface.MeshVertex -> Generator (Maybe Detail)
+tree a b c =
+    Random.map4
+        (\{ position, normal } keep pick seed ->
+            let
+                woods =
+                    clamp 0 1 ((smoothNoise 1 thicknessScale position - 0.5) / 0.3)
 
+                kind =
+                    if pick < 0.25 + 0.6 * smoothNoise 2 rockinessScale position then
+                        Pine
+
+                    else
+                        RoundTree
+            in
+            if keep < woods then
+                Just { position = position, normal = normal, kind = kind, size = trunkRadius, seed = seed }
+
+            else
+                Nothing
+        )
+        (pointOn a b c)
+        (Random.float 0 1)
+        (Random.float 0 1)
+        (Random.int 0 Random.maxInt)
+
+
+{-| How thick tree trunks are. Trees are kept this far (and a gap) from walls and paths, but their
+leaves can hang over them.
+-}
+trunkRadius : Float
+trunkRadius =
+    0.015
+
+
+{-| Something at a random point on a triangle, if the ground there is thick enough with things.
+-}
+candidate : Surface.MeshVertex -> Surface.MeshVertex -> Surface.MeshVertex -> Generator (Maybe Detail)
+candidate a b c =
+    Random.map4
+        (\{ position, normal } keep pick ( sizing, seed ) ->
+            let
                 thickness =
                     smoothNoise 1 thicknessScale position
 
@@ -175,7 +245,7 @@ candidate a b c =
                         Tuft ->
                             0.022 + 0.018 * sizing
 
-                        Flower ->
+                        _ ->
                             0.028 + 0.014 * sizing
             in
             if keep < 0.1 + 0.9 * thickness * thickness then
@@ -184,7 +254,7 @@ candidate a b c =
             else
                 Nothing
         )
-        (Random.pair (Random.float 0 1) (Random.float 0 1))
+        (pointOn a b c)
         (Random.float 0 1)
         (Random.float 0 1)
         (Random.pair (Random.float 0 1) (Random.int 0 Random.maxInt))
@@ -547,6 +617,25 @@ meshes obstacles_ (Patches list) =
         list
 
 
+{-| Short walls round the trunks of the trees not on or too close to any of the obstacles, to stop
+the player walking through them (see `WallCollision`).
+-}
+trunks : Obstacles -> Patches -> List Wall
+trunks obstacles_ (Patches list) =
+    List.concatMap .details list
+        |> List.filter (\detail -> detail.kind == RoundTree || detail.kind == Pine)
+        |> clearOf obstacles_
+        |> List.map
+            (\detail ->
+                let
+                    -- A wall pushes the player its own clearance away, so a very short one does
+                    along_ =
+                        frameAt detail 0 |> .x |> scale 0.002
+                in
+                { points = [ toTuple detail.position, toTuple (add detail.position along_) ], bottom = 0 }
+            )
+
+
 mesh : List Detail -> WebGL.Mesh WallVertex
 mesh details =
     List.concatMap triangles details |> WebGL.triangles
@@ -571,22 +660,8 @@ triangles detail =
         ( turn, seed1 ) =
             Random.step (Random.float 0 (2 * pi)) seed0
 
-        n =
-            detail.normal
-
-        -- Any direction along the surface, turned by `turn`
-        side =
-            if abs n.x < 0.9 then
-                cross n { x = 1, y = 0, z = 0 } |> normalize
-
-            else
-                cross n { x = 0, y = 1, z = 0 } |> normalize
-
-        x =
-            add (scale (cos turn) side) (scale (sin turn) (cross n side))
-
         frame =
-            { origin = detail.position, x = x, y = cross n x, z = n }
+            frameAt detail turn
 
         shape =
             case detail.kind of
@@ -601,8 +676,36 @@ triangles detail =
 
                 Flower ->
                     flower detail.size
+
+                RoundTree ->
+                    roundTree
+
+                Pine ->
+                    pine
     in
     Random.step shape seed1 |> Tuple.first |> List.map (toWorld frame)
+
+
+{-| A frame standing on the surface where a thing is, turned by `turn` round the normal.
+-}
+frameAt : Detail -> Float -> Frame
+frameAt detail turn =
+    let
+        n =
+            detail.normal
+
+        -- Any direction along the surface
+        side =
+            if abs n.x < 0.9 then
+                cross n { x = 1, y = 0, z = 0 } |> normalize
+
+            else
+                cross n { x = 0, y = 1, z = 0 } |> normalize
+
+        x =
+            add (scale (cos turn) side) (scale (sin turn) (cross n side))
+    in
+    { origin = detail.position, x = x, y = cross n x, z = n }
 
 
 {-| A triangle in a thing's own coordinates, with a color for each corner.
@@ -666,7 +769,7 @@ stone { sides, height, shoulder } radius =
     Random.map4
         (\grey warmth ( lows, highs ) ( topX, topY, tall ) ->
             let
-                ring rs z twist =
+                corners rs z twist =
                     List.indexedMap
                         (\i r ->
                             let
@@ -682,10 +785,10 @@ stone { sides, height, shoulder } radius =
                     radius * height * tall
 
                 low =
-                    ring (List.map (\r -> r * radius) lows) -0.001 0
+                    corners (List.map (\r -> r * radius) lows) -0.001 0
 
                 high =
-                    ring (List.map (\r -> r * radius * shoulder) highs) (h * 0.6) 0.5
+                    corners (List.map (\r -> r * radius * shoulder) highs) (h * 0.6) 0.5
 
                 top =
                     { x = topX * radius, y = topY * radius, z = h }
@@ -812,7 +915,192 @@ flower radius =
 
 
 
+---- TREES ----
+
+
+{-| A ring of `sides` points round the trunk, `z` up, `radius` out and turned by `twist` steps.
+-}
+ring : Int -> Float -> Float -> Float -> List Vec
+ring sides twist z radius =
+    List.range 0 (sides - 1)
+        |> List.map
+            (\i ->
+                let
+                    angle =
+                        (toFloat i + twist) * 2 * pi / toFloat sides
+                in
+                { x = radius * cos angle, y = radius * sin angle, z = z }
+            )
+
+
+{-| The sides between two rings of the same number of points, the lower one first, facing out.
+-}
+band : (Vec -> Vec3) -> List Vec -> List Vec -> List LocalTriangle
+band color lower upper =
+    let
+        next list =
+            List.drop 1 list ++ List.take 1 list
+    in
+    List.map4
+        (\a b c d ->
+            [ plain (color (centroid a b c)) a b c
+            , plain (color (centroid c b d)) c b d
+            ]
+        )
+        lower
+        (next lower)
+        upper
+        (next upper)
+        |> List.concat
+
+
+{-| Triangles from a ring to a point, facing up if the point is above the ring, down if it's below.
+-}
+fan : (Vec -> Vec3) -> List Vec -> Vec -> List LocalTriangle
+fan color points tip =
+    let
+        next =
+            List.drop 1 points ++ List.take 1 points
+    in
+    List.map2
+        (\a b ->
+            if tip.z > a.z then
+                plain (color (centroid a b tip)) a b tip
+
+            else
+                plain (color (centroid a b tip)) b a tip
+        )
+        points
+        next
+
+
+centroid : Vec -> Vec -> Vec -> Vec
+centroid a b c =
+    scale (1 / 3) (add a (add b c))
+
+
+trunk : Float -> List LocalTriangle
+trunk height =
+    let
+        color p =
+            Vec3.vec3 (0.36 + p.z) (0.25 + p.z * 0.6) 0.16
+    in
+    band color (ring 6 0 -0.001 trunkRadius) (ring 6 0 height (trunkRadius * 0.75))
+
+
+{-| Darker underneath, lighter on top.
+-}
+leafColor : ( Float, Float, Float ) -> Float -> Float -> Vec -> Vec3
+leafColor ( r, g, b ) bottom top p =
+    let
+        t =
+            clamp 0 1 ((p.z - bottom) / (top - bottom))
+
+        shade =
+            0.72 + 0.45 * t
+    in
+    Vec3.vec3 (r * shade) (g * shade) (b * shade)
+
+
+{-| A trunk with a lumpy ball of leaves on it.
+-}
+roundTree : Generator (List LocalTriangle)
+roundTree =
+    Random.map4
+        (\( trunkHeight, radius, tall ) green autumn bumps ->
+            let
+                bottom =
+                    trunkHeight
+
+                top =
+                    bottom + radius * 0.95 * tall
+
+                height f =
+                    bottom + (top - bottom) * f
+
+                -- Each point of a ring moved in or out a bit
+                bumped twist z r index =
+                    List.map2 (\p bump -> { p | x = p.x * bump, y = p.y * bump })
+                        (ring 8 twist z r)
+                        (List.drop index bumps)
+
+                rings =
+                    [ bumped 0 (height 0.15) (radius * 0.7) 0
+                    , bumped 0.5 (height 0.45) radius 8
+                    , bumped 0 (height 0.78) (radius * 0.75) 16
+                    ]
+
+                color =
+                    leafColor
+                        (if autumn < 0.1 then
+                            ( 0.78, 0.5, 0.18 )
+
+                         else
+                            green
+                        )
+                        bottom
+                        top
+            in
+            -- Leaves first: where they and the trunk are drawn equally near, what's drawn first shows
+            (case rings of
+                [ low, middle, high ] ->
+                    fan color low { x = 0, y = 0, z = bottom }
+                        ++ band color low middle
+                        ++ band color middle high
+                        ++ fan color high { x = 0, y = 0, z = top }
+
+                _ ->
+                    []
+            )
+                ++ trunk (height 0.2)
+        )
+        (Random.map3 (\a b c -> ( a, b, c )) (Random.float 0.03 0.045) (Random.float 0.08 0.12) (Random.float 0.8 1.1))
+        (Random.map3 (\r g b -> ( r, g, b )) (Random.float 0.25 0.38) (Random.float 0.45 0.58) (Random.float 0.18 0.26))
+        (Random.float 0 1)
+        (Random.list 24 (Random.float 0.85 1.12))
+
+
+{-| A trunk with tiers of cones of needles getting smaller up it.
+-}
+pine : Generator (List LocalTriangle)
+pine =
+    Random.map3
+        (\( trunkHeight, radius ) ( tiers, tierHeight ) shade ->
+            let
+                green =
+                    ( 0.16 * shade, 0.38 * shade, 0.25 * shade )
+
+                tier i =
+                    let
+                        z =
+                            trunkHeight + toFloat i * tierHeight * 0.65
+
+                        r =
+                            radius * (1 - toFloat i / toFloat (tiers + 1))
+
+                        color =
+                            leafColor green z (z + tierHeight)
+
+                        rim =
+                            ring 9 (toFloat i * 0.5) z r
+                    in
+                    fan color rim { x = 0, y = 0, z = z - tierHeight * 0.15 }
+                        ++ fan color rim { x = 0, y = 0, z = z + tierHeight }
+            in
+            List.concatMap tier (List.range 0 (tiers - 1)) ++ trunk (trunkHeight + tierHeight * 0.3)
+        )
+        (Random.pair (Random.float 0.012 0.02) (Random.float 0.075 0.105))
+        (Random.pair (Random.int 3 4) (Random.float 0.035 0.045))
+        (Random.float 0.85 1.15)
+
+
+
 ---- VECTORS ----
+
+
+toTuple : Vec -> ( Float, Float, Float )
+toTuple p =
+    ( p.x, p.y, p.z )
 
 
 fromTuple : ( Float, Float, Float ) -> Vec
