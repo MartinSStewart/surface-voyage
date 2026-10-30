@@ -460,7 +460,7 @@ moveActionFS =
     |]
 
 
-worldVS : Shader Vertex Uniforms { color_ : Vec3, normal_ : Vec3, position_ : Vec3, cameraDistance_ : Float }
+worldVS : Shader Vertex Uniforms { color_ : Vec3, normal_ : Vec3, position_ : Vec3, fromCamera_ : Vec3 }
 worldVS =
     [glsl|
         attribute vec3 position;
@@ -472,14 +472,14 @@ worldVS =
         varying vec3 color_;
         varying vec3 normal_;
         varying vec3 position_;
-        varying float cameraDistance_;
+        varying vec3 fromCamera_;
         void main () {
             vec4 fromCamera = camera * local * vec4(position, 1.0);
             gl_Position = perspective * fromCamera;
             color_ = color;
             normal_ = normal;
             position_ = position;
-            cameraDistance_ = length(fromCamera.xyz);
+            fromCamera_ = fromCamera.xyz;
         }
     |]
 
@@ -488,7 +488,7 @@ worldVS =
 surface, unless `grid` is 0. Where the surface lies along one of the planes, that plane's lines
 aren't drawn, as they'd cover it. Fades out near the camera the same way as `worldFS`.
 -}
-groundFS : Shader {} Uniforms { color_ : Vec3, normal_ : Vec3, position_ : Vec3, cameraDistance_ : Float }
+groundFS : Shader {} Uniforms { color_ : Vec3, normal_ : Vec3, position_ : Vec3, fromCamera_ : Vec3 }
 groundFS =
     [glsl|
         precision mediump float;
@@ -498,7 +498,7 @@ groundFS =
         varying vec3 color_;
         varying vec3 normal_;
         varying vec3 position_;
-        varying float cameraDistance_;
+        varying vec3 fromCamera_;
 
         float bayer2(vec2 a) {
             a = floor(a);
@@ -510,7 +510,7 @@ groundFS =
         }
 
         void main () {
-            float shown = clamp((cameraDistance_ - fadeNear) / (fadeFar - fadeNear), 0.0, 1.0);
+            float shown = clamp((length(fromCamera_) - fadeNear) / (fadeFar - fadeNear), 0.0, 1.0);
             if (shown <= bayer4(gl_FragCoord.xy)) {
                 discard;
             }
@@ -538,10 +538,11 @@ groundFS =
 Whatever is nearer the camera than `fadeFar` fades out, gone by `fadeNear`, so the ground and walls
 don't block the view when they come between the camera and the player. It fades by leaving out some
 pixels in a fixed 4x4 pattern (an ordered dither), as blending would need everything sorted back to
-front.
+front. The distance is worked out for each pixel, as on a big triangle reaching past the camera the
+distances at its corners say nothing about how near its middle is.
 
 -}
-worldFS : Shader {} { u | fadeNear : Float, fadeFar : Float } { color_ : Vec3, normal_ : Vec3, cameraDistance_ : Float }
+worldFS : Shader {} { u | fadeNear : Float, fadeFar : Float } { color_ : Vec3, normal_ : Vec3, fromCamera_ : Vec3 }
 worldFS =
     [glsl|
         precision mediump float;
@@ -549,7 +550,7 @@ worldFS =
         uniform float fadeFar;
         varying vec3 color_;
         varying vec3 normal_;
-        varying float cameraDistance_;
+        varying vec3 fromCamera_;
 
         // 0 to 15/16 in a 2x2 or 4x4 pattern where neighbours are as different as they can be
         float bayer2(vec2 a) {
@@ -562,7 +563,7 @@ worldFS =
         }
 
         void main () {
-            float shown = clamp((cameraDistance_ - fadeNear) / (fadeFar - fadeNear), 0.0, 1.0);
+            float shown = clamp((length(fromCamera_) - fadeNear) / (fadeFar - fadeNear), 0.0, 1.0);
             if (shown <= bayer4(gl_FragCoord.xy)) {
                 discard;
             }
@@ -628,7 +629,7 @@ The player is drawn the same way, from a mesh made where they stand (see `WorldM
 identity and 0.
 
 -}
-wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float, maxShift : Float, local : Mat4, lift : Float, layer : Float, fadeNear : Float, fadeFar : Float } { color_ : Vec3, normal_ : Vec3, cameraDistance_ : Float }
+wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float, maxShift : Float, local : Mat4, lift : Float, layer : Float, fadeNear : Float, fadeFar : Float } { color_ : Vec3, normal_ : Vec3, fromCamera_ : Vec3 }
 wallVS =
     [glsl|
         attribute vec3 position;
@@ -646,7 +647,7 @@ wallVS =
         uniform float maxShift;
         varying vec3 color_;
         varying vec3 normal_;
-        varying float cameraDistance_;
+        varying vec3 fromCamera_;
         void main () {
             vec3 standsOn = (local * vec4(base, 1.0)).xyz;
             vec3 outward = normalize((local * vec4(up, 0.0)).xyz);
@@ -675,6 +676,6 @@ wallVS =
             gl_Position = clip;
             color_ = color;
             normal_ = (local * vec4(normal, 0.0)).xyz;
-            cameraDistance_ = length(fromCamera.xyz);
+            fromCamera_ = fromCamera.xyz;
         }
     |]
