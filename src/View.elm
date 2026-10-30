@@ -110,6 +110,8 @@ view config meshes =
                                 , local = Mat4.identity
                                 , lift = 0
                                 , layer = 0
+                                , fadeNear = Length.inMeters fadeNear
+                                , fadeFar = Length.inMeters fadeFar
                                 }
                         in
                         List.concatMap
@@ -247,6 +249,8 @@ uniforms config cameraMatrix_ local =
     { local = local
     , perspective = perspective config.windowSize
     , camera = cameraMatrix_
+    , fadeNear = Length.inMeters fadeNear
+    , fadeFar = Length.inMeters fadeFar
     }
 
 
@@ -329,6 +333,8 @@ type alias Uniforms =
     { local : Mat4
     , perspective : Mat4
     , camera : Mat4
+    , fadeNear : Float
+    , fadeFar : Float
     }
 
 
@@ -449,7 +455,7 @@ moveActionFS =
     |]
 
 
-worldVS : Shader Vertex Uniforms { color_ : Vec3, normal_ : Vec3 }
+worldVS : Shader Vertex Uniforms { color_ : Vec3, normal_ : Vec3, cameraDistance_ : Float }
 worldVS =
     [glsl|
         attribute vec3 position;
@@ -460,28 +466,72 @@ worldVS =
         uniform mat4 local;
         varying vec3 color_;
         varying vec3 normal_;
+        varying float cameraDistance_;
         void main () {
-            gl_Position = perspective * camera * local * vec4(position, 1.0);
+            vec4 fromCamera = camera * local * vec4(position, 1.0);
+            gl_Position = perspective * fromCamera;
             color_ = color;
             normal_ = normal;
+            cameraDistance_ = length(fromCamera.xyz);
         }
     |]
 
 
 {-| Lit from one side, softly, so that the shape of things shows without anything going dark.
+
+Whatever is nearer the camera than `fadeFar` fades out, gone by `fadeNear`, so the ground and walls
+don't block the view when they come between the camera and the player. It fades by leaving out some
+pixels in a fixed 4x4 pattern (an ordered dither), as blending would need everything sorted back to
+front.
+
 -}
-worldFS : Shader {} u { color_ : Vec3, normal_ : Vec3 }
+worldFS : Shader {} { u | fadeNear : Float, fadeFar : Float } { color_ : Vec3, normal_ : Vec3, cameraDistance_ : Float }
 worldFS =
     [glsl|
         precision mediump float;
+        uniform float fadeNear;
+        uniform float fadeFar;
         varying vec3 color_;
         varying vec3 normal_;
+        varying float cameraDistance_;
+
+        // 0 to 15/16 in a 2x2 or 4x4 pattern where neighbours are as different as they can be
+        float bayer2(vec2 a) {
+            a = floor(a);
+            return fract(a.x / 2.0 + a.y * a.y * 0.75);
+        }
+
+        float bayer4(vec2 a) {
+            return bayer2(0.5 * a) * 0.25 + bayer2(a);
+        }
+
         void main () {
+            float shown = clamp((cameraDistance_ - fadeNear) / (fadeFar - fadeNear), 0.0, 1.0);
+            if (shown <= bayer4(gl_FragCoord.xy)) {
+                discard;
+            }
             vec3 light = normalize(vec3(0.4, 1.0, 0.3));
             float shade = 0.75 + 0.25 * dot(normalize(normal_), light);
             gl_FragColor = vec4(color_ * shade, 1.0);
         }
     |]
+
+
+{-| Closer to the camera than this, the ground and walls aren't drawn at all (see `worldFS`).
+The camera is `cameraDistance` from the player.
+-}
+fadeNear : Length
+fadeNear =
+    Length.meters 0.3
+
+
+{-| Closer to the camera than this, the ground and walls start to fade out (see `worldFS`). With the
+camera tilted all the way back, the flat ground at the bottom of the screen is about 0.75 m away, so
+this is a bit less than that to leave the ground the player walks on alone.
+-}
+fadeFar : Length
+fadeFar =
+    Length.meters 0.7
 
 
 {-| How high above the player the eye is that the walls are drawn from (more when the player is up
@@ -521,7 +571,7 @@ The player is drawn the same way, from a mesh made where they stand (see `WorldM
 identity and 0.
 
 -}
-wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float, maxShift : Float, local : Mat4, lift : Float, layer : Float } { color_ : Vec3, normal_ : Vec3 }
+wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float, maxShift : Float, local : Mat4, lift : Float, layer : Float, fadeNear : Float, fadeFar : Float } { color_ : Vec3, normal_ : Vec3, cameraDistance_ : Float }
 wallVS =
     [glsl|
         attribute vec3 position;
@@ -539,6 +589,7 @@ wallVS =
         uniform float maxShift;
         varying vec3 color_;
         varying vec3 normal_;
+        varying float cameraDistance_;
         void main () {
             vec3 standsOn = (local * vec4(base, 1.0)).xyz;
             vec3 outward = normalize((local * vec4(up, 0.0)).xyz);
@@ -557,10 +608,12 @@ wallVS =
                 shift *= maxShift / shiftLength;
             }
             vec3 image = onSurface + shift + 0.004 * outward;
-            vec4 clip = perspective * camera * vec4(image, 1.0);
+            vec4 fromCamera = camera * vec4(image, 1.0);
+            vec4 clip = perspective * fromCamera;
             clip.z -= (0.0001 * (1.0 + 4.0 / (1.0 + distance(corner, eye))) + 0.001 * layer) * clip.w;
             gl_Position = clip;
             color_ = color;
             normal_ = (local * vec4(normal, 0.0)).xyz;
+            cameraDistance_ = length(fromCamera.xyz);
         }
     |]
