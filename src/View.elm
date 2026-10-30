@@ -578,7 +578,7 @@ The camera is `cameraDistance` from the player.
 -}
 fadeNear : Length
 fadeNear =
-    Length.meters 0.3
+    Length.meters 1
 
 
 {-| Closer to the camera than this, the ground and walls start to fade out (see `worldFS`). With the
@@ -587,7 +587,7 @@ this is a bit less than that to leave the ground the player walks on alone.
 -}
 fadeFar : Length
 fadeFar =
-    Length.meters 0.7
+    Length.meters 1.8
 
 
 {-| How high above the player the eye is that the walls are drawn from (more when the player is up
