@@ -300,7 +300,7 @@ type LoadedMsg_
     | WindowResize (Vector2i Pixels ScreenCoordinate)
     | AnimationFrameDelta Duration
     | MouseEvent MouseEvent_
-    | MinimapDrawn Json.Decode.Value
+    | MinimapDrawn (Maybe { point : SurfacePoint, meshes : Minimap.Meshes })
     | ImportPressed
     | ImportFileSelected File
     | ImportFileLoaded String
@@ -432,25 +432,32 @@ updateLoadedModel msg model =
 minimapDrawn : LoadedMsg_ -> LoadedModel_ -> ( LoadedModel_, Cmd LoadedMsg_ )
 minimapDrawn msg model =
     case msg of
-        MinimapDrawn value ->
-            ( case
-                Json.Decode.decodeValue
-                    (Json.Decode.map2 (\point meshes -> { point = point, meshes = meshes })
-                        (Json.Decode.field "point" Surface.surfacePointDecoder)
-                        (Json.Decode.field "drawing" Minimap.meshesDecoder)
-                    )
-                    value
-              of
-                Ok minimap ->
+        MinimapDrawn maybeMinimap ->
+            ( case maybeMinimap of
+                Just minimap ->
                     { model | minimap = Just minimap, minimapRequest = Nothing }
 
-                Err _ ->
+                Nothing ->
                     { model | minimapRequest = Nothing }
             , Cmd.none
             )
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| Decode what the minimap worker sends back as soon as it arrives from the port, since Lamdera
+doesn't allow a `Json.Decode.Value` in `FrontendMsg`.
+-}
+decodeMinimapDrawn : Json.Decode.Value -> Maybe { point : SurfacePoint, meshes : Minimap.Meshes }
+decodeMinimapDrawn value =
+    Json.Decode.decodeValue
+        (Json.Decode.map2 (\point meshes -> { point = point, meshes = meshes })
+            (Json.Decode.field "point" Surface.surfacePointDecoder)
+            (Json.Decode.field "drawing" Minimap.meshesDecoder)
+        )
+        value
+        |> Result.toMaybe
 
 
 {-| Replace the world with the solid in a STEP file (see `StepImport`), with the player on top of it.
@@ -2002,7 +2009,7 @@ subscriptions model =
                 , Browser.Events.onMouseMove (mouseDecoder MouseEventMove)
                 , Browser.Events.onResize (\w h -> Vector2i.pixels w h |> WindowResize)
                 , Browser.Events.onAnimationFrameDelta (Duration.milliseconds >> AnimationFrameDelta)
-                , MinimapPort.minimapDrawn MinimapDrawn
+                , MinimapPort.minimapDrawn (decodeMinimapDrawn >> MinimapDrawn)
                 ]
                 |> Sub.map LoadedMsg
 
