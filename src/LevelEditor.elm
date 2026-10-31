@@ -15,7 +15,8 @@ module LevelEditor exposing
     , wallsAt
     )
 
-{-| Making levels in the game: placing walls, stairs, dirt paths and roofs where the player walks.
+{-| Making levels in the game: placing walls, stairs, dirt paths and roofs where the player walks,
+and on a level made of grid pieces, more ground (see `GridLevel`).
 
 Walls and paths go along the shortest way on the surface between the points the player picks (see
 `ShortestPath`). A wall end close enough to the end of another wall at the same height is moved onto
@@ -26,6 +27,7 @@ the corners of the walls under them, or onto the walls, if they're close. Stairs
 -}
 
 import Buildings exposing (Buildings, Roof, Stairs, Vec, Wall)
+import GridLevel
 
 
 type Tool
@@ -33,11 +35,12 @@ type Tool
     | StairsTool
     | PathTool
     | RoofTool
+    | GroundTool GridLevel.Piece
 
 
 tools : List Tool
 tools =
-    [ WallTool, StairsTool, PathTool, RoofTool ]
+    [ WallTool, StairsTool, PathTool, RoofTool ] ++ List.map GroundTool GridLevel.pieces
 
 
 toolName : Tool -> String
@@ -54,6 +57,9 @@ toolName tool =
 
         RoofTool ->
             "Roof"
+
+        GroundTool piece ->
+            GridLevel.pieceName piece
 
 
 {-| What to do with a tool, before and while placing something with it.
@@ -84,6 +90,9 @@ toolHint tool { placing } =
 
         ( RoofTool, True ) ->
             "Space adds a corner where you are, Enter adds the last one and puts the roof on"
+
+        ( GroundTool _, _ ) ->
+            "Space puts the piece on the highlighted edge, the open edge nearest you. Q puts it along the whole side"
 
 
 {-| Everything the player has placed, oldest first.

@@ -1,6 +1,7 @@
-module MeshData exposing (ScreenCoordinate, WorldCoordinate, mapShapes, roofMeshes, surface, wallCollision, wallMesh, webGlMesh)
+module MeshData exposing (ScreenCoordinate, WorldCoordinate, details, mapShapes, roofMeshes, surface, wallCollision, wallMesh, webGlMesh)
 
 import Buildings
+import Details
 import MeshBuilder exposing (Vertex)
 import Shapes exposing (Shapes)
 import Surface exposing (Surface)
@@ -73,6 +74,27 @@ wallMesh =
 
         Err _ ->
             WebGL.triangles []
+
+
+{-| Pebbles, rocks, grass and flowers, kept off the paving, walls and stairs (see `Details`).
+-}
+details : Details.Patches
+details =
+    case surface of
+        Ok surface_ ->
+            Details.scatter surface_
+                |> Details.clearOf
+                    (Details.obstacles surface_
+                        { walls = List.map (\points -> { points = points, bottom = 0 }) WorldShapes.walls
+                        , pavings = WorldShapes.pavings
+                        , paths = []
+                        , stairs = Buildings.default.stairs
+                        }
+                    )
+                |> Details.patches
+
+        Err _ ->
+            Details.patches []
 
 
 {-| The shapes drawn on the minimap, moved onto the surface.

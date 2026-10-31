@@ -5,6 +5,8 @@ The game sends where the player is to `drawMinimap` and gets the drawing back fr
 (see elm-pkg-js/minimap-worker.js). When the player has placed or taken away walls or paths since, it
 sends all the ones placed too (see `LevelEditor`). When
 a world is imported from a STEP file, it sends the file, and the minimap shows that world from then on.
+When the level's ground is made of grid pieces and changes, it sends the pieces (see `GridLevel`), or
+null to go back to the world made in code.
 
 This isn't part of the Lamdera app, so it's compiled on its own:
 
@@ -12,6 +14,7 @@ This isn't part of the Lamdera app, so it's compiled on its own:
 
 -}
 
+import GridLevel
 import Json.Decode
 import Json.Encode
 import MeshData exposing (WorldCoordinate)
@@ -47,25 +50,54 @@ main =
     Platform.worker
         { init =
             \() ->
-                ( { surface = Result.toMaybe MeshData.surface
-                  , own = { walls = WorldShapes.walls, pavings = WorldShapes.pavings }
-                  , shapes = MeshData.mapShapes
-                  }
-                , Cmd.none
-                )
+                ( init, Cmd.none )
         , update = update
         , subscriptions = \_ -> drawMinimap DrawMinimap
         }
 
 
+{-| The world made in code.
+-}
+init : Model
+init =
+    { surface = Result.toMaybe MeshData.surface
+    , own = { walls = WorldShapes.walls, pavings = WorldShapes.pavings }
+    , shapes = MeshData.mapShapes
+    }
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
-update (DrawMinimap value) model =
+update (DrawMinimap value) model_ =
     case Json.Decode.decodeValue importDecoder value of
         Ok ( text, scale ) ->
             -- The same import as the game's, so the surface is the same too
             ( { surface = StepImport.surface scale text |> Result.toMaybe, own = { walls = [], pavings = [] }, shapes = Shapes.empty }, Cmd.none )
 
         Err _ ->
+            let
+                model =
+                    case Json.Decode.decodeValue (Json.Decode.field "ground" (Json.Decode.nullable GridLevel.decoder)) value of
+                        Ok (Just ground) ->
+                            let
+                                surface =
+                                    GridLevel.surface ground |> Result.toMaybe
+
+                                -- Where the ground ends shows like a wall
+                                edges =
+                                    GridLevel.openEdges ground
+                                        |> List.map (GridLevel.edgeSamples >> List.map (\{ position } -> ( position.x, position.y, position.z )))
+                            in
+                            { surface = surface
+                            , own = { walls = edges, pavings = [] }
+                            , shapes = Maybe.map (\surface_ -> Shapes.prepare surface_ edges []) surface |> Maybe.withDefault Shapes.empty
+                            }
+
+                        Ok Nothing ->
+                            init
+
+                        Err _ ->
+                            model_
+            in
             case
                 ( Json.Decode.decodeValue
                     (Json.Decode.map2 Tuple.pair
