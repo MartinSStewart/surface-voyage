@@ -80,6 +80,10 @@ view :
 
         -- The size of the grid to draw lines on the world for, or 0 for none
         , grid : Float
+
+        -- Whether the player is down in the rooms and tunnels under the ground (see `Underground`),
+        -- where only those are drawn, on black
+        , underground : Bool
         }
     -> Html msg
 view config meshes =
@@ -95,12 +99,29 @@ view config meshes =
 
         cameraMatrix_ =
             camera_ |> Camera3d.viewMatrix
+
+        undergroundUniform =
+            if meshes.underground then
+                1
+
+            else
+                0
+
+        lanternAt =
+            Maybe.map Point3d.toVec3 playerPosition |> Maybe.withDefault (Vec3.vec3 0 0 0)
     in
     WebGL.toHtml
-        [ Html.Attributes.width windowWidth
-        , Html.Attributes.height windowHeight
-        ]
-        (List.map (\mesh -> entity worldVS groundFS mesh (uniforms config cameraMatrix_ Mat4.identity meshes.grid)) meshes.world
+        ([ Html.Attributes.width windowWidth
+         , Html.Attributes.height windowHeight
+         ]
+            ++ (if meshes.underground then
+                    [ Html.Attributes.style "background" "black" ]
+
+                else
+                    []
+               )
+        )
+        (List.map (\mesh -> entity worldVS groundFS mesh (uniforms config cameraMatrix_ Mat4.identity meshes.grid undergroundUniform lanternAt)) meshes.world
             ++ (case playerPosition of
                     Just playerPosition_ ->
                         let
@@ -115,6 +136,8 @@ view config meshes =
                                 , layer = 0
                                 , fadeNear = Length.inMeters fadeNear
                                 , fadeFar = Length.inMeters fadeFar
+                                , underground = undergroundUniform
+                                , lanternAt = lanternAt
                                 }
                         in
                         List.concatMap
@@ -144,7 +167,7 @@ view config meshes =
                                                 else
                                                     frame
                                         in
-                                        [ entity wallVS worldFS meshes.player { flatUniforms | local = squashed, lift = config.height, layer = toFloat (round (config.height / Buildings.storey)) } ]
+                                        [ entity wallVS worldFS meshes.player { flatUniforms | local = squashed, lift = config.height, layer = toFloat (round (config.height / Buildings.storey)), underground = 0 } ]
 
                                     Nothing ->
                                         []
@@ -247,14 +270,16 @@ cameraSketchPlane config =
     plane |> SketchPlane3d.rotateAround (SketchPlane3d.xAxis plane) (Angle.radians -config.cameraPitch)
 
 
-uniforms : Config a -> Mat4 -> Mat4 -> Float -> Uniforms
-uniforms config cameraMatrix_ local grid =
+uniforms : Config a -> Mat4 -> Mat4 -> Float -> Float -> Vec3 -> Uniforms
+uniforms config cameraMatrix_ local grid underground lanternAt =
     { local = local
     , perspective = perspective config.windowSize
     , camera = cameraMatrix_
     , grid = grid
     , fadeNear = Length.inMeters fadeNear
     , fadeFar = Length.inMeters fadeFar
+    , underground = underground
+    , lanternAt = lanternAt
     }
 
 
@@ -340,6 +365,8 @@ type alias Uniforms =
     , grid : Float
     , fadeNear : Float
     , fadeFar : Float
+    , underground : Float
+    , lanternAt : Vec3
     }
 
 
@@ -499,6 +526,8 @@ groundFS =
         varying vec3 normal_;
         varying vec3 position_;
         varying vec3 fromCamera_;
+        uniform float underground;
+        uniform vec3 lanternAt;
 
         float bayer2(vec2 a) {
             a = floor(a);
@@ -507,6 +536,21 @@ groundFS =
 
         float bayer4(vec2 a) {
             return bayer2(0.5 * a) * 0.25 + bayer2(a);
+        }
+
+        // Underground, the normal's length says how much sunlight gets there (see
+        // Underground.encodeLight). There, light is that sunlight and a glow round the player.
+        vec3 lightUnderground(vec3 color, float normalLength, vec3 position) {
+            if (normalLength < 1.5) {
+                if (underground > 0.5) {
+                    discard;
+                }
+                return color;
+            }
+            float sun = clamp(1.0 - (normalLength - 2.0) / 8.0, 0.0, 1.0);
+            float glow = 1.0 - smoothstep(0.03, 0.6, distance(position, lanternAt));
+            vec3 light = sun * vec3(1.0, 0.98, 0.9) + glow * glow * 0.8 * vec3(1.0, 0.78, 0.5);
+            return color * light;
         }
 
         void main () {
@@ -529,7 +573,7 @@ groundFS =
                 if (abs(n.z) < 0.9 && away.z < width) { line = 1.0; }
                 color = color * (1.0 - 0.2 * line);
             }
-            gl_FragColor = vec4(color, 1.0);
+            gl_FragColor = vec4(lightUnderground(color, length(normal_), position_), 1.0);
         }
     |]
 
@@ -546,14 +590,17 @@ left out grows slowly at first and quickly towards `fadeNear` (a gamma curve, t^
 looks like an even fade.
 
 -}
-worldFS : Shader {} { u | fadeNear : Float, fadeFar : Float } { color_ : Vec3, normal_ : Vec3, fromCamera_ : Vec3 }
+worldFS : Shader {} { u | fadeNear : Float, fadeFar : Float, underground : Float, lanternAt : Vec3 } { color_ : Vec3, normal_ : Vec3, position_ : Vec3, fromCamera_ : Vec3 }
 worldFS =
     [glsl|
         precision mediump float;
         uniform float fadeNear;
         uniform float fadeFar;
+        uniform float underground;
+        uniform vec3 lanternAt;
         varying vec3 color_;
         varying vec3 normal_;
+        varying vec3 position_;
         varying vec3 fromCamera_;
 
         // 0 to 15/16 in a 2x2 or 4x4 pattern where neighbours are as different as they can be
@@ -566,6 +613,21 @@ worldFS =
             return bayer2(0.5 * a) * 0.25 + bayer2(a);
         }
 
+        // Underground, the normal's length says how much sunlight gets there (see
+        // Underground.encodeLight). There, light is that sunlight and a glow round the player.
+        vec3 lightUnderground(vec3 color, float normalLength, vec3 position) {
+            if (normalLength < 1.5) {
+                if (underground > 0.5) {
+                    discard;
+                }
+                return color;
+            }
+            float sun = clamp(1.0 - (normalLength - 2.0) / 8.0, 0.0, 1.0);
+            float glow = 1.0 - smoothstep(0.03, 0.6, distance(position, lanternAt));
+            vec3 light = sun * vec3(1.0, 0.98, 0.9) + glow * glow * 0.8 * vec3(1.0, 0.78, 0.5);
+            return color * light;
+        }
+
         void main () {
             float along = clamp((length(fromCamera_) - fadeNear) / (fadeFar - fadeNear), 0.0, 1.0);
             float shown = pow(along, 1.0 / 2.2);
@@ -574,7 +636,7 @@ worldFS =
             }
             vec3 light = normalize(vec3(0.4, 1.0, 0.3));
             float shade = 0.75 + 0.25 * dot(normalize(normal_), light);
-            gl_FragColor = vec4(color_ * shade, 1.0);
+            gl_FragColor = vec4(lightUnderground(color_ * shade, length(normal_), position_), 1.0);
         }
     |]
 
@@ -634,7 +696,7 @@ The player is drawn the same way, from a mesh made where they stand (see `WorldM
 identity and 0.
 
 -}
-wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float, maxShift : Float, local : Mat4, lift : Float, layer : Float, fadeNear : Float, fadeFar : Float } { color_ : Vec3, normal_ : Vec3, fromCamera_ : Vec3 }
+wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float, maxShift : Float, local : Mat4, lift : Float, layer : Float, fadeNear : Float, fadeFar : Float, underground : Float, lanternAt : Vec3 } { color_ : Vec3, normal_ : Vec3, position_ : Vec3, fromCamera_ : Vec3 }
 wallVS =
     [glsl|
         attribute vec3 position;
@@ -652,6 +714,7 @@ wallVS =
         uniform float maxShift;
         varying vec3 color_;
         varying vec3 normal_;
+        varying vec3 position_;
         varying vec3 fromCamera_;
         void main () {
             vec3 standsOn = (local * vec4(base, 1.0)).xyz;
@@ -681,6 +744,7 @@ wallVS =
             gl_Position = clip;
             color_ = color;
             normal_ = (local * vec4(normal, 0.0)).xyz;
+            position_ = onSurface;
             fromCamera_ = fromCamera.xyz;
         }
     |]

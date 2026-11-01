@@ -1,4 +1,4 @@
-module WorldMesh exposing (WallVertex, groundPreview, mesh, pathMesh, playerMesh, roofMesh, stairsColor, wallColor, wallMesh, wallThickness)
+module WorldMesh exposing (WallVertex, groundPreview, mesh, pathMesh, playerMesh, roofMesh, stairsColor, wallColor, wallMesh, wallThickness, worldMesh)
 
 {-| What the world looks like: the surface with the paving laid on it, and the walls (see
 `WorldShapes`).
@@ -17,6 +17,7 @@ import MeshBuilder exposing (Vertex)
 import Point3d
 import Shapes exposing (Paving)
 import Surface exposing (Surface)
+import Underground
 import WebGL
 
 
@@ -149,6 +150,30 @@ snap surface p =
 mesh : Surface coordinates -> List Paving -> WebGL.Mesh Vertex
 mesh surface pavings =
     surfaceTriangles surface
+        ++ pavingTriangles (snap surface) pavings
+        |> WebGL.triangles
+
+
+{-| The world made in code: like `mesh`, but the rooms and tunnels under the ground (see
+`Underground`) are dug out of soil, more coarsely, and the shaders are told how much sunlight gets to
+them.
+-}
+worldMesh : Surface coordinates -> List Paving -> WebGL.Mesh Vertex
+worldMesh surface pavings =
+    let
+        worldVertex v =
+            if Underground.contains v.position then
+                { position = Vec3.fromRecord v.position
+                , normal = Underground.encodeLight v.position (Vec3.fromRecord v.normal)
+                , color = Underground.soilColor v.position v.normal
+                }
+
+            else
+                vertex grassColor v.position v.normal
+    in
+    (Surface.tessellateBy (Underground.tessellationStep surfaceStep) surface
+        |> List.map (\( a, b, c ) -> ( worldVertex a, worldVertex b, worldVertex c ))
+    )
         ++ pavingTriangles (snap surface) pavings
         |> WebGL.triangles
 

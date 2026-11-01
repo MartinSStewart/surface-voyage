@@ -17,11 +17,13 @@ This isn't part of the Lamdera app, so it's compiled on its own:
 import GridLevel
 import Json.Decode
 import Json.Encode
+import Length
 import MeshData exposing (WorldCoordinate)
 import Minimap
 import Shapes exposing (Shapes)
 import StepImport
 import Surface exposing (Surface)
+import Underground
 import WorldShapes
 
 
@@ -61,7 +63,7 @@ main =
 init : Model
 init =
     { surface = Result.toMaybe MeshData.surface
-    , own = { walls = WorldShapes.walls, pavings = WorldShapes.pavings }
+    , own = { walls = WorldShapes.walls ++ Underground.mapWalls, pavings = WorldShapes.pavings ++ Underground.mapPavings }
     , shapes = MeshData.mapShapes
     }
 
@@ -100,15 +102,16 @@ update (DrawMinimap value) model_ =
             in
             case
                 ( Json.Decode.decodeValue
-                    (Json.Decode.map2 Tuple.pair
+                    (Json.Decode.map3 (\point placed radius -> ( point, placed, radius ))
                         (Json.Decode.field "point" Surface.surfacePointDecoder)
                         (Json.Decode.maybe (Json.Decode.field "placed" placedDecoder))
+                        (Json.Decode.maybe (Json.Decode.field "radius" Json.Decode.float))
                     )
                     value
                 , model.surface
                 )
             of
-                ( Ok ( point, placed ), Just surface ) ->
+                ( Ok ( point, placed, radius ), Just surface ) ->
                     let
                         withPlaced =
                             case placed of
@@ -123,7 +126,7 @@ update (DrawMinimap value) model_ =
                     ( { model | shapes = withPlaced }
                     , Json.Encode.object
                         [ ( "point", Surface.encodeSurfacePoint point )
-                        , ( "drawing", Minimap.drawingAround surface withPlaced point |> Minimap.encodeDrawing )
+                        , ( "drawing", Minimap.drawingAround (Maybe.map Length.meters radius |> Maybe.withDefault Minimap.viewRadius) surface withPlaced point |> Minimap.encodeDrawing )
                         ]
                         |> minimapDrawn
                     )

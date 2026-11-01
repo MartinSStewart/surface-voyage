@@ -50,6 +50,7 @@ import SketchPlane3d
 import StepImport
 import Surface exposing (Surface, SurfacePoint)
 import Task
+import Underground
 import Vector2d exposing (Vector2d)
 import Vector2i exposing (Vector2i)
 import Vector3d
@@ -1586,6 +1587,16 @@ stepMinimap model =
         ( { model | minimapRequest = Just model.surfacePoint, placedUnsent = False, groundUnsent = False }
         , Json.Encode.object
             (( "point", Surface.encodeSurfacePoint model.surfacePoint )
+                :: ( "radius"
+                   , (if isUnderground model then
+                        Minimap.undergroundRadius
+
+                      else
+                        Minimap.viewRadius
+                     )
+                        |> Length.inMeters
+                        |> Json.Encode.float
+                   )
                 :: (case ( model.groundUnsent, model.ground ) of
                         ( True, Just ground ) ->
                             [ ( "ground", GridLevel.encode ground ) ]
@@ -1667,7 +1678,22 @@ minimapView model =
                 Nothing ->
                     unmoved
     in
-    Minimap.view (Maybe.map .meshes model.minimap) moved
+    Minimap.view (Maybe.map .meshes model.minimap) { offset = moved.offset, turn = moved.turn, underground = isUnderground model }
+
+
+{-| Whether the player has gone down the shaft into the rooms and tunnels under the ground (see
+`Underground`). They're only in the world made in code, which is the only one with buildings.
+-}
+isUnderground : LoadedModel_ -> Bool
+isUnderground model =
+    model.ground
+        == Nothing
+        && model.level.buildings
+        /= Buildings.none
+        && (Surface.worldPosition model.surfacePoint model.surface
+                |> Maybe.map (Point3d.toMeters >> Underground.deep)
+                |> Maybe.withDefault False
+           )
 
 
 stepHeight : LoadedModel_ -> LoadedModel_
@@ -1793,6 +1819,15 @@ viewSuccessModel model =
                 [ Element.spacing 6
                 , Element.padding 4
 
+                -- Readable on black under the ground
+                , Element.Font.color
+                    (if isUnderground model then
+                        Element.rgb 0.85 0.8 0.7
+
+                     else
+                        Element.rgb 0 0 0
+                    )
+
                 -- Clear of the minimap
                 , Element.width (Element.maximum (Tuple.first (Vector2i.toTuple Pixels.inPixels model.windowSize) - Pixels.inPixels Minimap.size - 40) Element.shrink)
                 ]
@@ -1846,6 +1881,7 @@ viewSuccessModel model =
                 , preview = Maybe.map (.walls >> List.singleton) model.placing |> Maybe.withDefault []
                 , player = WorldMesh.playerMesh
                 , crouching = isCrouching model
+                , underground = isUnderground model
                 }
             )
         )

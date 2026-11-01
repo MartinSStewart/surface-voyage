@@ -24,6 +24,7 @@ import Point3d
 import Random exposing (Generator)
 import Shapes exposing (Paving)
 import Surface exposing (Surface)
+import Underground
 import WebGL
 import WorldMesh exposing (WallVertex)
 
@@ -96,11 +97,15 @@ rockinessScale =
 -}
 scatter : Surface coordinates -> List Detail
 scatter surface =
-    Surface.tessellate step surface
+    Surface.tessellateBy (Underground.tessellationStep step) surface
         |> List.concatMap
-            (\triangle ->
-                onTriangle mostPerSquareMeter 0 candidate triangle
-                    ++ onTriangle mostTreesPerSquareMeter 1 tree triangle
+            (\(( a, _, _ ) as triangle) ->
+                if Underground.contains a.position then
+                    onTriangle mostUnderground 0 stoneCandidate triangle
+
+                else
+                    onTriangle mostPerSquareMeter 0 candidate triangle
+                        ++ onTriangle mostTreesPerSquareMeter 1 tree triangle
             )
 
 
@@ -206,6 +211,29 @@ leaves can hang over them.
 trunkRadius : Float
 trunkRadius =
     0.015
+
+
+{-| Nothing grows in the rooms and tunnels under the ground (see `Underground`), so there are only
+stones lying about there, this many on a square meter.
+-}
+mostUnderground : Float
+mostUnderground =
+    14
+
+
+stoneCandidate : Surface.MeshVertex -> Surface.MeshVertex -> Surface.MeshVertex -> Generator (Maybe Detail)
+stoneCandidate a b c =
+    Random.map3
+        (\{ position, normal } pick ( sizing, seed ) ->
+            if pick < 0.75 then
+                Just { position = position, normal = normal, kind = Pebble, size = 0.006 + 0.01 * sizing, seed = seed }
+
+            else
+                Just { position = position, normal = normal, kind = Rock, size = 0.014 + 0.022 * sizing * sizing, seed = seed }
+        )
+        (pointOn a b c)
+        (Random.float 0 1)
+        (Random.pair (Random.float 0 1) (Random.int 0 Random.maxInt))
 
 
 {-| Something at a random point on a triangle, if the ground there is thick enough with things.
@@ -729,8 +757,9 @@ toWorld frame { points, colors } =
         ( wa, wb, wc ) =
             ( world a, world b, world c )
 
+        -- Underground, its length says how much sunlight gets there
         normal =
-            cross (sub wb wa) (sub wc wa) |> normalize |> Vec3.fromRecord
+            cross (sub wb wa) (sub wc wa) |> normalize |> Vec3.fromRecord |> Underground.encodeLight frame.origin
 
         vertex position color =
             { position = Vec3.fromRecord position

@@ -5,6 +5,7 @@ import Details
 import MeshBuilder exposing (Vertex)
 import Shapes exposing (Shapes)
 import Surface exposing (Surface)
+import Underground
 import WallCollision
 import WebGL
 import World
@@ -31,7 +32,7 @@ webGlMesh : WebGL.Mesh Vertex
 webGlMesh =
     case surface of
         Ok surface_ ->
-            WorldMesh.mesh surface_ WorldShapes.pavings
+            WorldMesh.worldMesh surface_ WorldShapes.pavings
 
         Err _ ->
             WebGL.triangles []
@@ -97,13 +98,14 @@ details =
             Details.patches []
 
 
-{-| The shapes drawn on the minimap, moved onto the surface.
+{-| The shapes drawn on the minimap, moved onto the surface, with the floors and tunnels under the
+ground (see `Underground`).
 -}
 mapShapes : Shapes
 mapShapes =
     case surface of
         Ok surface_ ->
-            Shapes.prepare surface_ WorldShapes.walls WorldShapes.pavings
+            Shapes.prepare surface_ (WorldShapes.walls ++ Underground.mapWalls) (WorldShapes.pavings ++ Underground.mapPavings)
 
         Err _ ->
             Shapes.empty

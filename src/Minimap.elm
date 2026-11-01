@@ -1,4 +1,4 @@
-module Minimap exposing (Drawing, Meshes, drawingAround, encodeDrawing, imagesAround, meshesDecoder, size, view)
+module Minimap exposing (Drawing, Meshes, drawingAround, encodeDrawing, imagesAround, meshesDecoder, size, undergroundRadius, view, viewRadius)
 
 {-| A map of the surface around the player, with the player in the middle facing up. Distances from
 the player are kept: a circle round the middle is everything that far away to walk to, walking
@@ -42,6 +42,15 @@ viewRadius =
     Length.meters 4
 
 
+{-| How far from the player the minimap shows under the ground (see `Underground`). The rooms and
+tunnels are small and close together, and there are many ways round each of them (all the way round
+a tunnel, say), so further out it gets too busy to read.
+-}
+undergroundRadius : Length
+undergroundRadius =
+    Length.meters 1.6
+
+
 {-| How wide walls are drawn, in pixels
 -}
 wallWidth : Float
@@ -67,17 +76,20 @@ type alias Triangle =
     ( MapPoint, MapPoint, MapPoint )
 
 
-drawingAround : Surface coordinates -> Shapes -> SurfacePoint -> Drawing
-drawingAround surface shapes surfacePoint =
+{-| What the minimap shows within `radius` of a point (`viewRadius`, or `undergroundRadius` under the
+ground). The drawing is in meters whatever the radius; the view zooms in to show it.
+-}
+drawingAround : Length -> Surface coordinates -> Shapes -> SurfacePoint -> Drawing
+drawingAround radius_ surface shapes surfacePoint =
     let
         sizeInPixels =
             Pixels.inPixels size
 
         radius =
-            Length.inMeters viewRadius
+            Length.inMeters radius_
 
         images =
-            imagesAround surface shapes surfacePoint
+            imagesAround radius_ surface shapes surfacePoint
 
         withImages index =
             Maybe.map2 Tuple.pair (Array.get index shapes.points) (Array.get index images)
@@ -156,9 +168,24 @@ now: `offset` is where the player is now on that map, in meters, and `turn` is h
 turned since, counterclockwise in radians. The drawing doesn't change while the player moves a few
 centimeters, so the minimap keeps up between drawings.
 -}
-view : Maybe Meshes -> { offset : MapPoint, turn : Float } -> Html msg
-view maybeMeshes { offset, turn } =
+view : Maybe Meshes -> { offset : MapPoint, turn : Float, underground : Bool } -> Html msg
+view maybeMeshes { offset, turn, underground } =
     let
+        -- Under the ground (see `Underground`), it's earth with pale floors and lines on it
+        ( background, pavingColor, wallColor ) =
+            if underground then
+                ( Vec3.vec3 0.13 0.1 0.08, Vec3.vec3 0.33 0.26 0.19, Vec3.vec3 0.85 0.78 0.62 )
+
+            else
+                ( Vec3.vec3 (144 / 255) (187 / 255) (146 / 255), Vec3.vec3 (187 / 255) (157 / 255) (72 / 255), Vec3.vec3 0 0 0 )
+
+        zoom =
+            if underground then
+                Quantity.ratio viewRadius undergroundRadius
+
+            else
+                1
+
         sizeInPixels =
             Pixels.inPixels size
 
@@ -167,18 +194,26 @@ view maybeMeshes { offset, turn } =
             , offset = Vec2.vec2 (offset.x / Length.inMeters viewRadius) (offset.y / Length.inMeters viewRadius)
             , cosTurn = cos turn
             , sinTurn = sin turn
+            , zoom = zoom
             }
     in
     WebGL.toHtmlWith
-        [ WebGL.alpha True, WebGL.antialias, WebGL.clearColor (144 / 255) (187 / 255) (146 / 255) 1 ]
+        -- Clear to nothing, so the background color shows: the clear color can't change once
+        -- the canvas is made
+        [ WebGL.alpha True, WebGL.antialias, WebGL.clearColor 0 0 0 0 ]
         [ Html.Attributes.width sizeInPixels
         , Html.Attributes.height sizeInPixels
         , Html.Attributes.style "display" "block"
+        , Html.Attributes.style "background"
+            ("rgb("
+                ++ ([ Vec3.getX background, Vec3.getY background, Vec3.getZ background ] |> List.map (\c -> String.fromInt (round (255 * c))) |> String.join ",")
+                ++ ")"
+            )
         ]
         ((case maybeMeshes of
             Just meshes ->
-                [ WebGL.entity shapeVS shapeFS meshes.paving (uniforms (Vec3.vec3 (187 / 255) (157 / 255) (72 / 255)))
-                , WebGL.entity shapeVS shapeFS meshes.walls (uniforms (Vec3.vec3 0 0 0))
+                [ WebGL.entity shapeVS shapeFS meshes.paving (uniforms pavingColor)
+                , WebGL.entity shapeVS shapeFS meshes.walls (uniforms wallColor)
                 ]
 
             Nothing ->
@@ -199,13 +234,13 @@ view maybeMeshes { offset, turn } =
 
 
 {-| Where each shape point goes on the map, in meters, in as many places as there are straight ways
-to walk to it within `viewRadius`.
+to walk to it within `radius_`.
 -}
-imagesAround : Surface coordinates -> Shapes -> SurfacePoint -> Array (List MapPoint)
-imagesAround surface shapes surfacePoint =
+imagesAround : Length -> Surface coordinates -> Shapes -> SurfacePoint -> Array (List MapPoint)
+imagesAround radius_ surface shapes surfacePoint =
     let
         radius =
-            Length.inMeters viewRadius
+            Length.inMeters radius_
 
         layout =
             Surface.mapAround radius surfacePoint surface
@@ -679,15 +714,16 @@ pavingTriangles ( p, pImages ) ( q, qImages ) ( r, rImages ) =
         pImages
 
 
-shapeVS : Shader { position : Vec2 } { u | offset : Vec2, cosTurn : Float, sinTurn : Float } {}
+shapeVS : Shader { position : Vec2 } { u | offset : Vec2, cosTurn : Float, sinTurn : Float, zoom : Float } {}
 shapeVS =
     [glsl|
         attribute vec2 position;
         uniform vec2 offset;
         uniform float cosTurn;
         uniform float sinTurn;
+        uniform float zoom;
         void main () {
-            vec2 p = position - offset;
+            vec2 p = (position - offset) * zoom;
             gl_Position = vec4(cosTurn * p.x + sinTurn * p.y, cosTurn * p.y - sinTurn * p.x, 0.0, 1.0);
         }
     |]

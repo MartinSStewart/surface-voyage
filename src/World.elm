@@ -1,7 +1,8 @@
 module World exposing (features, flats, surface)
 
 {-| The game world as flats and features: a slab with rounded edges and corners, a round hole
-through the middle, and a round hill on top next to the house by the start.
+through the middle, a round hill on top next to the house by the start, and rooms and tunnels hidden
+inside the slab (see `Underground`).
 
 The numbers come from the Blender model (world.blend), which the world used to be drawn from: the box
 and its 0.199 m fillets are exact, and the hole was fitted to its mesh: a 0.475 m waist with 0.304 m
@@ -18,6 +19,7 @@ import Point2d
 import Point3d
 import SketchPlane3d
 import Surface exposing (FeatureSpec, FlatEdge(..), FlatSpec, ProfileSegment(..), Sweep(..))
+import Underground
 import Vector2d
 
 
@@ -173,7 +175,7 @@ boxFace axis sign =
             if axis == Y then
                 circle hole.x hole.z holeRim
                     :: (if sign > 0 then
-                            [ circle hill.x hill.z hill.radius ]
+                            [ circle hill.x hill.z hill.radius, circle Underground.entrance.x Underground.entrance.z Underground.entrance.rim ]
 
                         else
                             []
@@ -324,7 +326,8 @@ signs =
 
 flats : List (FlatSpec coordinates)
 flats =
-    [ X, Y, Z ] |> List.concatMap (\axis -> List.map (boxFace axis) signs)
+    ([ X, Y, Z ] |> List.concatMap (\axis -> List.map (boxFace axis) signs))
+        ++ Underground.flats
 
 
 features : List (FeatureSpec coordinates)
@@ -333,6 +336,7 @@ features =
         :: hillFeature
         :: ([ X, Y, Z ] |> List.concatMap (\along -> signs |> List.concatMap (\signA -> List.map (edgeFillet along signA) signs)))
         ++ (signs |> List.concatMap (\signX -> signs |> List.concatMap (\signY -> List.map (corner signX signY) signs)))
+        ++ Underground.features
 
 
 surface : Result Surface.Error (Surface.Surface coordinates)

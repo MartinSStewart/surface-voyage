@@ -6,7 +6,7 @@ module Surface exposing
     , encodeSurfacePoint, surfacePointDecoder
     , Path, move, pathEnd, pathSegments
     , pieceCount
-    , MeshVertex, tessellate
+    , MeshVertex, tessellate, tessellateBy
     , Complex, Layout, Placement, Window, FanRay, FanSample, mapAround, fanSpacing, chartCoordinate, nearestPiece, placeOnMap
     )
 
@@ -36,7 +36,7 @@ Conventions:
 @docs encodeSurfacePoint, surfacePointDecoder
 @docs Path, move, pathEnd, pathSegments
 @docs pieceCount
-@docs MeshVertex, tessellate
+@docs MeshVertex, tessellate, tessellateBy
 @docs Complex, Layout, Placement, Window, FanRay, FanSample, mapAround, fanSpacing, chartCoordinate, nearestPiece, placeOnMap
 
 -}
@@ -768,7 +768,8 @@ findSeams { open } pieces =
             Tuple.first first.edge
                 /= Tuple.first second.edge
                 && lengthOf (sub first.middle second.middle)
-                < 10 * tolerance
+                < 10
+                * tolerance
                 && liesOn second.edge first.points
                 && liesOn first.edge second.points
 
@@ -2215,18 +2216,27 @@ cracks between them as long as their curved edges start and end at whole steps (
 Triangles go counterclockwise seen from outside.
 -}
 tessellate : Float -> Surface coordinates -> List ( MeshVertex, MeshVertex, MeshVertex )
-tessellate maxStepAngle (Surface { pieces }) =
+tessellate maxStepAngle =
+    tessellateBy (\_ -> maxStepAngle)
+
+
+{-| Like `tessellate`, with each piece's step picked from a box it's inside. Pieces that meet must get
+steps that split their shared curves the same way (or one a multiple of the other, which leaves
+slivers of gap as wide as the coarser step's chords are short of the curve).
+-}
+tessellateBy : ({ min : Vec, max : Vec } -> Float) -> Surface coordinates -> List ( MeshVertex, MeshVertex, MeshVertex )
+tessellateBy stepFor (Surface { pieces, boxes }) =
     Array.foldr
-        (\piece acc ->
+        (\( piece, box ) acc ->
             case piece of
                 FlatPiece flat ->
-                    tessellateFlat maxStepAngle flat ++ acc
+                    tessellateFlat (stepFor box) flat ++ acc
 
                 FeaturePiece feature ->
-                    tessellateFeature maxStepAngle feature ++ acc
+                    tessellateFeature (stepFor box) feature ++ acc
         )
         []
-        pieces
+        (Array.fromList (List.map2 Tuple.pair (Array.toList pieces) (Array.toList boxes)))
 
 
 {-| How many equal steps to split an angle into so that none are bigger than `maxStepAngle`.
