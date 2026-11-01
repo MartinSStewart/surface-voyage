@@ -548,7 +548,7 @@ groundFS =
                 return color;
             }
             float sun = clamp(1.0 - (normalLength - 2.0) / 8.0, 0.0, 1.0);
-            float glow = 1.0 - smoothstep(0.03, 0.6, distance(position, lanternAt));
+            float glow = 1.0 - smoothstep(0.04, 0.9, distance(position, lanternAt));
             vec3 light = sun * vec3(1.0, 0.98, 0.9) + glow * glow * 0.8 * vec3(1.0, 0.78, 0.5);
             return color * light;
         }
@@ -623,7 +623,7 @@ worldFS =
                 return color;
             }
             float sun = clamp(1.0 - (normalLength - 2.0) / 8.0, 0.0, 1.0);
-            float glow = 1.0 - smoothstep(0.03, 0.6, distance(position, lanternAt));
+            float glow = 1.0 - smoothstep(0.04, 0.9, distance(position, lanternAt));
             vec3 light = sun * vec3(1.0, 0.98, 0.9) + glow * glow * 0.8 * vec3(1.0, 0.78, 0.5);
             return color * light;
         }

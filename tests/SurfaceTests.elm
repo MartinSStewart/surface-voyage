@@ -57,7 +57,7 @@ suite : Test
 suite =
     describe "Surface"
         [ test "The world builds with every edge joined" <|
-            \_ -> withSurface (Surface.pieceCount >> Expect.equal 434)
+            \_ -> withSurface (Surface.pieceCount >> Expect.equal 407)
         , test "Walking once round the slab comes back to the start" <|
             \_ ->
                 withSurface

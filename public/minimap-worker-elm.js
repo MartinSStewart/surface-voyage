@@ -7821,30 +7821,29 @@ var $author$project$Underground$Z = 2;
 var $author$project$Underground$rooms = A2(
 	$elm$core$List$cons,
 	{
-		o: _Utils_Tuple2(3, 0),
-		ba: 0.66,
-		hj: 0.72
+		o: _Utils_Tuple2(4, 0),
+		ba: 0.95,
+		hj: 1
 	},
 	$elm$core$List$map$(
 		function (cell) {
-			return {o: cell, ba: 0.5, hj: 0.5};
+			return {o: cell, ba: 0.8, hj: 0.8};
 		},
 		_List_fromArray(
 			[
-				_Utils_Tuple2(0, 3),
-				_Utils_Tuple2(1, 3),
-				_Utils_Tuple2(2, 3),
-				_Utils_Tuple2(3, 3),
 				_Utils_Tuple2(0, 2),
 				_Utils_Tuple2(1, 2),
 				_Utils_Tuple2(2, 2),
 				_Utils_Tuple2(3, 2),
+				_Utils_Tuple2(4, 2),
 				_Utils_Tuple2(0, 1),
 				_Utils_Tuple2(1, 1),
 				_Utils_Tuple2(2, 1),
+				_Utils_Tuple2(4, 1),
 				_Utils_Tuple2(0, 0),
 				_Utils_Tuple2(1, 0),
-				_Utils_Tuple2(2, 0)
+				_Utils_Tuple2(2, 0),
+				_Utils_Tuple2(3, 0)
 			])));
 var $author$project$Underground$signs = _List_fromArray(
 	[-1, 1]);
@@ -7884,7 +7883,7 @@ var $author$project$Underground$outer$ = function (box, axis, sign) {
 	return (sign > 0) ? $author$project$Underground$get$(axis, box.dA) : $author$project$Underground$get$(axis, box.eS);
 };
 var $author$project$Underground$outer = F3($author$project$Underground$outer$);
-var $author$project$Underground$roomFillet = 0.06;
+var $author$project$Underground$roomFillet = 0.1;
 var $author$project$Underground$inner$ = function (box, axis, sign) {
 	return $author$project$Underground$outer$(box, axis, sign) - (sign * $author$project$Underground$roomFillet);
 };
@@ -7908,14 +7907,14 @@ var $ianmackenzie$elm_units$Angle$radians = function (numRadians) {
 var $ianmackenzie$elm_units$Angle$degrees = function (numDegrees) {
 	return $ianmackenzie$elm_units$Angle$radians($elm$core$Basics$pi * (numDegrees / 180));
 };
-var $author$project$Underground$spacing = 0.9;
+var $author$project$Underground$spacing = 1.3;
 var $author$project$Underground$cellCenter = function (_v0) {
 	var column = _v0.a;
 	var row = _v0.b;
-	return {ao: (-2.7) + ($author$project$Underground$spacing * column), ap: (-1.75) + ($author$project$Underground$spacing * row)};
+	return {ao: (-2.6) + ($author$project$Underground$spacing * column), ap: (-1.75) + ($author$project$Underground$spacing * row)};
 };
-var $author$project$Underground$floorLevel = 0.06;
-var $author$project$Underground$ceilingLevel = $author$project$Underground$floorLevel + 0.4;
+var $author$project$Underground$floorLevel = -0.28;
+var $author$project$Underground$ceilingLevel = $author$project$Underground$floorLevel + 0.7;
 var $author$project$Underground$roomBox = function (room) {
 	var center = $author$project$Underground$cellCenter(room.o);
 	return {
@@ -7960,21 +7959,15 @@ var $author$project$Underground$pointFrom = function (coordinates) {
 		coordinate(1),
 		coordinate(2));
 };
-var $author$project$Underground$firstRoom = _Utils_Tuple2(1, 3);
-var $author$project$Underground$shaftFillet = 0.05;
-var $author$project$Underground$shaftRadius = 0.06;
+var $author$project$Underground$firstRoom = _Utils_Tuple2(1, 2);
+var $author$project$Underground$shaftFillet = 0.08;
+var $author$project$Underground$shaftRadius = 0.1;
 var $author$project$Underground$entrance = function () {
 	var center = $author$project$Underground$cellCenter($author$project$Underground$firstRoom);
 	return {ao: center.ao, ap: center.ap, gK: $author$project$Underground$shaftRadius + $author$project$Underground$shaftFillet};
 }();
 var $author$project$Underground$tunnels = _List_fromArray(
 	[
-		_Utils_Tuple2(
-		_Utils_Tuple2(0, 3),
-		_Utils_Tuple2(1, 3)),
-		_Utils_Tuple2(
-		_Utils_Tuple2(0, 2),
-		_Utils_Tuple2(0, 3)),
 		_Utils_Tuple2(
 		_Utils_Tuple2(0, 2),
 		_Utils_Tuple2(1, 2)),
@@ -7988,6 +7981,9 @@ var $author$project$Underground$tunnels = _List_fromArray(
 		_Utils_Tuple2(0, 1),
 		_Utils_Tuple2(1, 1)),
 		_Utils_Tuple2(
+		_Utils_Tuple2(1, 0),
+		_Utils_Tuple2(1, 1)),
+		_Utils_Tuple2(
 		_Utils_Tuple2(1, 1),
 		_Utils_Tuple2(2, 1)),
 		_Utils_Tuple2(
@@ -7995,16 +7991,16 @@ var $author$project$Underground$tunnels = _List_fromArray(
 		_Utils_Tuple2(2, 2)),
 		_Utils_Tuple2(
 		_Utils_Tuple2(2, 2),
-		_Utils_Tuple2(2, 3)),
-		_Utils_Tuple2(
-		_Utils_Tuple2(2, 3),
-		_Utils_Tuple2(3, 3)),
-		_Utils_Tuple2(
-		_Utils_Tuple2(2, 2),
 		_Utils_Tuple2(3, 2)),
 		_Utils_Tuple2(
-		_Utils_Tuple2(3, 0),
-		_Utils_Tuple2(3, 2)),
+		_Utils_Tuple2(3, 2),
+		_Utils_Tuple2(4, 2)),
+		_Utils_Tuple2(
+		_Utils_Tuple2(4, 1),
+		_Utils_Tuple2(4, 2)),
+		_Utils_Tuple2(
+		_Utils_Tuple2(4, 0),
+		_Utils_Tuple2(4, 1)),
 		_Utils_Tuple2(
 		_Utils_Tuple2(2, 0),
 		_Utils_Tuple2(2, 1)),
@@ -8012,8 +8008,8 @@ var $author$project$Underground$tunnels = _List_fromArray(
 		_Utils_Tuple2(2, 0),
 		_Utils_Tuple2(3, 0)),
 		_Utils_Tuple2(
-		_Utils_Tuple2(1, 0),
-		_Utils_Tuple2(2, 0))
+		_Utils_Tuple2(3, 0),
+		_Utils_Tuple2(4, 0))
 	]);
 var $author$project$Underground$roomAt = function (cell) {
 	return $elm$core$List$head(
@@ -8047,8 +8043,8 @@ var $author$project$Underground$tunnelFor = function (_v0) {
 };
 var $author$project$Underground$allTunnels = $elm$core$List$filterMap$($author$project$Underground$tunnelFor, $author$project$Underground$tunnels);
 var $author$project$Underground$tunnelLevel = ($author$project$Underground$floorLevel + $author$project$Underground$ceilingLevel) / 2;
-var $author$project$Underground$tunnelFillet = 0.045;
-var $author$project$Underground$tunnelRadius = 0.07;
+var $author$project$Underground$tunnelFillet = 0.08;
+var $author$project$Underground$tunnelRadius = 0.15;
 var $author$project$Underground$openingsOf = function (room) {
 	var tunnelOpenings = $elm$core$List$filterMap$(
 		function (tunnel) {

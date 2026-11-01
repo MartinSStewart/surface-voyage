@@ -57,35 +57,38 @@ groundLevel =
     0.598373
 
 
-{-| The rooms' floors and ceilings. The ceilings are 14 cm under the grass.
+{-| The rooms' floors and ceilings: the slab is a meter thick, so this leaves 12 cm of earth under
+the floors and 18 cm over the ceilings.
 -}
 floorLevel : Float
 floorLevel =
-    0.06
+    -0.28
 
 
 ceilingLevel : Float
 ceilingLevel =
-    floorLevel + 0.4
+    floorLevel + 0.7
 
 
-{-| How round the inside edges and corners of the rooms are.
+{-| How round the inside edges and corners of the rooms are. Everything underground is kept fairly
+gently curved, as on tight curves the camera swings round and walking gets jumpy.
 -}
 roomFillet : Float
 roomFillet =
-    0.06
+    0.1
 
 
-{-| How wide the tunnels are inside, and how round their ends are where they open onto a room.
+{-| How wide the tunnels are inside, and how round their ends are where they open onto a room. The
+opening (radius plus fillet) has to fit on a wall between its fillets.
 -}
 tunnelRadius : Float
 tunnelRadius =
-    0.07
+    0.15
 
 
 tunnelFillet : Float
 tunnelFillet =
-    0.045
+    0.08
 
 
 {-| The tunnels go through the middle of the walls.
@@ -95,28 +98,29 @@ tunnelLevel =
     (floorLevel + ceilingLevel) / 2
 
 
-{-| The shaft down from the entrance is a bit narrower than the tunnels.
+{-| The shaft down from the entrance is a bit narrower than the tunnels, and has to be short, as
+there's not much earth over the ceilings.
 -}
 shaftRadius : Float
 shaftRadius =
-    0.06
+    0.1
 
 
 shaftFillet : Float
 shaftFillet =
-    0.05
+    0.08
 
 
-{-| Rooms sit on a grid of cells this far apart, in 4 columns and 4 rows.
+{-| Rooms sit on a grid of cells this far apart, in 5 columns and 3 rows.
 -}
 spacing : Float
 spacing =
-    0.9
+    1.3
 
 
 cellCenter : ( Int, Int ) -> { x : Float, z : Float }
 cellCenter ( column, row ) =
-    { x = -2.7 + spacing * toFloat column, z = -1.75 + spacing * toFloat row }
+    { x = -2.6 + spacing * toFloat column, z = -1.75 + spacing * toFloat row }
 
 
 type alias Room =
@@ -128,49 +132,47 @@ type alias Room =
     }
 
 
-{-| The cells with rooms in. (3, 1) is left empty, and the long tunnel from (3, 2) to (3, 0) runs
-under it.
+{-| The cells with rooms in. The big hole goes through (3, 1), so the rooms round it make a ring.
 
-    row 3:  A  E  B  C       E is under the entrance
-    row 2:  D  F  G  H
-    row 1:  I  J  K  .
-    row 0:  M  N  O  P       P is the big room at the end
+    row 2:  A  E  B  C  D       E is under the entrance
+    row 1:  F  G  H  O  I       O is the big hole
+    row 0:  J  K  L  M  P       P is the big room at the end
 
 -}
 rooms : List Room
 rooms =
-    [ ( 0, 3 ), ( 1, 3 ), ( 2, 3 ), ( 3, 3 ), ( 0, 2 ), ( 1, 2 ), ( 2, 2 ), ( 3, 2 ), ( 0, 1 ), ( 1, 1 ), ( 2, 1 ), ( 0, 0 ), ( 1, 0 ), ( 2, 0 ) ]
-        |> List.map (\cell -> { cell = cell, width = 0.5, depth = 0.5 })
-        |> (::) { cell = ( 3, 0 ), width = 0.72, depth = 0.66 }
+    [ ( 0, 2 ), ( 1, 2 ), ( 2, 2 ), ( 3, 2 ), ( 4, 2 ), ( 0, 1 ), ( 1, 1 ), ( 2, 1 ), ( 4, 1 ), ( 0, 0 ), ( 1, 0 ), ( 2, 0 ), ( 3, 0 ) ]
+        |> List.map (\cell -> { cell = cell, width = 0.8, depth = 0.8 })
+        |> (::) { cell = ( 4, 0 ), width = 1, depth = 0.95 }
 
 
 {-| The room the shaft from the entrance comes down into.
 -}
 firstRoom : ( Int, Int )
 firstRoom =
-    ( 1, 3 )
+    ( 1, 2 )
 
 
 {-| Which rooms the tunnels join. Each goes straight along x or z through the middle of the walls.
-There's one loop (round through G, H and P) and a few dead ends (C, F, M, N).
+The way on from the entrance goes back west first. There's one loop, round the big hole (H B C D I P
+M L), and dead ends at J and K.
 -}
 tunnels : List ( ( Int, Int ), ( Int, Int ) )
 tunnels =
-    [ ( ( 0, 3 ), ( 1, 3 ) )
-    , ( ( 0, 2 ), ( 0, 3 ) )
-    , ( ( 0, 2 ), ( 1, 2 ) )
+    [ ( ( 0, 2 ), ( 1, 2 ) )
     , ( ( 0, 1 ), ( 0, 2 ) )
     , ( ( 0, 0 ), ( 0, 1 ) )
     , ( ( 0, 1 ), ( 1, 1 ) )
+    , ( ( 1, 0 ), ( 1, 1 ) )
     , ( ( 1, 1 ), ( 2, 1 ) )
     , ( ( 2, 1 ), ( 2, 2 ) )
-    , ( ( 2, 2 ), ( 2, 3 ) )
-    , ( ( 2, 3 ), ( 3, 3 ) )
     , ( ( 2, 2 ), ( 3, 2 ) )
-    , ( ( 3, 0 ), ( 3, 2 ) )
+    , ( ( 3, 2 ), ( 4, 2 ) )
+    , ( ( 4, 1 ), ( 4, 2 ) )
+    , ( ( 4, 0 ), ( 4, 1 ) )
     , ( ( 2, 0 ), ( 2, 1 ) )
     , ( ( 2, 0 ), ( 3, 0 ) )
-    , ( ( 1, 0 ), ( 2, 0 ) )
+    , ( ( 3, 0 ), ( 4, 0 ) )
     ]
 
 
@@ -750,7 +752,7 @@ rooms in, or Nothing if the point isn't underground.
 -}
 light : Vec -> Maybe Float
 light p =
-    distanceFromEntrance p |> Maybe.map (\d -> e ^ -((d / 1.1) ^ 2))
+    distanceFromEntrance p |> Maybe.map (\d -> e ^ -((d / 1.6) ^ 2))
 
 
 {-| Meshes only carry a position, normal and color for each corner, so how much sunlight gets to an
@@ -806,7 +808,7 @@ tessellationStep fine box =
             box.min.y > ceilingLevel - 0.001 && abs (center.x - entrance.x) < 0.3 && abs (center.z - entrance.z) < 0.3
     in
     if contains center && not byEntrance then
-        max fine (pi / 8)
+        max fine (pi / 16)
 
     else
         fine
