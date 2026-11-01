@@ -510,7 +510,8 @@ groundFS =
         }
 
         void main () {
-            float shown = clamp((length(fromCamera_) - fadeNear) / (fadeFar - fadeNear), 0.0, 1.0);
+            float along = clamp((length(fromCamera_) - fadeNear) / (fadeFar - fadeNear), 0.0, 1.0);
+            float shown = pow(along, 1.0 / 2.2);
             if (shown <= bayer4(gl_FragCoord.xy)) {
                 discard;
             }
@@ -539,7 +540,10 @@ Whatever is nearer the camera than `fadeFar` fades out, gone by `fadeNear`, so t
 don't block the view when they come between the camera and the player. It fades by leaving out some
 pixels in a fixed 4x4 pattern (an ordered dither), as blending would need everything sorted back to
 front. The distance is worked out for each pixel, as on a big triangle reaching past the camera the
-distances at its corners say nothing about how near its middle is.
+distances at its corners say nothing about how near its middle is. The first few pixels left out of
+something solid show much more than the last few left out of something almost gone, so the share
+left out grows slowly at first and quickly towards `fadeNear` (a gamma curve, t^(1/2.2)), which
+looks like an even fade.
 
 -}
 worldFS : Shader {} { u | fadeNear : Float, fadeFar : Float } { color_ : Vec3, normal_ : Vec3, fromCamera_ : Vec3 }
@@ -563,7 +567,8 @@ worldFS =
         }
 
         void main () {
-            float shown = clamp((length(fromCamera_) - fadeNear) / (fadeFar - fadeNear), 0.0, 1.0);
+            float along = clamp((length(fromCamera_) - fadeNear) / (fadeFar - fadeNear), 0.0, 1.0);
+            float shown = pow(along, 1.0 / 2.2);
             if (shown <= bayer4(gl_FragCoord.xy)) {
                 discard;
             }
