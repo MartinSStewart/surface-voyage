@@ -3103,7 +3103,7 @@ flattenHelper radius pieces seams queue placed curved =
 
                                                     visible =
                                                         shadows
-                                                            |> List.filter (\( holeEdge, _ ) -> holeEdge /= edgeIndex)
+                                                            |> List.filter (\( holeEdge, _ ) -> not (sameHole parentPiece holeEdge edgeIndex))
                                                             |> List.foldl
                                                                 (\( _, shadow ) windows -> List.concatMap (subtractWindow shadow) windows)
                                                                 [ intersectWindows placement.window (windowOf points) ]
@@ -3198,7 +3198,8 @@ edgeFractions piece edgeIndex =
     List.range 0 count |> List.map (\i -> toFloat i / toFloat count)
 
 
-{-| The edges of a flat that are round holes in it.
+{-| The edges of a flat that are round holes in it, or half of one (a hole can be two half circles,
+see `Underground`).
 -}
 holeEdges : Piece -> List Int
 holeEdges piece =
@@ -3209,7 +3210,7 @@ holeEdges piece =
                     (\( index, edge ) ->
                         case edge of
                             ArcEdge { swept } ->
-                                if swept < -2 * pi + 1.0e-6 then
+                                if swept < -pi + 1.0e-6 then
                                     Just index
 
                                 else
@@ -3221,6 +3222,26 @@ holeEdges piece =
 
         FeaturePiece _ ->
             []
+
+
+{-| Whether two edges of a flat are the same edge, or arcs of the same hole.
+-}
+sameHole : Piece -> Int -> Int -> Bool
+sameHole piece first second =
+    first
+        == second
+        || (case piece of
+                FlatPiece flat ->
+                    case ( Array.get first flat.edges, Array.get second flat.edges ) of
+                        ( Just (ArcEdge a), Just (ArcEdge b) ) ->
+                            abs (a.cx - b.cx) + abs (a.cy - b.cy) + abs (a.r - b.r) < tolerance
+
+                        _ ->
+                            False
+
+                FeaturePiece _ ->
+                    False
+           )
 
 
 {-| The first round hole in a piece, on the map.

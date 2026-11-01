@@ -50,14 +50,14 @@ top =
 
 bottom : Float
 bottom =
-    -0.401627
+    -1.25
 
 
 suite : Test
 suite =
     describe "Surface"
         [ test "The world builds with every edge joined" <|
-            \_ -> withSurface (Surface.pieceCount >> Expect.equal 407)
+            \_ -> withSurface (Surface.pieceCount >> Expect.equal 213)
         , test "Walking once round the slab comes back to the start" <|
             \_ ->
                 withSurface

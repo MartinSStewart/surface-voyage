@@ -48,7 +48,7 @@ a tunnel, say), so further out it gets too busy to read.
 -}
 undergroundRadius : Length
 undergroundRadius =
-    Length.meters 2.6
+    Length.meters 3.5
 
 
 {-| How wide walls are drawn, in pixels

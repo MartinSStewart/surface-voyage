@@ -12,18 +12,24 @@ module Underground exposing
     , tessellationStep
     )
 
-{-| A maze of rooms and round tunnels hidden inside the slab, under the empty grass west of the
-hole. The only way in is a small round hole in the top face (`entrance`), which drops straight
-down into the first room's ceiling.
+{-| Rooms and round tunnels hidden inside the slab. The only way in is a round hole in the top face
+(`entrance`), which drops straight down into the first room's ceiling.
 
 It's made the same way as the rest of the world (see `World`): each room is a box with rounded
 edges and corners like the slab, but turned inside out, so its walls, floor and ceiling face into
-it. The tunnels are like the big hole: a round pipe with its ends rounded out onto the walls of the
-rooms it joins. As everywhere else on the surface, the player can walk all the way round a tunnel and
-up a room's walls onto its ceiling.
+it. The tunnels are round pipes, rounded out onto the walls of the rooms they join like the big hole
+is onto the top and bottom, and they can bend (a quarter of a torus). As everywhere else on the
+surface, the player can walk all the way round a tunnel and up a room's walls onto its ceiling.
+
+Everything is kept gently curved, as on tight curves the camera swings about and walking gets jumpy.
+That's why the rooms are big and the slab is thicker than it used to be.
+
+Pieces only join along whole edges, so a tunnel is made of two halves, split along its top and
+bottom: that's where a bend's two halves (the inner and outer side of the torus) meet too, and the
+openings in the walls are two half circles.
 
 Sunlight comes in at the entrance and dies away the further you walk from it (`light`), so the
-rooms near it are dim and the rest are dark, apart from what the player's own glow lights up (see
+first room is dim and the rest are dark, apart from what the player's own glow lights up (see
 `View`). Finding the way is left to the minimap, which shows the floors and the floor of each tunnel
 (`mapWalls`, `mapPavings`).
 
@@ -46,8 +52,12 @@ type alias Vec =
     { x : Float, y : Float, z : Float }
 
 
+type alias Flat2 =
+    { x : Float, z : Float }
 
----- THE MAZE ----
+
+
+---- SIZES ----
 
 
 {-| Where the top face of the slab is (see `World`).
@@ -57,38 +67,50 @@ groundLevel =
     0.598373
 
 
-{-| The rooms' floors and ceilings: the slab is a meter thick, so this leaves 12 cm of earth under
-the floors and 18 cm over the ceilings.
+{-| The rooms' floors and ceilings. The slab's bottom is at -1.25, so this leaves 20 cm of earth
+under the floors and 45 cm over the ceilings, for the shaft down from the entrance.
 -}
 floorLevel : Float
 floorLevel =
-    -0.28
+    -1.05
 
 
 ceilingLevel : Float
 ceilingLevel =
-    floorLevel + 0.7
+    floorLevel + 1.2
 
 
-{-| How round the inside edges and corners of the rooms are. Everything underground is kept fairly
-gently curved, as on tight curves the camera swings round and walking gets jumpy.
+{-| How round the inside edges and corners of the rooms are.
 -}
 roomFillet : Float
 roomFillet =
-    0.1
+    0.15
 
 
 {-| How wide the tunnels are inside, and how round their ends are where they open onto a room. The
-opening (radius plus fillet) has to fit on a wall between its fillets.
+opening (radius plus fillet) has to fit on a wall between its fillets, which is why the rooms are
+so big.
 -}
 tunnelRadius : Float
 tunnelRadius =
-    0.15
+    0.18
 
 
 tunnelFillet : Float
 tunnelFillet =
-    0.08
+    0.25
+
+
+tunnelRim : Float
+tunnelRim =
+    tunnelRadius + tunnelFillet
+
+
+{-| How far a tunnel's middle line is from the axis it turns round where it bends.
+-}
+bendRadius : Float
+bendRadius =
+    0.3
 
 
 {-| The tunnels go through the middle of the walls.
@@ -98,33 +120,23 @@ tunnelLevel =
     (floorLevel + ceilingLevel) / 2
 
 
-{-| The shaft down from the entrance is a bit narrower than the tunnels, and has to be short, as
-there's not much earth over the ceilings.
--}
 shaftRadius : Float
 shaftRadius =
-    0.1
+    0.15
 
 
 shaftFillet : Float
 shaftFillet =
-    0.08
+    0.2
 
 
-{-| Rooms sit on a grid of cells this far apart, in 5 columns and 3 rows.
--}
-spacing : Float
-spacing =
-    1.3
 
-
-cellCenter : ( Int, Int ) -> { x : Float, z : Float }
-cellCenter ( column, row ) =
-    { x = -2.6 + spacing * toFloat column, z = -1.75 + spacing * toFloat row }
+---- THE LAYOUT ----
 
 
 type alias Room =
-    { cell : ( Int, Int )
+    { name : String
+    , center : Flat2
 
     -- How wide the room is along x and z
     , width : Float
@@ -132,53 +144,66 @@ type alias Room =
     }
 
 
-{-| The cells with rooms in. The big hole goes through (3, 1), so the rooms round it make a ring.
+{-| The rooms, seen from above with x to the right and z up:
 
-    row 2:  A  E  B  C  D       E is under the entrance
-    row 1:  F  G  H  O  I       O is the big hole
-    row 0:  J  K  L  M  P       P is the big room at the end
+    A ---------- F ~~~~
+    |            |     ~~ D
+     ~~          |        |
+       |         |        |
+       B ------- C ------ E
+
+A is under the entrance, E is the bigger room at the end, and the tunnels drawn with ~ bend twice.
+They go round the big hole, which is between C, F and D.
 
 -}
 rooms : List Room
 rooms =
-    [ ( 0, 2 ), ( 1, 2 ), ( 2, 2 ), ( 3, 2 ), ( 4, 2 ), ( 0, 1 ), ( 1, 1 ), ( 2, 1 ), ( 4, 1 ), ( 0, 0 ), ( 1, 0 ), ( 2, 0 ), ( 3, 0 ) ]
-        |> List.map (\cell -> { cell = cell, width = 0.8, depth = 0.8 })
-        |> (::) { cell = ( 4, 0 ), width = 1, depth = 0.95 }
+    [ { name = "A", center = { x = -2.4, z = 1.0 }, width = 1.2, depth = 1.2 }
+    , { name = "B", center = { x = -1.8, z = -1.5 }, width = 1.2, depth = 1.2 }
+    , { name = "C", center = { x = 0, z = -1.5 }, width = 1.2, depth = 1.2 }
+    , { name = "F", center = { x = 0, z = 1.0 }, width = 1.2, depth = 1.2 }
+    , { name = "D", center = { x = 3.3, z = 0.3 }, width = 1.2, depth = 1.2 }
+    , { name = "E", center = { x = 3.3, z = -1.5 }, width = 1.4, depth = 1.2 }
+    ]
 
 
 {-| The room the shaft from the entrance comes down into.
 -}
-firstRoom : ( Int, Int )
+firstRoom : String
 firstRoom =
-    ( 1, 2 )
+    "A"
 
 
-{-| Which rooms the tunnels join. Each goes straight along x or z through the middle of the walls.
-The way on from the entrance goes back west first. There's one loop, round the big hole (H B C D I P
-M L), and dead ends at J and K.
+type Side
+    = East
+    | West
+    | North
+    | South
+
+
+{-| A tunnel from the middle of one side of a room to the middle of a side of another, through
+`corners`, where it bends a quarter turn. Each stretch between them goes along x or z, and is long
+enough for the bends and the rounded ends.
 -}
-tunnels : List ( ( Int, Int ), ( Int, Int ) )
-tunnels =
-    [ ( ( 0, 2 ), ( 1, 2 ) )
-    , ( ( 0, 1 ), ( 0, 2 ) )
-    , ( ( 0, 0 ), ( 0, 1 ) )
-    , ( ( 0, 1 ), ( 1, 1 ) )
-    , ( ( 1, 0 ), ( 1, 1 ) )
-    , ( ( 1, 1 ), ( 2, 1 ) )
-    , ( ( 2, 1 ), ( 2, 2 ) )
-    , ( ( 2, 2 ), ( 3, 2 ) )
-    , ( ( 3, 2 ), ( 4, 2 ) )
-    , ( ( 4, 1 ), ( 4, 2 ) )
-    , ( ( 4, 0 ), ( 4, 1 ) )
-    , ( ( 2, 0 ), ( 2, 1 ) )
-    , ( ( 2, 0 ), ( 3, 0 ) )
-    , ( ( 3, 0 ), ( 4, 0 ) )
+type alias TunnelSpec =
+    { from : ( String, Side ), to : ( String, Side ), corners : List Flat2 }
+
+
+tunnelSpecs : List TunnelSpec
+tunnelSpecs =
+    [ { from = ( "A", East ), to = ( "F", West ), corners = [] }
+    , { from = ( "A", South ), to = ( "B", North ), corners = [ { x = -2.4, z = -0.26 }, { x = -1.8, z = -0.26 } ] }
+    , { from = ( "B", East ), to = ( "C", West ), corners = [] }
+    , { from = ( "F", South ), to = ( "C", North ), corners = [] }
+    , { from = ( "F", East ), to = ( "D", West ), corners = [ { x = 1.9, z = 1.0 }, { x = 1.9, z = 0.3 } ] }
+    , { from = ( "D", South ), to = ( "E", North ), corners = [] }
+    , { from = ( "C", East ), to = ( "E", West ), corners = [] }
     ]
 
 
-roomAt : ( Int, Int ) -> Maybe Room
-roomAt cell =
-    List.filter (\room -> room.cell == cell) rooms |> List.head
+roomNamed : String -> Maybe Room
+roomNamed name =
+    List.filter (\room -> room.name == name) rooms |> List.head
 
 
 type alias Box =
@@ -187,62 +212,58 @@ type alias Box =
 
 roomBox : Room -> Box
 roomBox room =
-    let
-        center =
-            cellCenter room.cell
-    in
-    { min = { x = center.x - room.width / 2, y = floorLevel, z = center.z - room.depth / 2 }
-    , max = { x = center.x + room.width / 2, y = ceilingLevel, z = center.z + room.depth / 2 }
+    { min = { x = room.center.x - room.width / 2, y = floorLevel, z = room.center.z - room.depth / 2 }
+    , max = { x = room.center.x + room.width / 2, y = ceilingLevel, z = room.center.z + room.depth / 2 }
     }
 
 
-{-| A tunnel from the room with the smaller x or z to the other: along which axis, where its middle
-line is across that axis, and where it starts and ends along it (the walls of the two rooms).
+{-| Where a side's middle is, and which way is out of the room through it.
+-}
+sideOf : Room -> Side -> { point : Flat2, out : Flat2 }
+sideOf room side =
+    case side of
+        East ->
+            { point = { x = room.center.x + room.width / 2, z = room.center.z }, out = { x = 1, z = 0 } }
+
+        West ->
+            { point = { x = room.center.x - room.width / 2, z = room.center.z }, out = { x = -1, z = 0 } }
+
+        North ->
+            { point = { x = room.center.x, z = room.center.z + room.depth / 2 }, out = { x = 0, z = 1 } }
+
+        South ->
+            { point = { x = room.center.x, z = room.center.z - room.depth / 2 }, out = { x = 0, z = -1 } }
+
+
+{-| A tunnel worked out: the rooms at its ends, and its middle line from the wall of the first to the
+wall of the second, through its corners.
 -}
 type alias Tunnel =
-    { from : ( Int, Int )
-    , to : ( Int, Int )
-    , axis : Axis
-    , across : { x : Float, z : Float }
-    , start : Float
-    , end : Float
+    { from : Room
+    , fromSide : Side
+    , to : Room
+    , toSide : Side
+    , points : List Flat2
     }
-
-
-tunnelFor : ( ( Int, Int ), ( Int, Int ) ) -> Maybe Tunnel
-tunnelFor ( first, second ) =
-    case ( roomAt first, roomAt second ) of
-        ( Just a, Just b ) ->
-            let
-                ( near, far ) =
-                    if Tuple.first a.cell + Tuple.second a.cell < Tuple.first b.cell + Tuple.second b.cell then
-                        ( a, b )
-
-                    else
-                        ( b, a )
-
-                nearBox =
-                    roomBox near
-
-                farBox =
-                    roomBox far
-
-                center =
-                    cellCenter near.cell
-            in
-            if Tuple.second near.cell == Tuple.second far.cell then
-                Just { from = near.cell, to = far.cell, axis = X, across = center, start = nearBox.max.x, end = farBox.min.x }
-
-            else
-                Just { from = near.cell, to = far.cell, axis = Z, across = center, start = nearBox.max.z, end = farBox.min.z }
-
-        _ ->
-            Nothing
 
 
 allTunnels : List Tunnel
 allTunnels =
-    List.filterMap tunnelFor tunnels
+    tunnelSpecs
+        |> List.filterMap
+            (\spec ->
+                Maybe.map2
+                    (\from to ->
+                        { from = from
+                        , fromSide = Tuple.second spec.from
+                        , to = to
+                        , toSide = Tuple.second spec.to
+                        , points = (sideOf from (Tuple.second spec.from)).point :: spec.corners ++ [ (sideOf to (Tuple.second spec.to)).point ]
+                        }
+                    )
+                    (roomNamed (Tuple.first spec.from))
+                    (roomNamed (Tuple.first spec.to))
+            )
 
 
 {-| Where the entrance is on the top face, and how far out its rim is.
@@ -251,9 +272,109 @@ entrance : { x : Float, z : Float, rim : Float }
 entrance =
     let
         center =
-            cellCenter firstRoom
+            roomNamed firstRoom |> Maybe.map .center |> Maybe.withDefault { x = 0, z = 0 }
     in
     { x = center.x, z = center.z, rim = shaftRadius + shaftFillet }
+
+
+
+---- 2D AND 3D HELPERS ----
+
+
+sub2 : Flat2 -> Flat2 -> Flat2
+sub2 a b =
+    { x = a.x - b.x, z = a.z - b.z }
+
+
+add2 : Flat2 -> Flat2 -> Flat2
+add2 a b =
+    { x = a.x + b.x, z = a.z + b.z }
+
+
+scale2 : Float -> Flat2 -> Flat2
+scale2 k a =
+    { x = k * a.x, z = k * a.z }
+
+
+length2 : Flat2 -> Float
+length2 a =
+    sqrt (a.x * a.x + a.z * a.z)
+
+
+normalize2 : Flat2 -> Flat2
+normalize2 a =
+    let
+        l =
+            length2 a
+    in
+    if l > 0 then
+        scale2 (1 / l) a
+
+    else
+        a
+
+
+{-| A horizontal direction, from x and z.
+-}
+horizontal : Flat2 -> Direction3d coordinates
+horizontal d =
+    Direction3d.unsafe { x = d.x, y = 0, z = d.z }
+
+
+{-| A tunnel's middle line as straight stretches and bends: each stretch is cut short by the bend
+radius at the corners, and each bend turns from one stretch's direction to the next's.
+-}
+type alias Stretch =
+    { start : Flat2, end : Flat2, roundedStart : Bool, roundedEnd : Bool }
+
+
+type alias Bend =
+    { corner : Flat2, incoming : Flat2, outgoing : Flat2 }
+
+
+stretchesAndBends : Tunnel -> { stretches : List Stretch, bends : List Bend }
+stretchesAndBends tunnel =
+    let
+        points =
+            tunnel.points
+
+        legs =
+            List.map2 Tuple.pair points (List.drop 1 points)
+
+        legCount =
+            List.length legs
+
+        directions =
+            List.map (\( a, b ) -> normalize2 (sub2 b a)) legs
+
+        stretches =
+            List.indexedMap
+                (\i ( ( a, b ), d ) ->
+                    { start =
+                        if i == 0 then
+                            a
+
+                        else
+                            add2 a (scale2 bendRadius d)
+                    , end =
+                        if i == legCount - 1 then
+                            b
+
+                        else
+                            sub2 b (scale2 bendRadius d)
+                    , roundedStart = i == 0
+                    , roundedEnd = i == legCount - 1
+                    }
+                )
+                (List.map2 Tuple.pair legs directions)
+
+        bends =
+            List.map3 (\corner incoming outgoing -> { corner = corner, incoming = incoming, outgoing = outgoing })
+                (List.drop 1 points |> List.take (legCount - 1))
+                directions
+                (List.drop 1 directions)
+    in
+    { stretches = stretches, bends = bends }
 
 
 
@@ -332,11 +453,27 @@ inner box axis sign =
     outer box axis sign - sign * roomFillet
 
 
-{-| Round holes in a room's walls, floor or ceiling: on which side, where (in world coordinates)
-and how big.
+sideAxis : Side -> ( Axis, Float )
+sideAxis side =
+    case side of
+        East ->
+            ( X, 1 )
+
+        West ->
+            ( X, -1 )
+
+        North ->
+            ( Z, 1 )
+
+        South ->
+            ( Z, -1 )
+
+
+{-| Round holes in a room's walls or ceiling: on which side, where (in world coordinates), how big,
+and whether it's two half circles (for a tunnel) or one whole one (for the shaft).
 -}
 type alias Opening =
-    { axis : Axis, sign : Float, center : Vec, radius : Float }
+    { axis : Axis, sign : Float, center : Vec, radius : Float, halves : Bool }
 
 
 openingsOf : Room -> List Opening
@@ -345,32 +482,37 @@ openingsOf room =
         box =
             roomBox room
 
+        opening side =
+            let
+                ( axis, sign ) =
+                    sideAxis side
+
+                point =
+                    (sideOf room side).point
+            in
+            { axis = axis, sign = sign, center = { x = point.x, y = tunnelLevel, z = point.z }, radius = tunnelRim, halves = True }
+
         tunnelOpenings =
             allTunnels
-                |> List.filterMap
+                |> List.concatMap
                     (\tunnel ->
-                        let
-                            center along =
-                                case tunnel.axis of
-                                    X ->
-                                        { x = along, y = tunnelLevel, z = tunnel.across.z }
+                        (if tunnel.from.name == room.name then
+                            [ opening tunnel.fromSide ]
 
-                                    _ ->
-                                        { x = tunnel.across.x, y = tunnelLevel, z = along }
-                        in
-                        if tunnel.from == room.cell then
-                            Just { axis = tunnel.axis, sign = 1, center = center tunnel.start, radius = tunnelRadius + tunnelFillet }
+                         else
+                            []
+                        )
+                            ++ (if tunnel.to.name == room.name then
+                                    [ opening tunnel.toSide ]
 
-                        else if tunnel.to == room.cell then
-                            Just { axis = tunnel.axis, sign = -1, center = center tunnel.end, radius = tunnelRadius + tunnelFillet }
-
-                        else
-                            Nothing
+                                else
+                                    []
+                               )
                     )
 
         shaftOpening =
-            if room.cell == firstRoom then
-                [ { axis = Y, sign = 1, center = { x = entrance.x, y = box.max.y, z = entrance.z }, radius = shaftRadius + shaftFillet } ]
+            if room.name == firstRoom then
+                [ { axis = Y, sign = 1, center = { x = entrance.x, y = box.max.y, z = entrance.z }, radius = entrance.rim, halves = False } ]
 
             else
                 []
@@ -406,14 +548,30 @@ roomFace room axis sign =
                         let
                             center =
                                 Point2d.meters (get a opening.center) (get b opening.center)
+
+                            -- Which way is up in the sketch plane
+                            up =
+                                if a == Y then
+                                    Vector2d.meters opening.radius 0
+
+                                else
+                                    Vector2d.meters 0 opening.radius
                         in
                         -- Clockwise, so the flat is on its left
-                        [ Arc
-                            { start = center |> Point2d.translateBy (Vector2d.meters opening.radius 0)
-                            , center = center
-                            , sweptAngle = Angle.degrees -360
-                            }
-                        ]
+                        if opening.halves then
+                            -- From the top round to the bottom, then back up, where the halves of
+                            -- the tunnel meet
+                            [ Arc { start = center |> Point2d.translateBy up, center = center, sweptAngle = Angle.degrees -180 }
+                            , Arc { start = center |> Point2d.translateBy (Vector2d.reverse up), center = center, sweptAngle = Angle.degrees -180 }
+                            ]
+
+                        else
+                            [ Arc
+                                { start = center |> Point2d.translateBy (Vector2d.meters opening.radius 0)
+                                , center = center
+                                , sweptAngle = Angle.degrees -360
+                                }
+                            ]
                     )
     in
     { plane =
@@ -429,8 +587,8 @@ roomFace room axis sign =
 {-| A quarter cylinder along a room's edge parallel to `along`, curving from one side to the other.
 Like the slab's (see `World`), but its profile runs the other way so it faces in towards its axis.
 -}
-roomFillet_ : Room -> Axis -> Float -> Float -> FeatureSpec coordinates
-roomFillet_ room along signA signB =
+roomEdge : Room -> Axis -> Float -> Float -> FeatureSpec coordinates
+roomEdge room along signA signB =
     let
         box =
             roomBox room
@@ -487,72 +645,184 @@ roomCorner room signX signY signZ =
     }
 
 
-{-| A round pipe from the plane `top` (facing up its frame's z axis) to the plane `bottom` (facing
-down it), rounded out onto both, like the big hole (see `World`).
+{-| A straight stretch of tunnel, as its two halves. Its frame's z axis points back along it, so its
+start faces the way the wall of the room it starts at does (like the big hole's top, see `World`),
+and its x axis points up, so the halves split along its top and bottom.
 -}
-pipe : { frame : Frame3d.Frame3d Meters coordinates { defines : Surface.FeatureCoordinate }, top : Float, bottom : Float, radius : Float, fillet : Float } -> FeatureSpec coordinates
-pipe { frame, top, bottom, radius, fillet } =
+stretchPieces : Stretch -> List (FeatureSpec coordinates)
+stretchPieces stretch =
     let
-        rim =
-            radius + fillet
+        along =
+            sub2 stretch.end stretch.start
+
+        length =
+            length2 along
+
+        back =
+            normalize2 along |> scale2 -1
+
+        -- z cross x, so that x cross y = z
+        side =
+            { x = -back.z, z = back.x }
+
+        frame =
+            Frame3d.unsafe
+                { originPoint = Point3d.meters stretch.start.x tunnelLevel stretch.start.z
+                , xDirection = Direction3d.y
+                , yDirection = horizontal side
+                , zDirection = horizontal back
+                }
+
+        r =
+            tunnelRadius
+
+        f =
+            tunnelFillet
+
+        ( start, startSegments ) =
+            if stretch.roundedStart then
+                ( Point2d.meters tunnelRim 0, [ Circle { end = Point2d.meters r -f, center = Point2d.meters tunnelRim -f } ] )
+
+            else
+                ( Point2d.meters r 0, [] )
+
+        endSegments =
+            if stretch.roundedEnd then
+                [ Line { end = Point2d.meters r (-length + f) }
+                , Circle { end = Point2d.meters tunnelRim -length, center = Point2d.meters tunnelRim (-length + f) }
+                ]
+
+            else
+                [ Line { end = Point2d.meters r -length } ]
+
+        half from to =
+            { frame = frame
+            , profile = { start = start, segments = startSegments ++ endSegments }
+            , sweep = PartTurn { from = Angle.degrees from, to = Angle.degrees to }
+            }
     in
-    { frame = frame
+    [ half 0 180, half 180 360 ]
+
+
+{-| A bend, as the inner and outer halves of a quarter of a torus round a vertical axis. The bend's
+frame's x axis points from that axis to where the bend starts and its y axis to where it ends, so
+it sweeps from 0 to 90 degrees. Its profile goes clockwise round the tunnel's middle line, so the
+tunnel's inside is on its right and the surface faces into it.
+-}
+bendPieces : Bend -> List (FeatureSpec coordinates)
+bendPieces bend =
+    let
+        -- Where the axis is: in from the corner on the inside of the turn
+        axis =
+            add2 bend.corner (scale2 bendRadius (sub2 bend.outgoing bend.incoming))
+
+        x =
+            scale2 -1 bend.outgoing
+
+        y =
+            bend.incoming
+
+        -- x cross y is up or down
+        upSign =
+            if x.z * y.x - x.x * y.z > 0 then
+                1
+
+            else
+                -1
+
+        frame =
+            Frame3d.unsafe
+                { originPoint = Point3d.meters axis.x 0 axis.z
+                , xDirection = horizontal x
+                , yDirection = horizontal y
+                , zDirection = Direction3d.unsafe { x = 0, y = upSign, z = 0 }
+                }
+
+        h =
+            upSign * tunnelLevel
+
+        rr =
+            bendRadius
+
+        r =
+            tunnelRadius
+
+        center =
+            Point2d.meters rr h
+
+        quarterTurn =
+            PartTurn { from = Angle.degrees 0, to = Angle.degrees 90 }
+    in
+    [ -- Over the top, round the outside and down to the bottom
+      { frame = frame
+      , profile =
+            { start = Point2d.meters rr (h + r)
+            , segments =
+                [ Circle { end = Point2d.meters (rr + r) h, center = center }
+                , Circle { end = Point2d.meters rr (h - r), center = center }
+                ]
+            }
+      , sweep = quarterTurn
+      }
+    , -- And back up round the inside
+      { frame = frame
+      , profile =
+            { start = Point2d.meters rr (h - r)
+            , segments =
+                [ Circle { end = Point2d.meters (rr - r) h, center = center }
+                , Circle { end = Point2d.meters rr (h + r), center = center }
+                ]
+            }
+      , sweep = quarterTurn
+      }
+    ]
+
+
+tunnelPieces : Tunnel -> List (FeatureSpec coordinates)
+tunnelPieces tunnel =
+    let
+        { stretches, bends } =
+            stretchesAndBends tunnel
+    in
+    (stretches
+        |> List.filter (\stretch -> length2 (sub2 stretch.end stretch.start) > 1.0e-6)
+        |> List.concatMap stretchPieces
+    )
+        ++ List.concatMap bendPieces bends
+
+
+{-| The shaft from the entrance on the top face down into the first room's ceiling: a round pipe
+rounded out onto both, like the big hole (see `World`).
+-}
+shaft : FeatureSpec coordinates
+shaft =
+    let
+        top =
+            groundLevel
+
+        bottom =
+            ceilingLevel
+
+        rim =
+            entrance.rim
+    in
+    { frame =
+        Frame3d.unsafe
+            { originPoint = Point3d.meters entrance.x 0 entrance.z
+            , xDirection = Direction3d.z
+            , yDirection = Direction3d.x
+            , zDirection = Direction3d.y
+            }
     , profile =
         { start = Point2d.meters rim top
         , segments =
-            [ Circle { end = Point2d.meters radius (top - fillet), center = Point2d.meters rim (top - fillet) }
-            , Line { end = Point2d.meters radius (bottom + fillet) }
-            , Circle { end = Point2d.meters rim bottom, center = Point2d.meters rim (bottom + fillet) }
+            [ Circle { end = Point2d.meters shaftRadius (top - shaftFillet), center = Point2d.meters rim (top - shaftFillet) }
+            , Line { end = Point2d.meters shaftRadius (bottom + shaftFillet) }
+            , Circle { end = Point2d.meters rim bottom, center = Point2d.meters rim (bottom + shaftFillet) }
             ]
         }
     , sweep = FullTurn
     }
-
-
-{-| A tunnel's pipe. Its frame's z axis points from the room it ends at back to the one it starts
-from, as the end room's wall faces back along the tunnel.
--}
-tunnelPipe : Tunnel -> FeatureSpec coordinates
-tunnelPipe tunnel =
-    let
-        frame =
-            case tunnel.axis of
-                X ->
-                    Frame3d.unsafe
-                        { originPoint = Point3d.meters 0 tunnelLevel tunnel.across.z
-                        , xDirection = Direction3d.y
-                        , yDirection = Direction3d.z
-                        , zDirection = Direction3d.x
-                        }
-
-                _ ->
-                    Frame3d.unsafe
-                        { originPoint = Point3d.meters tunnel.across.x tunnelLevel 0
-                        , xDirection = Direction3d.x
-                        , yDirection = Direction3d.y
-                        , zDirection = Direction3d.z
-                        }
-    in
-    pipe { frame = frame, top = tunnel.end, bottom = tunnel.start, radius = tunnelRadius, fillet = tunnelFillet }
-
-
-{-| The shaft from the entrance on the top face down into the first room's ceiling.
--}
-shaft : FeatureSpec coordinates
-shaft =
-    pipe
-        { frame =
-            Frame3d.unsafe
-                { originPoint = Point3d.meters entrance.x 0 entrance.z
-                , xDirection = Direction3d.z
-                , yDirection = Direction3d.x
-                , zDirection = Direction3d.y
-                }
-        , top = groundLevel
-        , bottom = ceilingLevel
-        , radius = shaftRadius
-        , fillet = shaftFillet
-        }
 
 
 signs : List Float
@@ -568,11 +838,11 @@ flats =
 features : List (FeatureSpec coordinates)
 features =
     shaft
-        :: List.map tunnelPipe allTunnels
+        :: List.concatMap tunnelPieces allTunnels
         ++ (rooms
                 |> List.concatMap
                     (\room ->
-                        ([ X, Y, Z ] |> List.concatMap (\along -> signs |> List.concatMap (\signA -> List.map (roomFillet_ room along signA) signs)))
+                        ([ X, Y, Z ] |> List.concatMap (\along -> signs |> List.concatMap (\signA -> List.map (roomEdge room along signA) signs)))
                             ++ (signs |> List.concatMap (\signX -> signs |> List.concatMap (\signY -> List.map (roomCorner room signX signY) signs)))
                     )
            )
@@ -582,10 +852,24 @@ features =
 ---- LIGHT ----
 
 
+{-| How long a tunnel's middle line is, from wall to wall, going round the corners.
+-}
+polylineLength : List Flat2 -> Float
+polylineLength points =
+    List.map2 (\a b -> length2 (sub2 b a)) points (List.drop 1 points) |> List.sum
+
+
+{-| How far it is to walk from one room's middle to the other's through a tunnel.
+-}
+tunnelLength : Tunnel -> Float
+tunnelLength tunnel =
+    tunnel.from.width / 2 + polylineLength tunnel.points + tunnel.to.width / 2
+
+
 {-| How far it is to walk from the entrance to the middle of each room, going through the middles
 of the rooms on the way.
 -}
-roomDistances : Dict ( Int, Int ) Float
+roomDistances : Dict String Float
 roomDistances =
     let
         links =
@@ -593,16 +877,10 @@ roomDistances =
                 |> List.concatMap
                     (\tunnel ->
                         let
-                            a =
-                                cellCenter tunnel.from
-
-                            b =
-                                cellCenter tunnel.to
-
                             length =
-                                abs (a.x - b.x) + abs (a.z - b.z)
+                                tunnelLength tunnel
                         in
-                        [ ( tunnel.from, ( tunnel.to, length ) ), ( tunnel.to, ( tunnel.from, length ) ) ]
+                        [ ( tunnel.from.name, ( tunnel.to.name, length ) ), ( tunnel.to.name, ( tunnel.from.name, length ) ) ]
                     )
 
         relax distances =
@@ -638,7 +916,49 @@ roomDistances =
 -}
 margin : Float
 margin =
-    0.01
+    0.02
+
+
+{-| The nearest point on a line through `points` to `p`: how far it is, and how far along the line.
+-}
+nearestOnPolyline : List Flat2 -> Flat2 -> { distance : Float, along : Float }
+nearestOnPolyline points p =
+    List.map2 Tuple.pair points (List.drop 1 points)
+        |> List.foldl
+            (\( a, b ) ( best, sofar ) ->
+                let
+                    ab =
+                        sub2 b a
+
+                    l =
+                        length2 ab
+
+                    t =
+                        if l > 0 then
+                            clamp 0 1 (((p.x - a.x) * ab.x + (p.z - a.z) * ab.z) / (l * l))
+
+                        else
+                            0
+
+                    q =
+                        add2 a (scale2 t ab)
+
+                    d =
+                        length2 (sub2 p q)
+
+                    candidate =
+                        { distance = d, along = sofar + t * l }
+                in
+                ( if d < best.distance then
+                    candidate
+
+                  else
+                    best
+                , sofar + l
+                )
+            )
+            ( { distance = 1 / 0, along = 0 }, 0 )
+        |> Tuple.first
 
 
 {-| How far a point in a room or tunnel is to walk to from the entrance, or Nothing if it isn't in
@@ -648,6 +968,9 @@ the shorter of that from either end; in the shaft, how far down it is.
 distanceFromEntrance : Vec -> Maybe Float
 distanceFromEntrance p =
     let
+        flat =
+            { x = p.x, z = p.z }
+
         inRoom =
             rooms
                 |> List.filterMap
@@ -655,17 +978,14 @@ distanceFromEntrance p =
                         let
                             box =
                                 roomBox room
-
-                            center =
-                                cellCenter room.cell
                         in
                         if
                             (p.x > box.min.x - margin && p.x < box.max.x + margin)
                                 && (p.y > box.min.y - margin && p.y < box.max.y + margin)
                                 && (p.z > box.min.z - margin && p.z < box.max.z + margin)
                         then
-                            Dict.get room.cell roomDistances
-                                |> Maybe.map (\d -> d + sqrt ((p.x - center.x) ^ 2 + (p.z - center.z) ^ 2) + abs (p.y - tunnelLevel))
+                            Dict.get room.name roomDistances
+                                |> Maybe.map (\d -> d + length2 (sub2 flat room.center) + abs (p.y - tunnelLevel))
 
                         else
                             Nothing
@@ -676,46 +996,23 @@ distanceFromEntrance p =
                 |> List.filterMap
                     (\tunnel ->
                         let
-                            ( along, a, b ) =
-                                case tunnel.axis of
-                                    X ->
-                                        ( p.x, p.y - tunnelLevel, p.z - tunnel.across.z )
+                            nearest =
+                                nearestOnPolyline tunnel.points flat
 
-                                    _ ->
-                                        ( p.z, p.y - tunnelLevel, p.x - tunnel.across.x )
+                            across =
+                                sqrt (nearest.distance ^ 2 + (p.y - tunnelLevel) ^ 2)
 
-                            fromStart =
-                                cellCenter tunnel.from
-                                    |> (\c ->
-                                            abs
-                                                (along
-                                                    - (if tunnel.axis == X then
-                                                        c.x
-
-                                                       else
-                                                        c.z
-                                                      )
-                                                )
-                                       )
-
-                            fromEnd =
-                                cellCenter tunnel.to
-                                    |> (\c ->
-                                            abs
-                                                (along
-                                                    - (if tunnel.axis == X then
-                                                        c.x
-
-                                                       else
-                                                        c.z
-                                                      )
-                                                )
-                                       )
+                            length =
+                                polylineLength tunnel.points
                         in
-                        if along > tunnel.start - margin && along < tunnel.end + margin && a * a + b * b < (tunnelRadius + tunnelFillet + margin) ^ 2 then
-                            Maybe.map2 (\dFrom dTo -> min (dFrom + fromStart) (dTo + fromEnd))
-                                (Dict.get tunnel.from roomDistances)
-                                (Dict.get tunnel.to roomDistances)
+                        if across < tunnelRim + margin then
+                            Maybe.map2
+                                (\dFrom dTo ->
+                                    min (dFrom + tunnel.from.width / 2 + nearest.along)
+                                        (dTo + tunnel.to.width / 2 + length - nearest.along)
+                                )
+                                (Dict.get tunnel.from.name roomDistances)
+                                (Dict.get tunnel.to.name roomDistances)
 
                         else
                             Nothing
@@ -752,7 +1049,7 @@ rooms in, or Nothing if the point isn't underground.
 -}
 light : Vec -> Maybe Float
 light p =
-    distanceFromEntrance p |> Maybe.map (\d -> e ^ -((d / 1.6) ^ 2))
+    distanceFromEntrance p |> Maybe.map (\d -> e ^ -((d / 2.2) ^ 2))
 
 
 {-| Meshes only carry a position, normal and color for each corner, so how much sunlight gets to an
@@ -794,8 +1091,8 @@ soilColor position normal =
 
 
 {-| How finely to split the curves of the piece of surface inside `box` to draw it (see
-`Surface.tessellateBy`), given how finely the rest is. The rooms and tunnels are small and mostly
-dark, so they're split much more coarsely. All their curves meet only each other, except the shaft
+`Surface.tessellateBy`), given how finely the rest is. The rooms and tunnels are mostly dark, so
+they're split more coarsely. All their curves meet only each other, except the shaft
 meets the grass round the entrance and the ceiling of the room under it, so those stay fine.
 -}
 tessellationStep : Float -> { min : Vec, max : Vec } -> Float
@@ -805,7 +1102,7 @@ tessellationStep fine box =
             { x = (box.min.x + box.max.x) / 2, y = (box.min.y + box.max.y) / 2, z = (box.min.z + box.max.z) / 2 }
 
         byEntrance =
-            box.min.y > ceilingLevel - 0.001 && abs (center.x - entrance.x) < 0.3 && abs (center.z - entrance.z) < 0.3
+            box.min.y > ceilingLevel - 0.001 && abs (center.x - entrance.x) < 0.5 && abs (center.z - entrance.z) < 0.5
     in
     if contains center && not byEntrance then
         max fine (pi / 16)
@@ -818,8 +1115,8 @@ tessellationStep fine box =
 ---- MINIMAP ----
 
 
-{-| Lines along the bottom of each tunnel and the shaft, and round the openings in the rooms'
-walls, for the minimap (see `Shapes`).
+{-| Lines along the bottom of each tunnel, and round the openings in the rooms' walls, for the
+minimap (see `Shapes`).
 -}
 mapWalls : List (List ( Float, Float, Float ))
 mapWalls =
@@ -832,52 +1129,72 @@ mapWalls =
                 |> List.map
                     (\tunnel ->
                         let
-                            -- From the rim of one opening to the other's
-                            from =
-                                tunnel.start
+                            { stretches, bends } =
+                                stretchesAndBends tunnel
 
-                            to =
-                                tunnel.end
-
-                            count =
-                                ceiling ((to - from) / 0.03)
-
-                            -- Where the bottom of the tunnel is along it, rounded out at the ends
-                            heightAt along =
+                            -- Points along the middle line, with arcs round the bends
+                            stretchPoints stretch =
                                 let
-                                    outFrom =
-                                        tunnel.start - along
+                                    l =
+                                        length2 (sub2 stretch.end stretch.start)
 
-                                    outTo =
-                                        along - tunnel.end
-
-                                    rise out =
-                                        if out > 0 then
-                                            -- On the room's wall below the opening
-                                            bottom - tunnelFillet
-
-                                        else if out > -tunnelFillet then
-                                            bottom - tunnelFillet + sqrt (max 0 (tunnelFillet ^ 2 - (out + tunnelFillet) ^ 2))
-
-                                        else
-                                            bottom
+                                    count =
+                                        max 1 (ceiling (l / 0.03))
                                 in
-                                min (rise outFrom) (rise outTo)
-                        in
-                        List.range 0 count
-                            |> List.map
-                                (\i ->
-                                    let
-                                        along =
-                                            from + (to - from) * toFloat i / toFloat count
-                                    in
-                                    case tunnel.axis of
-                                        X ->
-                                            ( along, heightAt along, tunnel.across.z )
+                                List.range 0 count |> List.map (\i -> add2 stretch.start (scale2 (toFloat i / toFloat count) (sub2 stretch.end stretch.start)))
 
-                                        _ ->
-                                            ( tunnel.across.x, heightAt along, along )
-                                )
+                            bendPoints bend =
+                                let
+                                    axis =
+                                        add2 bend.corner (scale2 bendRadius (sub2 bend.outgoing bend.incoming))
+                                in
+                                List.range 1 11
+                                    |> List.map
+                                        (\i ->
+                                            let
+                                                a =
+                                                    pi / 2 * toFloat i / 12
+                                            in
+                                            add2 axis (add2 (scale2 (-bendRadius * cos a) bend.outgoing) (scale2 (bendRadius * sin a) bend.incoming))
+                                        )
+
+                            middle =
+                                List.map2 (\stretch bendPoints_ -> stretchPoints stretch ++ bendPoints_)
+                                    stretches
+                                    (List.map bendPoints bends ++ [ [] ])
+                                    |> List.concat
+
+                            distances =
+                                List.foldl
+                                    (\point ( acc, previous ) ->
+                                        case ( acc, previous ) of
+                                            ( d :: _, Just q ) ->
+                                                ( (d + length2 (sub2 point q)) :: acc, Just point )
+
+                                            _ ->
+                                                ( [ 0 ], Just point )
+                                    )
+                                    ( [], Nothing )
+                                    middle
+                                    |> Tuple.first
+                                    |> List.reverse
+
+                            total =
+                                List.maximum distances |> Maybe.withDefault 0
+
+                            -- How far the bottom is from the middle line, rounded out at the ends
+                            radiusAt u =
+                                let
+                                    fromEnd =
+                                        min u (total - u)
+                                in
+                                if fromEnd < tunnelFillet then
+                                    tunnelRim - sqrt (max 0 (tunnelFillet ^ 2 - (tunnelFillet - fromEnd) ^ 2))
+
+                                else
+                                    tunnelRadius
+                        in
+                        List.map2 (\point u -> ( point.x, tunnelLevel - radiusAt u, point.z )) middle distances
                     )
 
         openingLines =
@@ -893,9 +1210,6 @@ mapWalls =
 
                                         point angle =
                                             let
-                                                p =
-                                                    opening.center
-
                                                 offset axis amount v =
                                                     case axis of
                                                         X ->
@@ -908,11 +1222,11 @@ mapWalls =
                                                             { v | z = v.z + amount }
 
                                                 q =
-                                                    p |> offset a (opening.radius * cos angle) |> offset b (opening.radius * sin angle)
+                                                    opening.center |> offset a (opening.radius * cos angle) |> offset b (opening.radius * sin angle)
                                             in
                                             ( q.x, q.y, q.z )
                                     in
-                                    List.range 0 24 |> List.map (\i -> point (2 * pi * toFloat i / 24))
+                                    List.range 0 32 |> List.map (\i -> point (2 * pi * toFloat i / 32))
                                 )
                     )
     in
@@ -938,10 +1252,10 @@ mapPavings =
                         roomFillet
 
                     columns =
-                        ceiling ((room.width - 2 * inset) / 0.04)
+                        ceiling ((room.width - 2 * inset) / 0.05)
 
                     rows =
-                        ceiling ((room.depth - 2 * inset) / 0.04)
+                        ceiling ((room.depth - 2 * inset) / 0.05)
 
                     index i j =
                         j * (columns + 1) + i

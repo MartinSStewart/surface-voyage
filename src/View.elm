@@ -31,6 +31,7 @@ import Quantity
 import Rectangle2dEx as Rectangle2d
 import SketchPlane3d
 import Surface exposing (Surface, SurfacePoint)
+import Underground
 import Vector2d
 import Vector2i exposing (Vector2i)
 import Vector3d
@@ -109,6 +110,9 @@ view config meshes =
 
         lanternAt =
             Maybe.map Point3d.toVec3 playerPosition |> Maybe.withDefault (Vec3.vec3 0 0 0)
+
+        entranceAt =
+            Vec3.vec3 Underground.entrance.x 0 Underground.entrance.z
     in
     WebGL.toHtml
         ([ Html.Attributes.width windowWidth
@@ -138,6 +142,7 @@ view config meshes =
                                 , fadeFar = Length.inMeters fadeFar
                                 , underground = undergroundUniform
                                 , lanternAt = lanternAt
+                                , entranceAt = entranceAt
                                 }
                         in
                         List.concatMap
@@ -280,6 +285,7 @@ uniforms config cameraMatrix_ local grid underground lanternAt =
     , fadeFar = Length.inMeters fadeFar
     , underground = underground
     , lanternAt = lanternAt
+    , entranceAt = Vec3.vec3 Underground.entrance.x 0 Underground.entrance.z
     }
 
 
@@ -367,6 +373,7 @@ type alias Uniforms =
     , fadeFar : Float
     , underground : Float
     , lanternAt : Vec3
+    , entranceAt : Vec3
     }
 
 
@@ -528,6 +535,7 @@ groundFS =
         varying vec3 fromCamera_;
         uniform float underground;
         uniform vec3 lanternAt;
+        uniform vec3 entranceAt;
 
         float bayer2(vec2 a) {
             a = floor(a);
@@ -548,7 +556,13 @@ groundFS =
                 return color;
             }
             float sun = clamp(1.0 - (normalLength - 2.0) / 8.0, 0.0, 1.0);
-            float glow = 1.0 - smoothstep(0.04, 0.9, distance(position, lanternAt));
+            if (underground < 0.5 && distance(position.xz, entranceAt.xz) > 0.9) {
+                // From above ground, the only way to see in is down the shaft. The camera can
+                // still end up in the earth next to a room further in (from in the big hole, say),
+                // which would only block the view.
+                discard;
+            }
+            float glow = 1.0 - smoothstep(0.05, 1.2, distance(position, lanternAt));
             vec3 light = sun * vec3(1.0, 0.98, 0.9) + glow * glow * 0.8 * vec3(1.0, 0.78, 0.5);
             return color * light;
         }
@@ -590,7 +604,7 @@ left out grows slowly at first and quickly towards `fadeNear` (a gamma curve, t^
 looks like an even fade.
 
 -}
-worldFS : Shader {} { u | fadeNear : Float, fadeFar : Float, underground : Float, lanternAt : Vec3 } { color_ : Vec3, normal_ : Vec3, position_ : Vec3, fromCamera_ : Vec3 }
+worldFS : Shader {} { u | fadeNear : Float, fadeFar : Float, underground : Float, lanternAt : Vec3, entranceAt : Vec3 } { color_ : Vec3, normal_ : Vec3, position_ : Vec3, fromCamera_ : Vec3 }
 worldFS =
     [glsl|
         precision mediump float;
@@ -598,6 +612,7 @@ worldFS =
         uniform float fadeFar;
         uniform float underground;
         uniform vec3 lanternAt;
+        uniform vec3 entranceAt;
         varying vec3 color_;
         varying vec3 normal_;
         varying vec3 position_;
@@ -623,7 +638,13 @@ worldFS =
                 return color;
             }
             float sun = clamp(1.0 - (normalLength - 2.0) / 8.0, 0.0, 1.0);
-            float glow = 1.0 - smoothstep(0.04, 0.9, distance(position, lanternAt));
+            if (underground < 0.5 && distance(position.xz, entranceAt.xz) > 0.9) {
+                // From above ground, the only way to see in is down the shaft. The camera can
+                // still end up in the earth next to a room further in (from in the big hole, say),
+                // which would only block the view.
+                discard;
+            }
+            float glow = 1.0 - smoothstep(0.05, 1.2, distance(position, lanternAt));
             vec3 light = sun * vec3(1.0, 0.98, 0.9) + glow * glow * 0.8 * vec3(1.0, 0.78, 0.5);
             return color * light;
         }
@@ -696,7 +717,7 @@ The player is drawn the same way, from a mesh made where they stand (see `WorldM
 identity and 0.
 
 -}
-wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float, maxShift : Float, local : Mat4, lift : Float, layer : Float, fadeNear : Float, fadeFar : Float, underground : Float, lanternAt : Vec3 } { color_ : Vec3, normal_ : Vec3, position_ : Vec3, fromCamera_ : Vec3 }
+wallVS : Shader WallVertex { perspective : Mat4, camera : Mat4, player : Vec3, eyeHeight : Float, maxShift : Float, local : Mat4, lift : Float, layer : Float, fadeNear : Float, fadeFar : Float, underground : Float, lanternAt : Vec3, entranceAt : Vec3 } { color_ : Vec3, normal_ : Vec3, position_ : Vec3, fromCamera_ : Vec3 }
 wallVS =
     [glsl|
         attribute vec3 position;

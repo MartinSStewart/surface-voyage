@@ -5,7 +5,8 @@ through the middle, a round hill on top next to the house by the start, and room
 inside the slab (see `Underground`).
 
 The numbers come from the Blender model (world.blend), which the world used to be drawn from: the box
-and its 0.199 m fillets are exact, and the hole was fitted to its mesh: a 0.475 m waist with 0.304 m
+and its 0.199 m fillets are exact (except that the bottom is 0.848 m lower than in the model, to make
+room for what's under the ground), and the hole was fitted to its mesh: a 0.475 m waist with 0.304 m
 fillets rounding out to a 0.780 m rim.
 
 -}
@@ -32,7 +33,7 @@ filletRadius =
 -}
 box : { min : { x : Float, y : Float, z : Float }, max : { x : Float, y : Float, z : Float } }
 box =
-    { min = { x = -3.343595, y = -0.401627, z = -2.452917 }
+    { min = { x = -3.343595, y = -1.25, z = -2.452917 }
     , max = { x = 4.236575, y = 0.598373, z = 1.992144 }
     }
 
